@@ -4,12 +4,12 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { TextDocument } from "vscode-languageserver-textdocument";
 
-import { collectSyntaxDiagnostics } from "../server/parser.js";
+import { collectSyntaxDiagnostics } from "@/server/parser.js";
 
 type SampleExpectation = "valid" | "invalid";
 
 const rootDirectory = process.cwd();
-const samplesRoot = path.join(rootDirectory, "src", "tests", "samples");
+const samplesRoot = path.join(rootDirectory, "tests", "samples");
 
 async function collectSampleFiles(expectation: SampleExpectation): Promise<string[]> {
     const directory = path.join(samplesRoot, expectation);
