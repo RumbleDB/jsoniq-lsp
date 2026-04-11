@@ -1,4 +1,4 @@
-import { ParserRuleContext, TerminalNode, type ParseTree } from "antlr4ng";
+import { ParserRuleContext, type ParseTree } from "antlr4ng";
 import { DocumentUri, type Range } from "vscode-languageserver";
 import { TextDocument } from "vscode-languageserver-textdocument";
 
@@ -15,6 +15,7 @@ import {
     VarRefContext,
 } from "../grammar/jsoniqParser.js";
 import { parseJsoniqDocument } from "./parser.js";
+import { rangeFromNode } from "./utils/range.js";
 
 type VariableDeclarationKind =
     | "declare-variable"
@@ -419,45 +420,6 @@ function isDeclarationVarRef(node: VarRefContext): boolean {
     }
 
     return false;
-}
-
-/**
- * Calculates the range in terms of line and character positions for a given parse tree node, which represents the position of a variable declaration or reference in the source document.
- * This is used to determine the location of variable declarations and references in the source code, which allows for features like "go to definition" to navigate to the correct position in the editor.
- * @param node The parse tree node representing the variable declaration or reference, which can be either a TerminalNode or a ParserRuleContext
- * @param document The TextDocument containing the source code, used to convert offsets to line and character positions
- * @returns A Range object representing the start and end positions of this node in terms of line and character positions in the source document
- */
-function rangeFromNode(node: ParserRuleContext | ParseTree, document: TextDocument): Range {
-    // TerminalNode is a leaf node in the parse tree that corresponds to a single token in the source code, so we can directly use the start and stop offsets of that token to calculate the range.
-    if (node instanceof TerminalNode) {
-        return {
-            start: document.positionAt(Math.max(node.symbol.start, 0)),
-            end: document.positionAt(Math.max(node.symbol.stop + 1, node.symbol.start)),
-        };
-    }
-
-    // ParserRuleContext is a non-leaf node in the parse tree that corresponds to a rule in the grammar (e.g. a LetVarContext, ForVarContext, etc.)
-    // The start and stop offsets are determined by the start and stop tokens of the entire rule context, which may span multiple tokens in the source code.
-    if (node instanceof ParserRuleContext && node.start !== null) {
-        const start = node.start.start;
-        const stop = node.stop?.stop ?? node.start.stop;
-
-        return {
-            start: document.positionAt(Math.max(start, 0)),
-            end: document.positionAt(Math.max(stop + 1, start)),
-        };
-    }
-
-    // For other types of ParseTree nodes, we can calculate the range based on the source interval of the node
-    const interval = node.getSourceInterval();
-    const start = Math.max(interval.start, 0);
-    const stop = Math.max(interval.stop, start);
-
-    return {
-        start: document.positionAt(start),
-        end: document.positionAt(stop + 1),
-    };
 }
 
 /**

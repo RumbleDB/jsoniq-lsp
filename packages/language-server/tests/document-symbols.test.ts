@@ -145,4 +145,21 @@ describe("JSONiq document symbols", () => {
             "$index",
         ]);
     });
+
+    it("never emits empty or invalid symbol names for malformed input", () => {
+        const document = TextDocument.create(
+            "file:///broken-symbols.jq",
+            "jsoniq",
+            1,
+            [
+                "declare function local:($x) {",
+                "  for $ in (1, 2, 3)",
+                "  return 1",
+            ].join("\n"),
+        );
+
+        const symbols = collectDocumentSymbols(document);
+
+        expect(symbols.every((symbol) => symbol.name.trim().length > 0 && symbol.name !== "$")).toBe(true);
+    });
 });
