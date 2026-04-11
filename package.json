@@ -4,11 +4,11 @@
     "packageManager": "pnpm@10.33.0",
     "scripts": {
         "build": "pnpm run build:server && pnpm run build:client",
-        "build:server": "pnpm --filter @jsoniq-lsp/server run build",
-        "build:client": "pnpm --filter @jsoniq-lsp/client run build",
-        "generate:grammar": "pnpm --filter @jsoniq-lsp/server run generate:grammar",
-        "start": "pnpm --filter @jsoniq-lsp/server run start",
-        "test": "pnpm --filter @jsoniq-lsp/server run test",
-        "test:samples": "pnpm --filter @jsoniq-lsp/server run test:samples"
+        "build:server": "pnpm --filter @jsoniq-lsp/language-server run build",
+        "build:client": "pnpm --filter @jsoniq-lsp/vscode-extension run build",
+        "generate:grammar": "pnpm --filter @jsoniq-lsp/language-server run generate:grammar",
+        "start": "pnpm --filter @jsoniq-lsp/language-server run start",
+        "test": "pnpm --filter @jsoniq-lsp/language-server run test",
+        "test:samples": "pnpm --filter @jsoniq-lsp/language-server run test:samples"
     }
 }
