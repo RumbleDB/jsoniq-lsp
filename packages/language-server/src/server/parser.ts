@@ -15,7 +15,12 @@ import {
 import { TextDocument } from "vscode-languageserver-textdocument";
 
 import { jsoniqLexer } from "../grammar/jsoniqLexer.js";
-import { jsoniqParser } from "../grammar/jsoniqParser.js";
+import { jsoniqParser, type ModuleAndThisIsItContext } from "../grammar/jsoniqParser.js";
+
+export interface JsoniqParseResult {
+    diagnostics: Diagnostic[];
+    tree: ModuleAndThisIsItContext;
+}
 
 class CollectingErrorListener extends BaseErrorListener {
     public readonly diagnostics: Diagnostic[] = [];
@@ -61,7 +66,7 @@ class CollectingErrorListener extends BaseErrorListener {
     }
 }
 
-export function collectSyntaxDiagnostics(document: TextDocument): Diagnostic[] {
+export function parseJsoniqDocument(document: TextDocument): JsoniqParseResult {
     const input = CharStream.fromString(document.getText());
     const lexer = new jsoniqLexer(input);
     const tokenStream = new CommonTokenStream(lexer);
@@ -73,7 +78,14 @@ export function collectSyntaxDiagnostics(document: TextDocument): Diagnostic[] {
     lexer.addErrorListener(errorListener);
     parser.addErrorListener(errorListener);
 
-    parser.moduleAndThisIsIt();
+    const tree = parser.moduleAndThisIsIt();
 
-    return errorListener.diagnostics;
+    return {
+        diagnostics: errorListener.diagnostics,
+        tree,
+    };
+}
+
+export function collectSyntaxDiagnostics(document: TextDocument): Diagnostic[] {
+    return parseJsoniqDocument(document).diagnostics;
 }

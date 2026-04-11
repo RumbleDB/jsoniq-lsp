@@ -9,6 +9,7 @@ import {
 import { TextDocument } from "vscode-languageserver-textdocument";
 
 import { collectSyntaxDiagnostics } from "./parser.js";
+import { collectDocumentSymbols } from "./symbols.js";
 
 const connection = createConnection(ProposedFeatures.all);
 const documents = new TextDocuments(TextDocument);
@@ -29,12 +30,23 @@ async function refreshDiagnostics(uri: string): Promise<void> {
 connection.onInitialize((_params: InitializeParams): InitializeResult => ({
     capabilities: {
         textDocumentSync: TextDocumentSyncKind.Incremental,
+        documentSymbolProvider: true,
     },
     serverInfo: {
         name: "jsoniq-lsp",
         version: "0.1.0",
     },
 }));
+
+connection.onDocumentSymbol((params) => {
+    const document = documents.get(params.textDocument.uri);
+
+    if (document === undefined) {
+        return [];
+    }
+
+    return collectDocumentSymbols(document);
+});
 
 documents.onDidOpen(async (event) => {
     await refreshDiagnostics(event.document.uri);
