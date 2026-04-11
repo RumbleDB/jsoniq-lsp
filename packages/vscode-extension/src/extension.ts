@@ -11,7 +11,7 @@ import {
 let client: LanguageClient | undefined;
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
-    const serverModule = context.asAbsolutePath(path.join("..", "server", "dist", "server", "main.js"));
+    const serverModule = context.asAbsolutePath(path.join("..", "language-server", "dist", "server", "main.js"));
 
     const serverOptions: ServerOptions = {
         run: {
