@@ -6,6 +6,13 @@ import {
 import { type Range } from "vscode-languageserver";
 import { TextDocument } from "vscode-languageserver-textdocument";
 
+/**
+ * Calculates the range in terms of line and character positions for a given parse tree node, which represents the position of a variable declaration or reference in the source document.
+ * This is used to determine the location of variable declarations and references in the source code, which allows for features like "go to definition" to navigate to the correct position in the editor.
+ * @param node The parse tree node representing the variable declaration or reference, which can be either a TerminalNode or a ParserRuleContext
+ * @param document The TextDocument containing the source code, used to convert offsets to line and character positions
+ * @returns A Range object representing the start and end positions of this node in terms of line and character positions in the source document
+ */
 export function rangeFromNode(node: ParserRuleContext | ParseTree, document: TextDocument): Range {
     if (node instanceof TerminalNode) {
         return {
@@ -31,5 +38,25 @@ export function rangeFromNode(node: ParserRuleContext | ParseTree, document: Tex
     return {
         start: document.positionAt(start),
         end: document.positionAt(stop + 1),
+    };
+}
+
+/**
+ * Calculates the start and end offsets of a given range in the document, which represent the position of a variable declaration or reference in terms of character offsets from the beginning of the document.
+ * This is used to build the occurrence index for variable declarations and references, which allows for efficient lookup of variable occurrences by offset.
+ * @param range The range in terms of line and character positions for which to calculate the corresponding offsets
+ * @param document The TextDocument containing the source code, used to convert line and character positions to offsets
+ * @returns An object containing the start and end offsets corresponding to the given range in the document
+ */
+export function offsetsFromRange(range: Range, document: TextDocument): {
+    startOffset: number;
+    endOffset: number;
+} {
+    const startOffset = document.offsetAt(range.start);
+    const endOffset = document.offsetAt(range.end);
+
+    return {
+        startOffset,
+        endOffset: Math.max(endOffset, startOffset),
     };
 }
