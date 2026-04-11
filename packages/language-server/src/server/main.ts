@@ -11,6 +11,7 @@ import { TextDocument } from "vscode-languageserver-textdocument";
 import { collectSyntaxDiagnostics } from "./parser.js";
 import { collectDocumentSymbols } from "./symbols.js";
 import { findDefinitionLocation } from "./definitions.js";
+import { findReferenceLocations } from "./references.js";
 
 const connection = createConnection(ProposedFeatures.all);
 const documents = new TextDocuments(TextDocument);
@@ -33,6 +34,7 @@ connection.onInitialize((_params: InitializeParams): InitializeResult => ({
         textDocumentSync: TextDocumentSyncKind.Incremental,
         documentSymbolProvider: true,
         definitionProvider: true,
+        referencesProvider: true,
     },
     serverInfo: {
         name: "jsoniq-lsp",
@@ -58,6 +60,16 @@ connection.onDefinition((params) => {
     }
 
     return findDefinitionLocation(document, params.position);
+});
+
+connection.onReferences((params) => {
+    const document = documents.get(params.textDocument.uri);
+
+    if (document === undefined) {
+        return [];
+    }
+
+    return findReferenceLocations(document, params.position, params.context.includeDeclaration);
 });
 
 documents.onDidOpen(async (event) => {

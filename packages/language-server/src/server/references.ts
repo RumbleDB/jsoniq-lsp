@@ -1,0 +1,56 @@
+import {
+    type Location,
+    type Position,
+} from "vscode-languageserver";
+import { TextDocument } from "vscode-languageserver-textdocument";
+
+import {
+    findVariableOccurrenceAtOffset,
+    getAnalysis,
+} from "./analysis.js";
+
+/**
+ * Finds all reference locations for the variable at the given position in the document, optionally including the declaration location.
+ * This is used for the "find references" feature in the language server, allowing users to see all places where a variable is used in the source code.
+ * @param document The TextDocument representing the JSONiq source code to analyze
+ * @param position The Position in the document for which to find references (e.g. the position of the cursor in the editor)
+ * @param includeDeclaration Whether to include the declaration location of the variable in the results, in addition to its references
+ * @returns An array of Location objects representing all reference locations for the variable at the given position, optionally including the declaration location
+ */
+export function findReferenceLocations(
+    document: TextDocument,
+    position: Position,
+    includeDeclaration: boolean,
+): Location[] {
+    const analysis = getAnalysis(document);
+    const offset = document.offsetAt(position);
+    const occurrence = findVariableOccurrenceAtOffset(analysis, offset);
+    const targetDeclaration = occurrence?.declaration;
+
+    if (targetDeclaration === undefined) {
+        return [];
+    }
+
+    const locations: Location[] = [];
+
+    if (includeDeclaration) {
+        locations.push({
+            uri: document.uri,
+            range: targetDeclaration.selectionRange,
+        });
+    }
+
+    const targetReferences = analysis.referencesByDeclaration.get(targetDeclaration);
+    if (targetReferences === undefined) {
+        return locations;
+    }
+
+    for (const reference of targetReferences) {
+        locations.push({
+            uri: document.uri,
+            range: reference.range,
+        });
+    }
+
+    return locations;
+}
