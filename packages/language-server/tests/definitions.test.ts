@@ -46,6 +46,25 @@ describe("JSONiq go-to-definition", () => {
         expect(location?.range.start.line).toBe(0);
     });
 
+    it("resolves definition when cursor is on the dollar sign of a parameter", () => {
+        const firstLine = "declare function local:f($x) {";
+        const document = TextDocument.create(
+            "file:///definitions-parameter-dollar.jq",
+            "jsoniq",
+            1,
+            [
+                firstLine,
+                "  return $x",
+                "};",
+            ].join("\n"),
+        );
+
+        const location = findDefinitionLocation(document, { line: 0, character: firstLine.indexOf("$x") });
+
+        expect(location).toBeDefined();
+        expect(location?.range.start.line).toBe(0);
+    });
+
     it("returns null when position is not on a resolvable variable", () => {
         const document = TextDocument.create(
             "file:///definitions-null.jq",

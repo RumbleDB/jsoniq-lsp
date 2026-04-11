@@ -6,7 +6,7 @@ import { TextDocument } from "vscode-languageserver-textdocument";
 
 import {
     getAnalysis,
-    findVariableOccurrenceAtOffset,
+    findVariableOccurrenceNearOffset,
 } from "./analysis.js";
 
 /**
@@ -19,7 +19,7 @@ import {
 export function findDefinitionLocation(document: TextDocument, position: Position): Location | null {
     const analysis = getAnalysis(document);
     const offset = document.offsetAt(position);
-    const occurrence = findVariableOccurrenceAtOffset(analysis, offset);
+    const occurrence = findVariableOccurrenceNearOffset(analysis, offset);
 
     if (occurrence === undefined) {
         return null;

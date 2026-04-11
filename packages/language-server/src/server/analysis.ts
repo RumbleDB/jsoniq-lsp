@@ -159,7 +159,7 @@ export function analyzeVariableScopes(document: TextDocument): JsoniqVariableSco
         }
 
         if (node instanceof ParamContext) {
-            declare(createVariableDeclaration(varRefName(node), "parameter", node, node.qname(), document));
+            declare(createVariableDeclaration(`$${node.qname().getText()}`, "parameter", node, node.qname(), document));
         }
 
         /**
@@ -332,6 +332,32 @@ export function findVariableOccurrenceAtOffset(
     }
 
     return undefined;
+}
+
+/**
+ * Finds the variable occurrence (declaration or reference) **near** the given offset in the document, allowing for some tolerance when the cursor is not exactly on the variable name but is still close enough to be considered as trying to navigate to that variable.
+ * @param analysis The variable scope analysis results for the document
+ * @param offset The offset in the document for which to find the corresponding variable occurrence
+ * @returns The variable occurrence near the given offset, including the corresponding declaration and reference information, or undefined if there is no variable occurrence near that offset
+ */
+export function findVariableOccurrenceNearOffset(
+    analysis: JsoniqVariableScopeAnalysis,
+    offset: number,
+): VariableOccurrenceIndexEntry | undefined {
+    const exact = findVariableOccurrenceAtOffset(analysis, offset);
+    if (exact !== undefined) {
+        return exact;
+    }
+
+    // If there is no occurrence at the exact offset, we check the previous and next offsets to see if there is an occurrence there. This allows for some tolerance when the cursor is not exactly on the variable name, but is still close enough to be considered as trying to navigate to that variable.
+    if (offset > 0) {
+        const previous = findVariableOccurrenceAtOffset(analysis, offset - 1);
+        if (previous !== undefined) {
+            return previous;
+        }
+    }
+
+    return findVariableOccurrenceAtOffset(analysis, offset + 1);
 }
 
 /**

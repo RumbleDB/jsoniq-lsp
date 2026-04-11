@@ -54,6 +54,15 @@ describe("JSONiq references", () => {
 
         expect(locations).toEqual([]);
     });
+
+    it("finds references when cursor is on dollar sign of declaration", () => {
+        const source = "declare function local:f($x) { $x };";
+        const document = TextDocument.create("file:///references-declaration-dollar.jq", "jsoniq", 1, source);
+
+        const locations = findReferenceLocations(document, positionAt(document, "$x"), false);
+
+        expect(locations.map((location) => location.range.start.line)).toEqual([0]);
+    });
 });
 
 function positionAt(document: TextDocument, needle: string): Position {
