@@ -1,0 +1,178 @@
+{
+    "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+    "name": "JSONiq",
+    "scopeName": "source.jsoniq",
+    "patterns": [
+        {
+            "include": "#comments"
+        },
+        {
+            "include": "#strings"
+        },
+        {
+            "include": "#numbers"
+        },
+        {
+            "include": "#declarations"
+        },
+        {
+            "include": "#variables"
+        },
+        {
+            "include": "#keywords"
+        },
+        {
+            "include": "#types"
+        },
+        {
+            "include": "#operators"
+        }
+    ],
+    "repository": {
+        "comments": {
+            "patterns": [
+                {
+                    "name": "comment.block.jsoniq",
+                    "begin": "\\(:",
+                    "end": ":\\)"
+                },
+                {
+                    "name": "comment.line.double-dash.jsoniq",
+                    "begin": "--",
+                    "end": "$"
+                }
+            ]
+        },
+        "strings": {
+            "patterns": [
+                {
+                    "name": "string.quoted.double.jsoniq",
+                    "begin": "\"",
+                    "end": "\"",
+                    "patterns": [
+                        {
+                            "name": "constant.character.escape.jsoniq",
+                            "match": "\\\\(?:[\"\\\\/bfnrt]|u[0-9A-Fa-f]{4})"
+                        }
+                    ]
+                },
+                {
+                    "name": "string.quoted.single.jsoniq",
+                    "begin": "'",
+                    "end": "'",
+                    "patterns": [
+                        {
+                            "name": "constant.character.escape.jsoniq",
+                            "match": "\\\\(?:['\\\\/bfnrt]|u[0-9A-Fa-f]{4})"
+                        }
+                    ]
+                }
+            ]
+        },
+        "numbers": {
+            "patterns": [
+                {
+                    "name": "constant.numeric.jsoniq",
+                    "match": "\\b-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?(?:[eE][+-]?[0-9]+)?\\b"
+                }
+            ]
+        },
+        "declarations": {
+            "patterns": [
+                {
+                    "name": "meta.declaration.function.jsoniq",
+                    "match": "\\b(declare)\\s+(function)\\s+((?:[A-Za-z_][A-Za-z0-9._-]*:)?[A-Za-z_][A-Za-z0-9._-]*)",
+                    "captures": {
+                        "1": {
+                            "name": "keyword.control.declare.jsoniq"
+                        },
+                        "2": {
+                            "name": "keyword.control.function.jsoniq"
+                        },
+                        "3": {
+                            "name": "entity.name.function.jsoniq"
+                        }
+                    }
+                },
+                {
+                    "name": "meta.declaration.type.jsoniq",
+                    "match": "\\b(declare)\\s+(type)\\s+((?:[A-Za-z_][A-Za-z0-9._-]*:)?[A-Za-z_][A-Za-z0-9._-]*)",
+                    "captures": {
+                        "1": {
+                            "name": "keyword.control.declare.jsoniq"
+                        },
+                        "2": {
+                            "name": "storage.type.type-decl.jsoniq"
+                        },
+                        "3": {
+                            "name": "entity.name.type.jsoniq"
+                        }
+                    }
+                },
+                {
+                    "name": "meta.declaration.namespace.jsoniq",
+                    "match": "\\b(declare)\\s+(namespace)\\s+([A-Za-z_][A-Za-z0-9._-]*)",
+                    "captures": {
+                        "1": {
+                            "name": "keyword.control.declare.jsoniq"
+                        },
+                        "2": {
+                            "name": "keyword.control.namespace.jsoniq"
+                        },
+                        "3": {
+                            "name": "entity.name.namespace.jsoniq"
+                        }
+                    }
+                }
+            ]
+        },
+        "variables": {
+            "patterns": [
+                {
+                    "name": "variable.other.jsoniq",
+                    "match": "\\$(?:[A-Za-z_][A-Za-z0-9._-]*:)?[A-Za-z_][A-Za-z0-9._-]*"
+                }
+            ]
+        },
+        "keywords": {
+            "patterns": [
+                {
+                    "name": "keyword.control.jsoniq",
+                    "match": "\\b(?:declare|function|variable|context|item|type|module|namespace|import|schema|as|external|let|for|at|in|allowing|empty|where|group|by|order|stable|count|return|if|then|else|switch|case|default|typeswitch|try|catch|some|every|satisfies|while|break|continue|exit|loop|returning|insert|delete|rename|replace|copy|modify|append|into|value|with|create|collection|table|deltafile|icebergtable|truncate|from|first|last|jsoniq|version|unordered|ordered|updating)\\b"
+                },
+                {
+                    "name": "constant.language.boolean.jsoniq",
+                    "match": "\\b(?:true|false)\\b"
+                },
+                {
+                    "name": "constant.language.null.jsoniq",
+                    "match": "\\bnull\\b"
+                }
+            ]
+        },
+        "types": {
+            "patterns": [
+                {
+                    "name": "storage.type.jsoniq",
+                    "match": "\\b(?:item|node|object-node|array-node|string|integer|decimal|double|float|boolean|null|document-node|text|comment|binary)\\b"
+                }
+            ]
+        },
+        "operators": {
+            "patterns": [
+                {
+                    "name": "keyword.operator.jsoniq",
+                    "match": ":=|=|!=|<=|>=|<|>|\\+|-|\\*|/|\\|\\||\\||\\band\\b|\\bor\\b|\\bnot\\b|\\beq\\b|\\bne\\b|\\blt\\b|\\ble\\b|\\bgt\\b|\\bge\\b"
+                },
+                {
+                    "name": "punctuation.separator.jsoniq",
+                    "match": "[,;]"
+                },
+                {
+                    "name": "punctuation.bracket.jsoniq",
+                    "match": "[(){}\\[\\]]"
+                }
+            ]
+        }
+    }
+}

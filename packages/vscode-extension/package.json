@@ -25,6 +25,13 @@
                 ],
                 "configuration": "./language-configuration.json"
             }
+        ],
+        "grammars": [
+            {
+                "language": "jsoniq",
+                "scopeName": "source.jsoniq",
+                "path": "./syntaxes/jsoniq.tmLanguage.json"
+            }
         ]
     },
     "scripts": {
