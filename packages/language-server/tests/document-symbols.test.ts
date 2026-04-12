@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { SymbolKind } from "vscode-languageserver";
+import { DocumentSymbol, SymbolKind } from "vscode-languageserver";
 import { TextDocument } from "vscode-languageserver-textdocument";
 
 import { collectDocumentSymbols } from "../src/server/symbols.js";
@@ -22,7 +22,7 @@ describe("JSONiq document symbols", () => {
             ].join("\n"),
         );
 
-        const symbols = collectDocumentSymbols(document);
+        const symbols = flattenSymbols(collectDocumentSymbols(document));
 
         expect(symbols.map((symbol) => [symbol.name, symbol.kind])).toEqual(
             expect.arrayContaining([
@@ -47,7 +47,7 @@ describe("JSONiq document symbols", () => {
             ].join("\n"),
         );
 
-        const symbols = collectDocumentSymbols(document);
+        const symbols = flattenSymbols(collectDocumentSymbols(document));
 
         expect(symbols.map((symbol) => [symbol.name, symbol.kind])).toEqual([
             ["$x", SymbolKind.Variable],
@@ -65,7 +65,7 @@ describe("JSONiq document symbols", () => {
             ].join("\n"),
         );
 
-        const symbols = collectDocumentSymbols(document);
+        const symbols = flattenSymbols(collectDocumentSymbols(document));
 
         expect(symbols.map((symbol) => [symbol.name, symbol.kind])).toEqual([
             ["$x", SymbolKind.Variable],
@@ -83,7 +83,7 @@ describe("JSONiq document symbols", () => {
             ].join("\n"),
         );
 
-        const symbolNames = collectDocumentSymbols(document).map((symbol) => symbol.name);
+        const symbolNames = flattenSymbols(collectDocumentSymbols(document)).map((symbol) => symbol.name);
 
         expect(symbolNames).toEqual([
             "$x",
@@ -107,7 +107,7 @@ describe("JSONiq document symbols", () => {
             ].join("\n"),
         );
 
-        const symbolNames = collectDocumentSymbols(document).map((symbol) => symbol.name);
+        const symbolNames = flattenSymbols(collectDocumentSymbols(document)).map((symbol) => symbol.name);
 
         expect(symbolNames).toEqual(
             expect.arrayContaining([
@@ -137,7 +137,7 @@ describe("JSONiq document symbols", () => {
             ].join("\n"),
         );
 
-        const symbolNames = collectDocumentSymbols(document).map((symbol) => symbol.name);
+        const symbolNames = flattenSymbols(collectDocumentSymbols(document)).map((symbol) => symbol.name);
 
         expect(symbolNames).toEqual([
             "$x",
@@ -158,8 +158,24 @@ describe("JSONiq document symbols", () => {
             ].join("\n"),
         );
 
-        const symbols = collectDocumentSymbols(document);
+        const symbols = flattenSymbols(collectDocumentSymbols(document));
 
         expect(symbols.every((symbol) => symbol.name.trim().length > 0 && symbol.name !== "$")).toBe(true);
     });
 });
+
+function flattenSymbols(symbols: DocumentSymbol[]): DocumentSymbol[] {
+    const result: DocumentSymbol[] = [];
+
+    const visit = (items: DocumentSymbol[]): void => {
+        for (const symbol of items) {
+            result.push(symbol);
+            if (symbol.children !== undefined && symbol.children.length > 0) {
+                visit(symbol.children);
+            }
+        }
+    };
+
+    visit(symbols);
+    return result;
+}

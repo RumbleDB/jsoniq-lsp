@@ -19,6 +19,7 @@ import {
 } from "../grammar/jsoniqParser.js";
 import { parseJsoniqDocument } from "./parser.js";
 import { rangeFromNode } from "./utils/range.js";
+import { isNewScopeNode } from "./utils/scope.js";
 
 /**
  * Collects DocumentSymbols from the given TextDocument
@@ -28,25 +29,57 @@ import { rangeFromNode } from "./utils/range.js";
  */
 export function collectDocumentSymbols(document: TextDocument): DocumentSymbol[] {
     const parseResult = parseJsoniqDocument(document);
-    const symbols: DocumentSymbol[] = [];
+    const rootSymbols: DocumentSymbol[] = [];
+    const containerStack: DocumentSymbol[] = [];
 
-    _visit(parseResult.tree, (node) => {
-        symbols.push(...(symbolsFromNode(node, document).filter((symbol): symbol is DocumentSymbol => symbol !== undefined)));
-    });
-
-    return symbols;
-}
-
-function _visit(node: ParseTree, callback: (node: ParseTree) => void): void {
-    callback(node);
-
-    for (let index = 0; index < node.getChildCount(); index += 1) {
-        const child = node.getChild(index);
-
-        if (child !== null) {
-            _visit(child, callback);
+    const attachSymbol = (symbol: DocumentSymbol): void => {
+        const parent = containerStack[containerStack.length - 1];
+        if (parent !== undefined) {
+            if (parent.children === undefined) {
+                parent.children = [];
+            }
+            parent.children.push(symbol);
         }
-    }
+        else {
+            // It's a symbol at the root level 
+            rootSymbols.push(symbol);
+        }
+    };
+
+    const visit = (node: ParseTree): void => {
+        const nodeSymbols = symbolsFromNode(node, document);
+        let containerDepth = 0;
+
+        for (const symbol of nodeSymbols) {
+            if (symbol === undefined) {
+                continue;
+            }
+
+            attachSymbol(symbol);
+
+            if (isNewScopeNode(node) && containerDepth === 0) {
+                if (symbol.children === undefined) {
+                    symbol.children = [];
+                }
+                containerStack.push(symbol);
+                containerDepth += 1;
+            }
+        }
+
+        for (let i = 0, count = node.getChildCount(); i < count; i += 1) {
+            const child = node.getChild(i);
+            if (child !== null) {
+                visit(child);
+            }
+        }
+
+        if (containerDepth > 0) {
+            containerStack.pop();
+        }
+    };
+
+    visit(parseResult.tree);
+    return rootSymbols;
 }
 
 /**
@@ -57,9 +90,7 @@ function _visit(node: ParseTree, callback: (node: ParseTree) => void): void {
  */
 function symbolsFromNode(node: ParseTree, document: TextDocument): Array<DocumentSymbol | undefined> {
     if (node instanceof FunctionDeclContext) {
-        return [
-            createSymbol(node._fn_name?.getText() ?? node.qname().getText(), SymbolKind.Function, node, node._fn_name ?? node.qname(), document),
-        ];
+        return [createSymbol(node._fn_name?.getText() ?? node.qname().getText(), SymbolKind.Function, node, node._fn_name ?? node.qname(), document)];
     }
 
     if (node instanceof VarDeclContext) {
@@ -92,9 +123,7 @@ function symbolsFromNode(node: ParseTree, document: TextDocument): Array<Documen
     }
 
     if (node instanceof TypeDeclContext) {
-        return [
-            createSymbol(node._type_name?.getText() ?? node.qname().getText(), SymbolKind.Struct, node, node._type_name ?? node.qname(), document),
-        ];
+        return [createSymbol(node._type_name?.getText() ?? node.qname().getText(), SymbolKind.Struct, node, node._type_name ?? node.qname(), document)];
     }
 
     if (node instanceof ContextItemDeclContext) {
@@ -122,7 +151,7 @@ function createSymbol(
     kind: SymbolKind,
     declarationNode: ParserRuleContext,
     selectionNode: ParserRuleContext | ParseTree,
-    document: TextDocument,
+    document: TextDocument
 ): DocumentSymbol | undefined {
     const sanitizedName = sanitizeSymbolName(name);
     if (sanitizedName === null) {
