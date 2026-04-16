@@ -54,6 +54,28 @@ describe("JSONiq document symbols", () => {
         ]);
     });
 
+    it("nests symbols from a declaration initializer under the declaration symbol", () => {
+        const document = TextDocument.create(
+            "file:///nested-let-symbols.jq",
+            "jsoniq",
+            1,
+            [
+                "let $a := 3",
+                "let $b := (",
+                "  let $a := 2",
+                "  return true",
+                ")",
+                "return $a",
+            ].join("\n"),
+        );
+
+        const symbols = collectDocumentSymbols(document);
+        const bSymbol = symbols.find((symbol) => symbol.name === "$b");
+
+        expect(symbols.map((symbol) => symbol.name)).toEqual(["$a", "$b"]);
+        expect(bSymbol?.children?.map((symbol) => symbol.name)).toEqual(["$a"]);
+    });
+
     it("collects for-variable bindings", () => {
         const document = TextDocument.create(
             "file:///for-symbols.jq",

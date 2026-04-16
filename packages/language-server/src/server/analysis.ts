@@ -1,12 +1,15 @@
 import { ParserRuleContext, type ParseTree } from "antlr4ng";
 import {
+    DocumentSymbol,
     DocumentUri,
     type Position,
     type Range,
+    SymbolKind,
 } from "vscode-languageserver";
 import { TextDocument } from "vscode-languageserver-textdocument";
 
 import {
+    ContextItemDeclContext,
     CountClauseContext,
     ForVarContext,
     FunctionDeclContext,
@@ -14,7 +17,9 @@ import {
     GroupByVarContext,
     LetVarContext,
     NamedFunctionRefContext,
+    NamespaceDeclContext,
     ParamContext,
+    TypeDeclContext,
     VarDeclContext,
     VarRefContext,
 } from "../grammar/jsoniqParser.js";
@@ -92,6 +97,9 @@ export interface JsoniqAnalysis {
 
     /** A sorted index of all variable occurrences (declarations and references) in the document, sorted by their position in the source code. */
     occurrenceIndex: OccurrenceIndexEntry[];
+
+    /** Document symbols found while traversing the parse tree. */
+    documentSymbols: DocumentSymbol[];
 }
 
 interface ScopeFrame {
@@ -100,6 +108,12 @@ interface ScopeFrame {
      * Because variable shadows can occur, we save all of them in a list, but only the nearest declaration (the last one in the list) is the one that should be resolved from references in this scope.
      * */
     definitionByName: Map<string, Array<Definition>>;
+}
+
+interface SymbolTraversalState {
+    childSymbols: DocumentSymbol[];
+    declarationContainerSymbol?: DocumentSymbol;
+    declarationChildSymbols?: DocumentSymbol[];
 }
 
 /**
@@ -114,6 +128,7 @@ export function analyzeVariableScopes(document: TextDocument): JsoniqAnalysis {
     const definitions: Definition[] = [];
     const references: Reference[] = [];
     const occurrenceIndex: OccurrenceIndexEntry[] = [];
+    const documentSymbols: DocumentSymbol[] = [];
     const scopeStack: ScopeFrame[] = [{ definitionByName: new Map() }];
 
     const pushScope = (): void => {
@@ -181,15 +196,118 @@ export function analyzeVariableScopes(document: TextDocument): JsoniqAnalysis {
         return undefined;
     };
 
-    const visit = (node: ParseTree): void => {
+    const attachDocumentSymbol = (symbols: DocumentSymbol[], symbol: DocumentSymbol | undefined): DocumentSymbol | undefined => {
+        if (symbol !== undefined) {
+            symbols.push(symbol);
+        }
+        return symbol;
+    };
+
+    const declareVariable = (kind: DefinitionKind, node: ParserRuleContext, varRef: VarRefContext): void => {
+        declare(createDefinition(varRefName(varRef), kind, node, varRef, document));
+    };
+
+    const recordReference = (name: string, node: ParseTree, range: Range): void => {
+        const declaration = resolve(name);
+        const reference = {
+            name,
+            node,
+            range,
+            declaration,
+        } satisfies Reference;
+
+        references.push(reference);
+
+        if (declaration !== undefined) {
+            declaration.references.push(reference);
+
+            occurrenceIndex.push({
+                range: reference.range,
+                declaration,
+                reference,
+            });
+        }
+    };
+
+    const collectSymbolsBeforeChildren = (node: ParseTree, symbols: DocumentSymbol[]): SymbolTraversalState => {
+        const state: SymbolTraversalState = { childSymbols: symbols };
+
+        const collectChildSymbolsUnder = (symbol: DocumentSymbol | undefined): void => {
+            if (symbol === undefined) {
+                return;
+            }
+
+            state.declarationContainerSymbol = symbol;
+            state.declarationChildSymbols = [];
+            state.childSymbols = state.declarationChildSymbols;
+        };
+
+        if (node instanceof FunctionDeclContext) {
+            const functionSymbol = attachDocumentSymbol(symbols, createDocumentSymbol(
+                node._fn_name?.getText() ?? node.qname().getText(),
+                SymbolKind.Function,
+                node,
+                node._fn_name ?? node.qname(),
+                document,
+            ));
+            if (functionSymbol !== undefined) {
+                functionSymbol.children ??= [];
+                state.childSymbols = functionSymbol.children;
+            }
+        }
+
+        if (node instanceof ForVarContext) {
+            const variableRefs = node.varRef();
+            let boundVariableSymbol: DocumentSymbol | undefined;
+            for (const varRef of variableRefs) {
+                const symbol = attachDocumentSymbol(symbols, createDocumentSymbol(varRefName(varRef), SymbolKind.Variable, node, varRef, document));
+                if (varRef === variableRefs[0]) {
+                    boundVariableSymbol = symbol;
+                }
+            }
+            collectChildSymbolsUnder(boundVariableSymbol);
+        }
+
+        if (node instanceof VarDeclContext || node instanceof LetVarContext || node instanceof GroupByVarContext || node instanceof CountClauseContext) {
+            const varRef = node.varRef();
+            const symbol = attachDocumentSymbol(symbols, createDocumentSymbol(varRefName(varRef), SymbolKind.Variable, node, varRef, document));
+            if (!(node instanceof CountClauseContext)) {
+                collectChildSymbolsUnder(symbol);
+            }
+        }
+
+        if (node instanceof TypeDeclContext) {
+            attachDocumentSymbol(symbols, createDocumentSymbol(
+                node._type_name?.getText() ?? node.qname().getText(),
+                SymbolKind.Struct,
+                node,
+                node._type_name ?? node.qname(),
+                document,
+            ));
+        }
+
+        if (node instanceof ContextItemDeclContext) {
+            attachDocumentSymbol(symbols, createDocumentSymbol("context item", SymbolKind.Variable, node, node, document));
+        }
+
+        if (node instanceof NamespaceDeclContext) {
+            attachDocumentSymbol(symbols, createDocumentSymbol(node.NCName().getText(), SymbolKind.Namespace, node, node.NCName(), document));
+        }
+
+        if (node instanceof ParamContext) {
+            attachDocumentSymbol(symbols, createDocumentSymbol(`$${node.qname().getText()}`, SymbolKind.Variable, node, node.qname(), document));
+        }
+
+        return state;
+    };
+
+    const collectDefinitionsBeforeScope = (node: ParseTree): void => {
         if (node instanceof FunctionDeclContext) {
             declare(createDefinition(functionNameWithArity(node), "function", node, node._fn_name ?? node.qname(), document));
         }
+    };
 
-        if (isNewScopeNode(node)) {
-            pushScope();
-        }
-
+    const collectDefinitionsBeforeChildren = (node: ParseTree): void => {
         if (node instanceof ParamContext) {
             declare(createDefinition(`$${node.qname().getText()}`, "parameter", node, node.qname(), document));
         }
@@ -204,118 +322,74 @@ export function analyzeVariableScopes(document: TextDocument): JsoniqAnalysis {
          */
         if (node instanceof CountClauseContext) {
             const varRef = node.varRef();
-            declare(createDefinition(varRefName(varRef), "count", node, varRef, document));
+            declareVariable("count", node, varRef);
         }
+    };
 
-        // It's a variable reference
+    const collectReferencesBeforeChildren = (node: ParseTree): void => {
         if (node instanceof VarRefContext && !isDeclarationVarRef(node)) {
             const name = varRefName(node);
-            const declaration = resolve(name);
-            const reference = {
-                name: varRefName(node),
-                node,
-                range: rangeFromNode(node, document),
-                declaration,
-            } satisfies Reference;
-
-            references.push(reference);
-
-            // If the declaration could be resolved, add this reference to the list of references for that declaration and to the occurrence index.
-            if (declaration !== undefined) {
-                declaration.references.push(reference);
-
-                occurrenceIndex.push({
-                    range: reference.range,
-                    declaration,
-                    reference,
-                });
-            }
+            recordReference(name, node, rangeFromNode(node, document));
         }
 
-        if (node instanceof FunctionCallContext) {
+        if (node instanceof FunctionCallContext || node instanceof NamedFunctionRefContext) {
             const nameNode = node._fn_name ?? node.qname();
             const name = functionNameWithArity(node);
-            const declaration = resolve(name);
-            const reference = {
-                name,
-                node,
-                range: rangeFromNode(nameNode, document),
-                declaration,
-            } satisfies Reference;
-
-            references.push(reference);
-
-            if (declaration !== undefined) {
-                declaration.references.push(reference);
-
-                occurrenceIndex.push({
-                    range: reference.range,
-                    declaration,
-                    reference,
-                });
-            }
+            recordReference(name, node, rangeFromNode(nameNode, document));
         }
+    };
 
-        if (node instanceof NamedFunctionRefContext) {
-            const nameNode = node._fn_name ?? node.qname();
-            const name = functionNameWithArity(node);
-            const declaration = resolve(name);
-            const reference = {
-                name,
-                node,
-                range: rangeFromNode(nameNode, document),
-                declaration,
-            } satisfies Reference;
-
-            references.push(reference);
-
-            if (declaration !== undefined) {
-                declaration.references.push(reference);
-
-                occurrenceIndex.push({
-                    range: reference.range,
-                    declaration,
-                    reference,
-                });
-            }
-        }
-
-        // Recursively visit all child nodes
-        for (let index = 0; index < node.getChildCount(); index += 1) {
-            const child = node.getChild(index);
-            if (child !== null) {
-                visit(child);
-            }
-        }
-
+    const collectDefinitionsAfterChildren = (node: ParseTree): void => {
         // After visiting the children, if this node is a variable declaration, we add it to the current scope and to the list of declarations and occurrence index.
         // It's important that we do this after visiting the children, so that if there are references to this variable within its own initializer (e.g. let $x := $x + 1)
         if (node instanceof VarDeclContext) {
-            const varRef = node.varRef();
-            declare(createDefinition(varRefName(varRef), "declare-variable", node, varRef, document));
-        }
-
-        if (node instanceof LetVarContext) {
-            const varRef = node.varRef();
-            declare(createDefinition(varRefName(varRef), "let", node, varRef, document));
-        }
-
-        if (node instanceof ForVarContext) {
+            declareVariable("declare-variable", node, node.varRef());
+        } else if (node instanceof LetVarContext) {
+            declareVariable("let", node, node.varRef());
+        } else if (node instanceof GroupByVarContext) {
+            declareVariable("group-by", node, node.varRef());
+        } else if (node instanceof ForVarContext) {
             const variableRefs = node.varRef();
             const boundVariable = variableRefs[0];
             if (boundVariable !== undefined) {
-                declare(createDefinition(varRefName(boundVariable), "for", node, boundVariable, document));
+                declareVariable("for", node, boundVariable);
             }
             const positionVariable = variableRefs[1];
             if (positionVariable !== undefined) {
-                declare(createDefinition(varRefName(positionVariable), "for-position", node, positionVariable, document));
+                declareVariable("for-position", node, positionVariable);
+            }
+        }
+    };
+
+    const finishSymbolCollectionAfterChildren = (state: SymbolTraversalState): void => {
+        if (state.declarationChildSymbols !== undefined && state.declarationChildSymbols.length > 0) {
+            if (state.declarationContainerSymbol !== undefined) {
+                state.declarationContainerSymbol.children = state.declarationChildSymbols;
+            }
+        }
+    };
+
+    const visit = (node: ParseTree, symbols: DocumentSymbol[]): void => {
+        const symbolState = collectSymbolsBeforeChildren(node, symbols);
+
+        collectDefinitionsBeforeScope(node);
+
+        if (isNewScopeNode(node)) {
+            pushScope();
+        }
+
+        collectDefinitionsBeforeChildren(node);
+        collectReferencesBeforeChildren(node);
+
+        for (let index = 0; index < node.getChildCount(); index += 1) {
+            const child = node.getChild(index);
+            if (child !== null) {
+                visit(child, symbolState.childSymbols);
             }
         }
 
-        if (node instanceof GroupByVarContext) {
-            const varRef = node.varRef();
-            declare(createDefinition(varRefName(varRef), "group-by", node, varRef, document));
-        }
+        collectDefinitionsAfterChildren(node);
+        finishSymbolCollectionAfterChildren(symbolState);
 
         /** 
          * After visiting the children of the current node, if this node introduced a new scope, 
@@ -327,7 +401,7 @@ export function analyzeVariableScopes(document: TextDocument): JsoniqAnalysis {
     };
 
     // Start the traversal from the root of the parse tree
-    visit(parseResult.tree);
+    visit(parseResult.tree, documentSymbols);
 
     // Sort occurrences by position to allow binary search lookup of variable occurrences.
     occurrenceIndex.sort((left, right) => {
@@ -352,7 +426,42 @@ export function analyzeVariableScopes(document: TextDocument): JsoniqAnalysis {
         definitions,
         references,
         occurrenceIndex,
+        documentSymbols,
     };
+}
+
+/**
+ * Creates a DocumentSymbol for the given symbol information, or returns undefined if the symbol name is invalid.
+ */
+function createDocumentSymbol(
+    name: string,
+    kind: SymbolKind,
+    declarationNode: ParserRuleContext,
+    selectionNode: ParserRuleContext | ParseTree,
+    document: TextDocument
+): DocumentSymbol | undefined {
+    const sanitizedName = sanitizeSymbolName(name);
+    if (sanitizedName === null) {
+        return undefined;
+    }
+
+    const range = rangeFromNode(declarationNode, document);
+
+    return {
+        name: sanitizedName,
+        kind,
+        range,
+        selectionRange: rangeFromNode(selectionNode, document) ?? range,
+    };
+}
+
+/**
+ * Sanitizes the given symbol name by trimming whitespace and validating that it is not empty or just a "$" character.
+ */
+function sanitizeSymbolName(name: string): string | null {
+    const trimmed = name.trim();
+    const isValid = trimmed !== "" && trimmed !== "$";
+    return isValid ? trimmed : null;
 }
 
 /**
@@ -417,7 +526,7 @@ function createDefinition(
         node: declarationNode,
         range: rangeFromNode(declarationNode, document),
         selectionRange: rangeFromNode(selectionNode, document),
-        scopeEnd: document.positionAt(document.getText().length),
+        scopeEnd: { line: 0, character: 0 },
         references: [],
     };
 }
