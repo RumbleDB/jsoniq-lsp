@@ -5,10 +5,10 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>org.jsoniq.lsp</groupId>
-    <artifactId>rumble-type-wrapper</artifactId>
+    <artifactId>rumble-lsp-wrapper</artifactId>
     <version>0.1.0</version>
     <packaging>jar</packaging>
-    <name>rumble-type-wrapper</name>
+    <name>rumble-lsp-wrapper</name>
 
     <properties>
         <maven.compiler.source>17</maven.compiler.source>
