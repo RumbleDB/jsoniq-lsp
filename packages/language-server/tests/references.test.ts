@@ -71,6 +71,22 @@ describe("JSONiq references", () => {
         ]);
     });
 
+    it("finds references only for the matching function arity", () => {
+        const source = [
+            "declare function local:f($a, $b) { 0 };",
+            "declare function local:f($x) { $x };",
+            "local:f(1, 2) + local:f(0)",
+        ].join("\n");
+        const document = TextDocument.create("file:///references-function-overloads.jq", "jsoniq", 1, source);
+
+        const locations = findReferenceLocations(document, positionAt(document, "local:f(1, 2)"), true);
+
+        expect(locations.map((location) => location.range.start)).toEqual([
+            { line: 0, character: "declare function ".length },
+            { line: 2, character: 0 },
+        ]);
+    });
+
     it("finds references when cursor is on dollar sign of declaration", () => {
         const source = "declare function local:f($x) { $x };";
         const document = TextDocument.create("file:///references-declaration-dollar.jq", "jsoniq", 1, source);

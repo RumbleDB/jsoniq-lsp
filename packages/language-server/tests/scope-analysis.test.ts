@@ -24,7 +24,7 @@ describe("JSONiq variable scope analysis", () => {
         const declarationNames = analysis.definitions.map((declaration) => declaration.name);
 
         expect(declarationNames).toEqual([
-            "local:f",
+            "local:f#2",
             "$a",
             "$b",
             "$x",
@@ -66,7 +66,7 @@ describe("JSONiq variable scope analysis", () => {
         ]);
     });
 
-    it("resolves function call references by name", () => {
+    it("resolves function call references by name and arity", () => {
         const document = TextDocument.create(
             "file:///scope-function-references.jq",
             "jsoniq",
@@ -80,16 +80,16 @@ describe("JSONiq variable scope analysis", () => {
         );
 
         const analysis = analyzeVariableScopes(document);
-        const functionReference = analysis.references.find((reference) => reference.name === "local:add");
+        const functionReference = analysis.references.find((reference) => reference.name === "local:add#2");
 
         expect(functionReference).toMatchObject({
-            name: "local:add",
+            name: "local:add#2",
             range: {
                 start: { line: 3, character: 0 },
                 end: { line: 3, character: "local:add".length },
             },
             declaration: {
-                name: "local:add",
+                name: "local:add#2",
                 kind: "function",
             },
         });
@@ -211,7 +211,7 @@ describe("JSONiq variable scope analysis", () => {
         if (parameter === undefined) {
             return;
         }
-        
+
         expect(parameter.references.map((reference) => reference.range.start.line)).toEqual([1, 1]);
 
         const occurrence = findVariableOccurrenceAtPosition(analysis, { line: 1, character: 13 });
