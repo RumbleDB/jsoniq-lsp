@@ -1,24 +1,10 @@
-import { execSync } from "node:child_process";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
-import { afterEach, beforeAll, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 
 import { RumbleWrapperConnection } from "../src/server/wrapper-connection.js";
-
-const testsDirectory = path.dirname(fileURLToPath(import.meta.url));
-const workspaceRoot = path.resolve(testsDirectory, "../../..");
-const wrapperPomPath = path.resolve(workspaceRoot, "packages/rumble-lsp-wrapper/pom.xml");
 
 let connection: RumbleWrapperConnection;
 
 describe("RumbleWrapperConnection (integration)", () => {
-    beforeAll(() => {
-        execSync(`mvn -f "${wrapperPomPath}" -q package`, {
-            cwd: workspaceRoot,
-            stdio: "inherit",
-        });
-    }, 180_000);
-
     afterEach(() => {
         if (connection !== undefined) {
             connection.dispose();
