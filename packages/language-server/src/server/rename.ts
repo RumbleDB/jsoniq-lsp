@@ -107,6 +107,10 @@ function findRenameTarget(
         return null;
     }
 
+    if (occurrence.declaration.kind === "function") {
+        return null;
+    }
+
     return {
         declaration: occurrence.declaration,
         range: occurrence.reference?.range ?? occurrence.declaration.selectionRange,
