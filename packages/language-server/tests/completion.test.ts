@@ -132,14 +132,14 @@ describe("JSONiq completion", () => {
         ]);
     });
 
-    it("keeps FLWOR variables visible at scope-end boundary offset", () => {
+    it("keeps FLWOR variables visible at scope-end boundary position", () => {
         const source = [
             "for $x at $pos in (1, 2, 3)",
             "return $x",
         ].join("\n");
         const document = TextDocument.create("file:///completion-top-level-flwor-boundary.jq", "jsoniq", 1, source);
 
-        // Cursor right after "$x" in the return clause, which can coincide with scope-end offset.
+        // Cursor right after "$x" in the return clause, which can coincide with the scope-end position.
         const items = findVariableCompletions(document, {
             line: 1,
             character: "return $x".length,

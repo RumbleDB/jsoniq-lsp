@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { TextDocument } from "vscode-languageserver-textdocument";
 
-import { analyzeVariableScopes, findVariableOccurrenceAtOffset } from "../src/server/analysis.js";
+import { analyzeVariableScopes, findVariableOccurrenceAtPosition } from "../src/server/analysis.js";
 
 describe("JSONiq variable scope analysis", () => {
     it("collects variable declarations from function params and FLWOR clauses", () => {
@@ -154,8 +154,7 @@ describe("JSONiq variable scope analysis", () => {
 
         expect(parameter.references.map((reference) => reference.range.start.line)).toEqual([1, 2]);
 
-        const offsetOnReturnX = document.offsetAt({ line: 2, character: 14 });
-        const occurrence = findVariableOccurrenceAtOffset(analysis, offsetOnReturnX);
+        const occurrence = findVariableOccurrenceAtPosition(analysis, { line: 2, character: 14 });
 
         expect(occurrence?.reference).toBeDefined();
         expect(occurrence?.declaration.name).toBe("$x");
@@ -185,8 +184,7 @@ describe("JSONiq variable scope analysis", () => {
         
         expect(parameter.references.map((reference) => reference.range.start.line)).toEqual([1, 1]);
 
-        const offsetOnReturnX = document.offsetAt({ line: 1, character: 13 });
-        const occurrence = findVariableOccurrenceAtOffset(analysis, offsetOnReturnX);
+        const occurrence = findVariableOccurrenceAtPosition(analysis, { line: 1, character: 13 });
 
         expect(occurrence?.reference).toBeDefined();
         expect(occurrence?.declaration.name).toBe("$x");

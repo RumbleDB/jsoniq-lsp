@@ -1,5 +1,9 @@
 import { ParserRuleContext, type ParseTree } from "antlr4ng";
-import { DocumentUri, type Range } from "vscode-languageserver";
+import {
+    DocumentUri,
+    type Position,
+    type Range,
+} from "vscode-languageserver";
 import { TextDocument } from "vscode-languageserver-textdocument";
 
 import {
@@ -12,7 +16,7 @@ import {
     VarRefContext,
 } from "../grammar/jsoniqParser.js";
 import { parseJsoniqDocument } from "./parser.js";
-import { rangeFromNode, offsetsFromRange } from "./utils/range.js";
+import { rangeFromNode } from "./utils/range.js";
 import { isNewScopeNode } from "./utils/scope.js";
 
 type DefinitionKind =
@@ -41,8 +45,8 @@ export interface Definition {
     /// For example, for a variable declaration like "let $x := 10", the selection range would cover just the "$x" part of the expression.
     selectionRange: Range;
 
-    /// Offset where this definition is not visible anymore
-    scopeEndOffset: number;
+    /// Position where this definition is not visible anymore
+    scopeEnd: Position;
 
     /// List of references that resolve to this declaration
     references: Reference[];
@@ -59,11 +63,10 @@ export interface Reference {
 }
 
 /**
- * Interface used for both variable declarations and references to enable efficient lookup of the declaration corresponding to a given reference offset.
+ * Interface used for both variable declarations and references to enable efficient lookup of the declaration corresponding to a given source position.
  */
 export interface OccurrenceIndexEntry {
-    startOffset: number;
-    endOffset: number;
+    range: Range;
     declaration: Definition;
 
     /** The reference corresponding to this occurrence, if it is a reference. Undefined for declaration occurrences. */
@@ -74,7 +77,7 @@ export interface OccurrenceIndexEntry {
  * Results of variable scope analysis for a JSONiq document
 */
 export interface JsoniqAnalysis {
-    /** All variable declarations found in the document, sorted by declaration offset in source order. */
+    /** All variable declarations found in the document, sorted by declaration position in source order. */
     definitions: Definition[];
 
     /** All variable references found in the document, in the order they were encountered during traversal. */
@@ -110,15 +113,15 @@ export function analyzeVariableScopes(document: TextDocument): JsoniqAnalysis {
         scopeStack.push({ definitionByName: new Map() });
     };
 
-    const popScope = (scopeEndOffset: number): void => {
+    const popScope = (scopeEnd: Position): void => {
         const scope = scopeStack.pop();
         if (scope !== undefined) {
             for (const definitions of scope.definitionByName.values()) {
                 /// Only the last one ends at the scope boundary, because of variable shadowing.
-                /// Previous declarations with the same name has smaller scopeEndOffset, updated when new variable with the same name is declared in the same scope.
+                /// Previous declarations with the same name has smaller scopeEnd, updated when new variable with the same name is declared in the same scope.
                 const lastDefinition = definitions[definitions.length - 1];
                 if (lastDefinition !== undefined) {
-                    lastDefinition.scopeEndOffset = scopeEndOffset;
+                    lastDefinition.scopeEnd = scopeEnd;
                 }
             }
         }
@@ -141,22 +144,18 @@ export function analyzeVariableScopes(document: TextDocument): JsoniqAnalysis {
             scope.definitionByName.set(newDef.name, []);
         }
 
-        const declarationOffsets = offsetsFromRange(newDef.range, document);
-        const selectionOffsets = offsetsFromRange(newDef.selectionRange, document);
-
         const defWithSameName = scope.definitionByName.get(newDef.name)!;
         const lastDefWithSameName = defWithSameName[defWithSameName.length - 1];
         if (lastDefWithSameName !== undefined) {
             /// Because of shadowing, once our new declaration with the same name is declared in the same scope, 
             // the previous declaration with the same name is no longer visible from this point onward, 
-            // so we update its scope end offset to be the position of the new declaration.
-            lastDefWithSameName.scopeEndOffset = declarationOffsets.endOffset;
+            // so we update its scope end to be the end position of the new declaration.
+            lastDefWithSameName.scopeEnd = newDef.range.end;
         }
         defWithSameName.push(newDef);
 
         occurrenceIndex.push({
-            startOffset: selectionOffsets.startOffset,
-            endOffset: selectionOffsets.endOffset,
+            range: newDef.selectionRange,
             declaration: newDef,
             reference: undefined,
         });
@@ -214,10 +213,8 @@ export function analyzeVariableScopes(document: TextDocument): JsoniqAnalysis {
             if (declaration !== undefined) {
                 declaration.references.push(reference);
 
-                const referenceOffsets = offsetsFromRange(reference.range, document);
                 occurrenceIndex.push({
-                    startOffset: referenceOffsets.startOffset,
-                    endOffset: referenceOffsets.endOffset,
+                    range: reference.range,
                     declaration,
                     reference,
                 });
@@ -266,36 +263,31 @@ export function analyzeVariableScopes(document: TextDocument): JsoniqAnalysis {
          * we pop that scope to ensure variables declared in that scope are not visible outside of it. 
          * */
         if (isNewScopeNode(node)) {
-            const scopeOffsets = offsetsFromRange(rangeFromNode(node, document), document);
-            popScope(scopeOffsets.endOffset);
+            popScope(rangeFromNode(node, document).end);
         }
     };
 
     // Start the traversal from the root of the parse tree
     visit(parseResult.tree);
 
-    // Sort occurrences by position to allow binary search lookup of variable occurrences by offset
+    // Sort occurrences by position to allow binary search lookup of variable occurrences.
     occurrenceIndex.sort((left, right) => {
-        if (left.startOffset === right.startOffset) {
-            return left.endOffset - right.endOffset;
+        const startComparison = comparePositions(left.range.start, right.range.start);
+        if (startComparison !== 0) {
+            return startComparison;
         }
-        return left.startOffset - right.startOffset;
+
+        return comparePositions(left.range.end, right.range.end);
     });
 
-    const documentEndOffset = document.getText().length;
     for (const declaration of scopeStack[0]?.definitionByName.values() ?? []) {
         const lastDeclaration = declaration[declaration.length - 1];
         if (lastDeclaration !== undefined) {
-            lastDeclaration.scopeEndOffset = documentEndOffset;
+            lastDeclaration.scopeEnd = document.positionAt(document.getText().length);
         }
     }
 
-    definitions.sort((left, right) => {
-        const leftOffsets = offsetsFromRange(left.range, document);
-        const rightOffsets = offsetsFromRange(right.range, document);
-
-        return leftOffsets.startOffset - rightOffsets.startOffset;
-    });
+    definitions.sort((left, right) => comparePositions(left.range.start, right.range.start));
 
     return {
         definitions,
@@ -305,35 +297,34 @@ export function analyzeVariableScopes(document: TextDocument): JsoniqAnalysis {
 }
 
 /**
- * Returns all variable declarations visible at the given offset. Declarations with the same
+ * Returns all variable declarations visible at the given position. Declarations with the same
  * name are de-duplicated so only the nearest in-scope declaration is returned.
  *
  * Strategy:
- * 1) `declarations` is pre-sorted by `declarationOffset` during analysis.
- * 2) Binary-search the insertion point for `offset`.
+ * 1) `declarations` is pre-sorted by declaration start position during analysis.
+ * 2) Binary-search the insertion point for `position`.
  * 3) Scan backward to prefer nearest declarations first, keeping one declaration per name.
  */
-export function getVisibleDeclarationsAtOffset(document: TextDocument, offset: number): Definition[] {
+export function getVisibleDeclarationsAtPosition(document: TextDocument, position: Position): Definition[] {
     const analysis = getAnalysis(document);
     const visibleByName = new Map<string, Definition>();
 
-    // Index = first declaration with declarationOffset > offset, so we start scanning backward from index - 1 to find declarations that are declared before the offset.
-    // Between [0, index - 1], we need to check if scopeEndOffset is smaller than the offset to ensure the declaration is still valid
-    // TODO: Find a better way to efficiently find the visible declarations at a given offset without having to scan backward through all declarations before that offset. 
-    let index = upperBoundDeclarationOffset(analysis.definitions, offset, document) - 1;
+    // Index = first declaration with declaration start > position, so we start scanning backward from index - 1 to find declarations that are declared before the position.
+    // Between [0, index - 1], we need to check if scopeEnd is before the position to ensure the declaration is still valid
+    // TODO: Find a better way to efficiently find the visible declarations at a given position without having to scan backward through all declarations before that position.
+    let index = upperBoundDeclarationPosition(analysis.definitions, position) - 1;
 
     while (index >= 0) {
         const declaration = analysis.definitions[index];
-        const declarationVisibleFromOffset = declaration !== undefined
-            ? offsetsFromRange(declaration.range, document).endOffset
-            : 0;
+        const declarationVisibleFrom = declaration?.range.end;
 
         // A declaration is visible iff the cursor is before the scope boundary. Because we scan
         // backward, the first declaration we keep for a name is the nearest (shadowing-aware).
         if (
             declaration !== undefined
-            && declarationVisibleFromOffset < offset
-            && offset <= declaration.scopeEndOffset
+            && declarationVisibleFrom !== undefined
+            && comparePositions(declarationVisibleFrom, position) < 0
+            && comparePositions(position, declaration.scopeEnd) <= 0
             && !visibleByName.has(declaration.name)
         ) {
             visibleByName.set(declaration.name, declaration);
@@ -346,11 +337,11 @@ export function getVisibleDeclarationsAtOffset(document: TextDocument, offset: n
 }
 
 /**
- * Find the index of the first declaration whose declaration offset is greater than the given offset, using binary search.
+ * Find the index of the first declaration whose declaration start position is greater than the given position, using binary search.
  * 
- * @returns The index of the first declaration whose declaration offset is **greater** than the given offset, or declarations.length if there is no such declaration.
+ * @returns The index of the first declaration whose declaration start position is **greater** than the given position, or declarations.length if there is no such declaration.
 */
-function upperBoundDeclarationOffset(definitions: Definition[], offset: number, document: TextDocument): number {
+function upperBoundDeclarationPosition(definitions: Definition[], position: Position): number {
     let low = 0;
     let high = definitions.length;
 
@@ -359,9 +350,8 @@ function upperBoundDeclarationOffset(definitions: Definition[], offset: number, 
 
         // Because mid is between 0 and definitions.length - 1, it should always be defined
         const definition = definitions[mid]!;
-        const offsets = offsetsFromRange(definition.range, document);
 
-        if (offsets.startOffset <= offset) {
+        if (comparePositions(definition.range.start, position) <= 0) {
             low = mid + 1;
         } else {
             high = mid;
@@ -393,21 +383,29 @@ function createVariableDeclaration(
         node: declarationNode,
         range: rangeFromNode(declarationNode, document),
         selectionRange: rangeFromNode(selectionNode, document),
-        scopeEndOffset: document.getText().length,
+        scopeEnd: document.positionAt(document.getText().length),
         references: [],
     };
 }
 
+function comparePositions(left: Position, right: Position): number {
+    if (left.line !== right.line) {
+        return left.line - right.line;
+    }
+
+    return left.character - right.character;
+}
+
 /**
- * Finds the variable occurrence (declaration or reference) at the given offset in the document, and returns the corresponding declaration and reference information.
+ * Finds the variable occurrence (declaration or reference) at the given position in the document, and returns the corresponding declaration and reference information.
  * This is used for features like "go to definition" and "find references" to determine which variable declaration or reference the user is trying to navigate to based on the cursor position in the editor.
  * @param analysis The variable scope analysis results for the document, which includes all variable declarations and references along with their positions in the source code
- * @param offset The offset in the document for which to find the corresponding variable occurrence (e.g. the position of the cursor in the editor)
- * @returns The variable occurrence at the given offset, including the corresponding declaration and reference information, or undefined if there is no variable occurrence at that offset
+ * @param position The position in the document for which to find the corresponding variable occurrence
+ * @returns The variable occurrence at the given position, including the corresponding declaration and reference information, or undefined if there is no variable occurrence at that position
  */
-export function findVariableOccurrenceAtOffset(
+export function findVariableOccurrenceAtPosition(
     analysis: JsoniqAnalysis,
-    offset: number,
+    position: Position,
 ): OccurrenceIndexEntry | undefined {
     const { occurrenceIndex } = analysis;
     let low = 0;
@@ -421,12 +419,12 @@ export function findVariableOccurrenceAtOffset(
             break;
         }
 
-        if (offset < occurrence.startOffset) {
+        if (comparePositions(position, occurrence.range.start) < 0) {
             high = mid - 1;
             continue;
         }
 
-        if (offset >= occurrence.endOffset) {
+        if (comparePositions(position, occurrence.range.end) >= 0) {
             low = mid + 1;
             continue;
         }
@@ -438,29 +436,39 @@ export function findVariableOccurrenceAtOffset(
 }
 
 /**
- * Finds the variable occurrence (declaration or reference) **near** the given offset in the document, allowing for some tolerance when the cursor is not exactly on the variable name but is still close enough to be considered as trying to navigate to that variable.
+ * Finds the variable occurrence (declaration or reference) **near** the given position in the document, allowing for some tolerance when the cursor is not exactly on the variable name but is still close enough to be considered as trying to navigate to that variable.
+ *
+ * Tolerance is intentionally limited to adjacent columns on the same line. This avoids resolving a variable on the next or previous line when the cursor is sitting on a line boundary.
+ *
  * @param analysis The variable scope analysis results for the document
- * @param offset The offset in the document for which to find the corresponding variable occurrence
- * @returns The variable occurrence near the given offset, including the corresponding declaration and reference information, or undefined if there is no variable occurrence near that offset
+ * @param position The position in the document for which to find the corresponding variable occurrence
+ * @returns The variable occurrence near the given position, including the corresponding declaration and reference information, or undefined if there is no variable occurrence near that position
  */
-export function findVariableOccurrenceNearOffset(
+export function findVariableOccurrenceNearPosition(
     analysis: JsoniqAnalysis,
-    offset: number,
+    position: Position,
 ): OccurrenceIndexEntry | undefined {
-    const exact = findVariableOccurrenceAtOffset(analysis, offset);
+    const exact = findVariableOccurrenceAtPosition(analysis, position);
     if (exact !== undefined) {
         return exact;
     }
 
-    // If there is no occurrence at the exact offset, we check the previous and next offsets to see if there is an occurrence there. This allows for some tolerance when the cursor is not exactly on the variable name, but is still close enough to be considered as trying to navigate to that variable.
-    if (offset > 0) {
-        const previous = findVariableOccurrenceAtOffset(analysis, offset - 1);
+    // If there is no occurrence at the exact position, check adjacent columns on
+    // the same line. This keeps the tolerance useful without crossing newlines.
+    if (position.character > 0) {
+        const previous = findVariableOccurrenceAtPosition(analysis, {
+            line: position.line,
+            character: position.character - 1,
+        });
         if (previous !== undefined) {
             return previous;
         }
     }
 
-    return findVariableOccurrenceAtOffset(analysis, offset + 1);
+    return findVariableOccurrenceAtPosition(analysis, {
+        line: position.line,
+        character: position.character + 1,
+    });
 }
 
 /**

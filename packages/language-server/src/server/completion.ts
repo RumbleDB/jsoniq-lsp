@@ -5,11 +5,10 @@ import {
 } from "vscode-languageserver";
 import { TextDocument } from "vscode-languageserver-textdocument";
 
-import { getVisibleDeclarationsAtOffset } from "./analysis.js";
+import { getVisibleDeclarationsAtPosition } from "./analysis.js";
 
 export function findVariableCompletions(document: TextDocument, position: Position): CompletionItem[] {
-    const offset = document.offsetAt(position);
-    const visibleDeclarations = getVisibleDeclarationsAtOffset(document, offset);
+    const visibleDeclarations = getVisibleDeclarationsAtPosition(document, position);
 
     return visibleDeclarations
         .sort((left, right) => left.name.localeCompare(right.name))

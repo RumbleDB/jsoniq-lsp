@@ -40,23 +40,3 @@ export function rangeFromNode(node: ParserRuleContext | ParseTree, document: Tex
         end: document.positionAt(stop + 1),
     };
 }
-
-/**
- * Calculates the start and end offsets of a given range in the document, which represent the position of a variable declaration or reference in terms of character offsets from the beginning of the document.
- * This is used to build the occurrence index for variable declarations and references, which allows for efficient lookup of variable occurrences by offset.
- * @param range The range in terms of line and character positions for which to calculate the corresponding offsets
- * @param document The TextDocument containing the source code, used to convert line and character positions to offsets
- * @returns An object containing the start and end offsets corresponding to the given range in the document
- */
-export function offsetsFromRange(range: Range, document: TextDocument): {
-    startOffset: number;
-    endOffset: number;
-} {
-    const startOffset = document.offsetAt(range.start);
-    const endOffset = document.offsetAt(range.end);
-
-    return {
-        startOffset,
-        endOffset: Math.max(endOffset, startOffset),
-    };
-}

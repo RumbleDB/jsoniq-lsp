@@ -5,7 +5,7 @@ import {
 import { TextDocument } from "vscode-languageserver-textdocument";
 
 import {
-    findVariableOccurrenceNearOffset,
+    findVariableOccurrenceNearPosition,
     getAnalysis,
 } from "./analysis.js";
 
@@ -23,8 +23,7 @@ export function findReferenceLocations(
     includeDeclaration: boolean,
 ): Location[] {
     const analysis = getAnalysis(document);
-    const offset = document.offsetAt(position);
-    const occurrence = findVariableOccurrenceNearOffset(analysis, offset);
+    const occurrence = findVariableOccurrenceNearPosition(analysis, position);
     const targetDeclaration = occurrence?.declaration;
 
     if (targetDeclaration === undefined) {

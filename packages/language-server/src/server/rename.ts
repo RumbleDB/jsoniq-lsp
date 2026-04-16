@@ -7,7 +7,7 @@ import {
 import { TextDocument } from "vscode-languageserver-textdocument";
 
 import {
-    findVariableOccurrenceNearOffset,
+    findVariableOccurrenceNearPosition,
     getAnalysis,
     type JsoniqAnalysis,
     type Definition,
@@ -32,7 +32,7 @@ interface RenameValidationResult {
  */
 export function prepareRename(document: TextDocument, position: Position): { range: Range; placeholder: string } | null {
     const analysis = getAnalysis(document);
-    const target = findRenameTarget(analysis, document.offsetAt(position));
+    const target = findRenameTarget(analysis, position);
 
     if (target === null) {
         // Rename is not possible at the given position
@@ -65,7 +65,7 @@ export function buildRenameWorkspaceEdit(
     }
 
     const analysis = getAnalysis(document);
-    const target = findRenameTarget(analysis, document.offsetAt(position));
+    const target = findRenameTarget(analysis, position);
 
     if (target === null) {
         return null;
@@ -93,16 +93,16 @@ export function buildRenameWorkspaceEdit(
 }
 
 /**
- * Finds the rename target (variable declaration and range to rename) for the variable at the given offset in the document, by analyzing variable scopes and occurrences.
+ * Finds the rename target (variable declaration and range to rename) for the variable at the given position in the document, by analyzing variable scopes and occurrences.
  * @param analysis The variable scope analysis results for the document
- * @param offset The offset in the document for which to find the rename target
- * @returns A RenameTarget object representing the variable declaration and range to rename for the variable at the given offset, or null if no valid rename target is found
+ * @param position The position in the document for which to find the rename target
+ * @returns A RenameTarget object representing the variable declaration and range to rename for the variable at the given position, or null if no valid rename target is found
  */
 function findRenameTarget(
     analysis: JsoniqAnalysis,
-    offset: number,
+    position: Position,
 ): RenameTarget | null {
-    const occurrence = findVariableOccurrenceNearOffset(analysis, offset);
+    const occurrence = findVariableOccurrenceNearPosition(analysis, position);
     if (occurrence === undefined) {
         return null;
     }

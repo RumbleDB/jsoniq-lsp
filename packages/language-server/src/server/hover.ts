@@ -6,13 +6,13 @@ import {
 import { TextDocument } from "vscode-languageserver-textdocument";
 
 import {
-    findVariableOccurrenceNearOffset,
+    findVariableOccurrenceNearPosition,
     getAnalysis,
 } from "./analysis.js";
 
 export function findHover(document: TextDocument, position: Position): Hover | null {
     const analysis = getAnalysis(document);
-    const occurrence = findVariableOccurrenceNearOffset(analysis, document.offsetAt(position));
+    const occurrence = findVariableOccurrenceNearPosition(analysis, position);
 
     if (occurrence === undefined) {
         return null;
