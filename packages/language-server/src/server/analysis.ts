@@ -157,7 +157,7 @@ export function analyzeVariableScopes(document: TextDocument): JsoniqVariableSco
         }
 
         if (node instanceof ParamContext) {
-            declare(createVariableDeclaration(node.qname().getText(), "parameter", node, node.qname(), document));
+            declare(createVariableDeclaration(`$${node.qname().getText()}`, "parameter", node, node.qname(), document));
         }
 
         /**
@@ -437,7 +437,7 @@ export function findVariableOccurrenceNearOffset(
  * @returns The variable name as a string, including the leading "$" (e.g. "$x")
  */
 function varRefName(node: VarRefContext): string {
-    return `${node.qname().getText()}`;
+    return `$${node.qname().getText()}`;
 }
 
 /**
