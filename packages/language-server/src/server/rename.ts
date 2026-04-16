@@ -9,12 +9,12 @@ import { TextDocument } from "vscode-languageserver-textdocument";
 import {
     findVariableOccurrenceNearOffset,
     getAnalysis,
-    type JsoniqVariableScopeAnalysis,
-    type VariableDeclaration,
+    type JsoniqAnalysis,
+    type Definition,
 } from "./analysis.js";
 
 interface RenameTarget {
-    declaration: VariableDeclaration;
+    declaration: Definition;
     range: Range;
 }
 
@@ -100,7 +100,7 @@ export function buildRenameWorkspaceEdit(
  * @returns A RenameTarget object representing the variable declaration and range to rename for the variable at the given offset, or null if no valid rename target is found
  */
 function findRenameTarget(
-    analysis: JsoniqVariableScopeAnalysis,
+    analysis: JsoniqAnalysis,
     offset: number,
 ): RenameTarget | null {
     const occurrence = findVariableOccurrenceNearOffset(analysis, offset);

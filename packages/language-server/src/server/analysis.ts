@@ -15,7 +15,7 @@ import { parseJsoniqDocument } from "./parser.js";
 import { rangeFromNode, offsetsFromRange } from "./utils/range.js";
 import { isNewScopeNode } from "./utils/scope.js";
 
-type VariableDeclarationKind =
+type DefinitionKind =
     | "declare-variable"
     | "let"
     | "for"
@@ -28,58 +28,68 @@ type VariableDeclarationKind =
  * Represents a variable declaration in the source code, including its name, kind (e.g. function parameter, FLWOR clause variable, etc.), 
  * the corresponding parse tree node, and the range of the declaration in the source document.
  */
-export interface VariableDeclaration {
+export interface Definition {
     name: string;
-    kind: VariableDeclarationKind;
+    kind: DefinitionKind;
     node: ParseTree;
+
+    /// Range = the entire range of the declaration
+    /// For example, for a variable declaration like "let $x := 10", the range would cover the entire "let $x := 10" expression.
     range: Range;
+
+    /// Selection range = the range of the variable name within the declaration, which should be used for features like "go to definition" to navigate to the variable name rather than the entire declaration.
+    /// For example, for a variable declaration like "let $x := 10", the selection range would cover just the "$x" part of the expression.
     selectionRange: Range;
-    declarationOffset: number;
+
+    /// Offset where this definition is not visible anymore
     scopeEndOffset: number;
 }
 
 /**
  * Represents a reference to a variable in the source code, along with a reference to the corresponding declaration (if it can be resolved).
  */
-export interface VariableReference {
+export interface Reference {
     name: string;
     node: VarRefContext;
     range: Range;
-    declaration: VariableDeclaration | undefined;
+    declaration: Definition | undefined;
 }
 
 /**
  * Interface used for both variable declarations and references to enable efficient lookup of the declaration corresponding to a given reference offset.
  */
-export interface VariableOccurrenceIndexEntry {
+export interface OccurrenceIndexEntry {
     startOffset: number;
     endOffset: number;
-    declaration: VariableDeclaration;
+    declaration: Definition;
 
     /** The reference corresponding to this occurrence, if it is a reference. Undefined for declaration occurrences. */
-    reference: VariableReference | undefined;
+    reference: Reference | undefined;
 }
 
 /**
  * Results of variable scope analysis for a JSONiq document
 */
-export interface JsoniqVariableScopeAnalysis {
+export interface JsoniqAnalysis {
     /** All variable declarations found in the document, sorted by declaration offset in source order. */
-    declarations: VariableDeclaration[];
+    definitions: Definition[];
 
     /** Map from variable declarations to the list of references that resolve to that declaration. */
-    referencesByDeclaration: Map<VariableDeclaration, VariableReference[]>;
+    referencesByDeclaration: Map<Definition, Reference[]>;
 
     /** All variable references found in the document, in the order they were encountered during traversal. */
-    references: VariableReference[];
+    references: Reference[];
 
     /** A sorted index of all variable occurrences (declarations and references) in the document, sorted by their position in the source code. */
-    occurrenceIndex: VariableOccurrenceIndexEntry[];
+    occurrenceIndex: OccurrenceIndexEntry[];
 }
 
 interface ScopeFrame {
-    /** Map from variable names to their corresponding declarations within this scope frame. */
-    declarationsByName: Map<string, VariableDeclaration>;
+    /** 
+     * Map from variable names to their corresponding declarations within this scope frame. 
+     * Because variable shadows can occur, we save all of them in a list, but only the nearest declaration (the last one in the list) is the one that should be resolved from references in this scope.
+     * */
+    definitionByName: Map<string, Array<Definition>>;
 }
 
 /**
@@ -89,23 +99,28 @@ interface ScopeFrame {
  * @param document The TextDocument representing the JSONiq source code to analyze
  * @returns An object containing the results of variable scope analysis, including all variable declarations and references along with their relationships
  */
-export function analyzeVariableScopes(document: TextDocument): JsoniqVariableScopeAnalysis {
+export function analyzeVariableScopes(document: TextDocument): JsoniqAnalysis {
     const parseResult = parseJsoniqDocument(document);
-    const declarations: VariableDeclaration[] = [];
-    const references: VariableReference[] = [];
-    const referencesByDeclaration = new Map<VariableDeclaration, VariableReference[]>();
-    const occurrenceIndex: VariableOccurrenceIndexEntry[] = [];
-    const scopeStack: ScopeFrame[] = [{ declarationsByName: new Map() }];
+    const definitions: Definition[] = [];
+    const references: Reference[] = [];
+    const referencesByDeclaration = new Map<Definition, Reference[]>();
+    const occurrenceIndex: OccurrenceIndexEntry[] = [];
+    const scopeStack: ScopeFrame[] = [{ definitionByName: new Map() }];
 
     const pushScope = (): void => {
-        scopeStack.push({ declarationsByName: new Map() });
+        scopeStack.push({ definitionByName: new Map() });
     };
 
     const popScope = (scopeEndOffset: number): void => {
         const scope = scopeStack.pop();
         if (scope !== undefined) {
-            for (const declaration of scope.declarationsByName.values()) {
-                declaration.scopeEndOffset = scopeEndOffset;
+            for (const definitions of scope.definitionByName.values()) {
+                /// Only the last one ends at the scope boundary, because of variable shadowing.
+                /// Previous declarations with the same name has smaller scopeEndOffset, updated when new variable with the same name is declared in the same scope.
+                const lastDefinition = definitions[definitions.length - 1];
+                if (lastDefinition !== undefined) {
+                    lastDefinition.scopeEndOffset = scopeEndOffset;
+                }
             }
         }
     };
@@ -119,31 +134,42 @@ export function analyzeVariableScopes(document: TextDocument): JsoniqVariableSco
     };
 
     /** Declares a variable in the current scope and adds it to the list of declarations and occurrence index. */
-    const declare = (declaration: VariableDeclaration): void => {
-        declarations.push(declaration);
+    const declare = (newDef: Definition): void => {
+        definitions.push(newDef);
+        referencesByDeclaration.set(newDef, []);
         const scope = currentScope();
-        scope.declarationsByName.set(declaration.name, declaration);
-        referencesByDeclaration.set(declaration, []);
 
-        const declarationOffsets = offsetsFromRange(declaration.selectionRange, document);
-        declaration.declarationOffset = declarationOffsets.startOffset;
+        if (!scope.definitionByName.has(newDef.name)) {
+            scope.definitionByName.set(newDef.name, []);
+        }
+
+        const declarationOffsets = offsetsFromRange(newDef.range, document);
+        const selectionOffsets = offsetsFromRange(newDef.selectionRange, document);
+
+        const defWithSameName = scope.definitionByName.get(newDef.name)!;
+        const lastDefWithSameName = defWithSameName[defWithSameName.length - 1];
+        if (lastDefWithSameName !== undefined) {
+            /// Because of shadowing, once our new declaration with the same name is declared in the same scope, 
+            // the previous declaration with the same name is no longer visible from this point onward, 
+            // so we update its scope end offset to be the position of the new declaration.
+            lastDefWithSameName.scopeEndOffset = declarationOffsets.endOffset;
+        }
+        defWithSameName.push(newDef);
+
         occurrenceIndex.push({
-            startOffset: declaration.declarationOffset,
-            endOffset: declarationOffsets.endOffset,
-            declaration,
+            startOffset: selectionOffsets.startOffset,
+            endOffset: selectionOffsets.endOffset,
+            declaration: newDef,
             reference: undefined,
         });
     };
 
     /** Resolves a variable name to its corresponding declaration by searching the scope stack from innermost to outermost scope. */
-    const resolve = (name: string): VariableDeclaration | undefined => {
+    const resolve = (name: string): Definition | undefined => {
         for (let index = scopeStack.length - 1; index >= 0; index -= 1) {
             const scope = scopeStack[index];
-            if (scope === undefined) {
-                // This should never happen, but just to make TypeScript happy
-                continue;
-            }
-            const declaration = scope.declarationsByName.get(name);
+            const declarations = scope?.definitionByName.get(name);
+            const declaration = declarations?.[declarations.length - 1];
             if (declaration !== undefined) {
                 return declaration;
             }
@@ -182,7 +208,7 @@ export function analyzeVariableScopes(document: TextDocument): JsoniqVariableSco
                 node,
                 range: rangeFromNode(node, document),
                 declaration,
-            } satisfies VariableReference;
+            } satisfies Reference;
 
             references.push(reference);
 
@@ -262,14 +288,22 @@ export function analyzeVariableScopes(document: TextDocument): JsoniqVariableSco
     });
 
     const documentEndOffset = document.getText().length;
-    for (const declaration of scopeStack[0]?.declarationsByName.values() ?? []) {
-        declaration.scopeEndOffset = documentEndOffset;
+    for (const declaration of scopeStack[0]?.definitionByName.values() ?? []) {
+        const lastDeclaration = declaration[declaration.length - 1];
+        if (lastDeclaration !== undefined) {
+            lastDeclaration.scopeEndOffset = documentEndOffset;
+        }
     }
 
-    declarations.sort((left, right) => left.declarationOffset - right.declarationOffset);
+    definitions.sort((left, right) => {
+        const leftOffsets = offsetsFromRange(left.range, document);
+        const rightOffsets = offsetsFromRange(right.range, document);
+
+        return leftOffsets.startOffset - rightOffsets.startOffset;
+    });
 
     return {
-        declarations,
+        definitions,
         references,
         referencesByDeclaration,
         occurrenceIndex,
@@ -285,17 +319,17 @@ export function analyzeVariableScopes(document: TextDocument): JsoniqVariableSco
  * 2) Binary-search the insertion point for `offset`.
  * 3) Scan backward to prefer nearest declarations first, keeping one declaration per name.
  */
-export function getVisibleDeclarationsAtOffset(document: TextDocument, offset: number): VariableDeclaration[] {
+export function getVisibleDeclarationsAtOffset(document: TextDocument, offset: number): Definition[] {
     const analysis = getAnalysis(document);
-    const visibleByName = new Map<string, VariableDeclaration>();
+    const visibleByName = new Map<string, Definition>();
 
     // Index = first declaration with declarationOffset > offset, so we start scanning backward from index - 1 to find declarations that are declared before the offset.
     // Between [0, index - 1], we need to check if scopeEndOffset is smaller than the offset to ensure the declaration is still valid
     // TODO: Find a better way to efficiently find the visible declarations at a given offset without having to scan backward through all declarations before that offset. 
-    let index = upperBoundDeclarationOffset(analysis.declarations, offset) - 1;
+    let index = upperBoundDeclarationOffset(analysis.definitions, offset, document) - 1;
 
     while (index >= 0) {
-        const declaration = analysis.declarations[index];
+        const declaration = analysis.definitions[index];
         const declarationVisibleFromOffset = declaration !== undefined
             ? offsetsFromRange(declaration.range, document).endOffset
             : 0;
@@ -322,14 +356,18 @@ export function getVisibleDeclarationsAtOffset(document: TextDocument, offset: n
  * 
  * @returns The index of the first declaration whose declaration offset is **greater** than the given offset, or declarations.length if there is no such declaration.
 */
-function upperBoundDeclarationOffset(declarations: VariableDeclaration[], offset: number): number {
+function upperBoundDeclarationOffset(definitions: Definition[], offset: number, document: TextDocument): number {
     let low = 0;
-    let high = declarations.length;
+    let high = definitions.length;
 
     while (low < high) {
         const mid = Math.floor((low + high) / 2);
-        const declaration = declarations[mid];
-        if (declaration !== undefined && declaration.declarationOffset <= offset) {
+
+        // Because mid is between 0 and definitions.length - 1, it should always be defined
+        const definition = definitions[mid]!;
+        const offsets = offsetsFromRange(definition.range, document);
+
+        if (offsets.startOffset <= offset) {
             low = mid + 1;
         } else {
             high = mid;
@@ -350,18 +388,17 @@ function upperBoundDeclarationOffset(declarations: VariableDeclaration[], offset
  */
 function createVariableDeclaration(
     name: string,
-    kind: VariableDeclarationKind,
+    kind: DefinitionKind,
     declarationNode: ParserRuleContext,
     selectionNode: ParseTree,
     document: TextDocument,
-): VariableDeclaration {
+): Definition {
     return {
         name,
         kind,
         node: declarationNode,
         range: rangeFromNode(declarationNode, document),
         selectionRange: rangeFromNode(selectionNode, document),
-        declarationOffset: 0,
         scopeEndOffset: document.getText().length,
     };
 }
@@ -374,9 +411,9 @@ function createVariableDeclaration(
  * @returns The variable occurrence at the given offset, including the corresponding declaration and reference information, or undefined if there is no variable occurrence at that offset
  */
 export function findVariableOccurrenceAtOffset(
-    analysis: JsoniqVariableScopeAnalysis,
+    analysis: JsoniqAnalysis,
     offset: number,
-): VariableOccurrenceIndexEntry | undefined {
+): OccurrenceIndexEntry | undefined {
     const { occurrenceIndex } = analysis;
     let low = 0;
     let high = occurrenceIndex.length - 1;
@@ -412,9 +449,9 @@ export function findVariableOccurrenceAtOffset(
  * @returns The variable occurrence near the given offset, including the corresponding declaration and reference information, or undefined if there is no variable occurrence near that offset
  */
 export function findVariableOccurrenceNearOffset(
-    analysis: JsoniqVariableScopeAnalysis,
+    analysis: JsoniqAnalysis,
     offset: number,
-): VariableOccurrenceIndexEntry | undefined {
+): OccurrenceIndexEntry | undefined {
     const exact = findVariableOccurrenceAtOffset(analysis, offset);
     if (exact !== undefined) {
         return exact;
@@ -477,7 +514,7 @@ function isDeclarationVarRef(node: VarRefContext): boolean {
  */
 interface CachedAnalysis {
     version: number;
-    analysis: JsoniqVariableScopeAnalysis;
+    analysis: JsoniqAnalysis;
 }
 
 /** In memory cache for analysis results */
@@ -491,7 +528,7 @@ const analysisCache = new Map<DocumentUri, CachedAnalysis>();
  * @param document The TextDocument representing the JSONiq source code to analyze
  * @returns The JsoniqVariableScopeAnalysis object containing the results of variable scope analysis for the given document
  */
-export function getAnalysis(document: TextDocument): JsoniqVariableScopeAnalysis {
+export function getAnalysis(document: TextDocument): JsoniqAnalysis {
     const cached = analysisCache.get(document.uri);
 
     if (cached !== undefined && cached.version === document.version) {

@@ -21,7 +21,7 @@ describe("JSONiq variable scope analysis", () => {
         );
 
         const analysis = analyzeVariableScopes(document);
-        const declarationNames = analysis.declarations.map((declaration) => declaration.name);
+        const declarationNames = analysis.definitions.map((declaration) => declaration.name);
 
         expect(declarationNames).toEqual([
             "$a",
@@ -78,7 +78,7 @@ describe("JSONiq variable scope analysis", () => {
 
         const analysis = analyzeVariableScopes(document);
 
-        expect(analysis.declarations.map((declaration) => declaration.name)).toEqual([
+        expect(analysis.definitions.map((declaration) => declaration.name)).toEqual([
             "$x",
             "$y",
         ]);
@@ -106,7 +106,7 @@ describe("JSONiq variable scope analysis", () => {
 
         const analysis = analyzeVariableScopes(document);
 
-        expect(analysis.declarations.map((declaration) => ({
+        expect(analysis.definitions.map((declaration) => ({
             name: declaration.name,
             kind: declaration.kind,
         }))).toEqual([
@@ -144,7 +144,7 @@ describe("JSONiq variable scope analysis", () => {
         );
 
         const analysis = analyzeVariableScopes(document);
-        const parameter = analysis.declarations.find((declaration) => declaration.name === "$x" && declaration.kind === "parameter");
+        const parameter = analysis.definitions.find((declaration) => declaration.name === "$x" && declaration.kind === "parameter");
 
         expect(parameter).toBeDefined();
 
@@ -176,7 +176,7 @@ describe("JSONiq variable scope analysis", () => {
         );
 
         const analysis = analyzeVariableScopes(document);
-        const parameter = analysis.declarations.find((declaration) => declaration.name === "$x" && declaration.kind === "parameter");
+        const parameter = analysis.definitions.find((declaration) => declaration.name === "$x" && declaration.kind === "parameter");
 
         expect(parameter).toBeDefined();
 
@@ -208,7 +208,7 @@ describe("JSONiq variable scope analysis", () => {
         );
 
         const analysis = analyzeVariableScopes(document);
-        const xDeclarations = analysis.declarations.filter((declaration) => declaration.name === "$x" && declaration.kind === "let");
+        const xDeclarations = analysis.definitions.filter((declaration) => declaration.name === "$x" && declaration.kind === "let");
 
         expect(xDeclarations).toHaveLength(2);
 
