@@ -184,6 +184,27 @@ describe("JSONiq document symbols", () => {
 
         expect(symbols.every((symbol) => symbol.name.trim().length > 0 && symbol.name !== "$")).toBe(true);
     });
+
+    it("handles incomplete trailing function parameters", () => {
+        const document = TextDocument.create(
+            "file:///trailing-parameter-symbols.jq",
+            "jsoniq",
+            1,
+            [
+                "declare function local:f($a, $b as integer, ) {",
+                "}",
+            ].join("\n"),
+        );
+
+        const symbols = flattenSymbols(collectDocumentSymbols(document));
+
+        expect(symbols.map((symbol) => symbol.name)).toEqual(expect.arrayContaining([
+            "local:f",
+            "$a",
+            "$b",
+        ]));
+        expect(symbols.every((symbol) => symbol.name.trim().length > 0 && symbol.name !== "$")).toBe(true);
+    });
 });
 
 function flattenSymbols(symbols: DocumentSymbol[]): DocumentSymbol[] {

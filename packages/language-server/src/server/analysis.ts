@@ -28,7 +28,7 @@ import { upperBound } from "./utils/binary-search.js";
 import { rangeFromNode } from "./utils/range.js";
 import { isNewScopeNode } from "./utils/scope.js";
 import { comparePositions } from "./utils/position.js";
-import { functionNameWithArity, varRefName } from "./utils/name.js";
+import { functionNameWithArityOrNull, varRefNameOrNull } from "./utils/name.js";
 
 type DefinitionKind =
     | "declare-variable"
@@ -204,7 +204,12 @@ export function analyzeVariableScopes(document: TextDocument): JsoniqAnalysis {
     };
 
     const declareVariable = (kind: DefinitionKind, node: ParserRuleContext, varRef: VarRefContext): void => {
-        declare(createDefinition(varRefName(varRef), kind, node, varRef, document));
+        const name = varRefNameOrNull(varRef);
+        if (name === null) {
+            return;
+        }
+
+        declare(createDefinition(name, kind, node, varRef, document));
     };
 
     const recordReference = (name: string, node: ParseTree, range: Range): void => {
@@ -243,13 +248,17 @@ export function analyzeVariableScopes(document: TextDocument): JsoniqAnalysis {
         };
 
         if (node instanceof FunctionDeclContext) {
-            const functionSymbol = attachDocumentSymbol(symbols, createDocumentSymbol(
-                node._fn_name?.getText() ?? node.qname().getText(),
-                SymbolKind.Function,
-                node,
-                node._fn_name ?? node.qname(),
-                document,
-            ));
+            const nameNode = node._fn_name ?? node.qname();
+            const name = node._fn_name?.getText() ?? node.qname()?.getText();
+            const functionSymbol = nameNode === null || name === undefined
+                ? undefined
+                : attachDocumentSymbol(symbols, createDocumentSymbol(
+                    name,
+                    SymbolKind.Function,
+                    node,
+                    nameNode,
+                    document,
+                ));
             if (functionSymbol !== undefined) {
                 functionSymbol.children ??= [];
                 state.childSymbols = functionSymbol.children;
@@ -260,7 +269,8 @@ export function analyzeVariableScopes(document: TextDocument): JsoniqAnalysis {
             const variableRefs = node.varRef();
             let boundVariableSymbol: DocumentSymbol | undefined;
             for (const varRef of variableRefs) {
-                const symbol = attachDocumentSymbol(symbols, createDocumentSymbol(varRefName(varRef), SymbolKind.Variable, node, varRef, document));
+                const name = varRefNameOrNull(varRef);
+                const symbol = name === null ? undefined : attachDocumentSymbol(symbols, createDocumentSymbol(name, SymbolKind.Variable, node, varRef, document));
                 if (varRef === variableRefs[0]) {
                     boundVariableSymbol = symbol;
                 }
@@ -270,20 +280,25 @@ export function analyzeVariableScopes(document: TextDocument): JsoniqAnalysis {
 
         if (node instanceof VarDeclContext || node instanceof LetVarContext || node instanceof GroupByVarContext || node instanceof CountClauseContext) {
             const varRef = node.varRef();
-            const symbol = attachDocumentSymbol(symbols, createDocumentSymbol(varRefName(varRef), SymbolKind.Variable, node, varRef, document));
+            const name = varRefNameOrNull(varRef);
+            const symbol = name === null ? undefined : attachDocumentSymbol(symbols, createDocumentSymbol(name, SymbolKind.Variable, node, varRef, document));
             if (!(node instanceof CountClauseContext)) {
                 collectChildSymbolsUnder(symbol);
             }
         }
 
         if (node instanceof TypeDeclContext) {
-            attachDocumentSymbol(symbols, createDocumentSymbol(
-                node._type_name?.getText() ?? node.qname().getText(),
-                SymbolKind.Struct,
-                node,
-                node._type_name ?? node.qname(),
-                document,
-            ));
+            const nameNode = node._type_name ?? node.qname();
+            const name = node._type_name?.getText() ?? node.qname()?.getText();
+            if (nameNode !== null && name !== undefined) {
+                attachDocumentSymbol(symbols, createDocumentSymbol(
+                    name,
+                    SymbolKind.Struct,
+                    node,
+                    nameNode,
+                    document,
+                ));
+            }
         }
 
         if (node instanceof ContextItemDeclContext) {
@@ -295,7 +310,11 @@ export function analyzeVariableScopes(document: TextDocument): JsoniqAnalysis {
         }
 
         if (node instanceof ParamContext) {
-            attachDocumentSymbol(symbols, createDocumentSymbol(`$${node.qname().getText()}`, SymbolKind.Variable, node, node.qname(), document));
+            const qname = node.qname();
+            const name = qname?.getText().trim();
+            if (name !== undefined && name !== "") {
+                attachDocumentSymbol(symbols, createDocumentSymbol(`$${name}`, SymbolKind.Variable, node, qname, document));
+            }
         }
 
         return state;
@@ -303,13 +322,20 @@ export function analyzeVariableScopes(document: TextDocument): JsoniqAnalysis {
 
     const collectDefinitionsBeforeScope = (node: ParseTree): void => {
         if (node instanceof FunctionDeclContext) {
-            declare(createDefinition(functionNameWithArity(node), "function", node, node._fn_name ?? node.qname(), document));
+            const name = functionNameWithArityOrNull(node);
+            if (name !== null) {
+                declare(createDefinition(name, "function", node, node._fn_name ?? node.qname(), document));
+            }
         }
     };
 
     const collectDefinitionsBeforeChildren = (node: ParseTree): void => {
         if (node instanceof ParamContext) {
-            declare(createDefinition(`$${node.qname().getText()}`, "parameter", node, node.qname(), document));
+            const qname = node.qname();
+            const name = qname?.getText().trim();
+            if (name !== undefined && name !== "") {
+                declare(createDefinition(`$${name}`, "parameter", node, qname, document));
+            }
         }
 
         /**
@@ -328,14 +354,18 @@ export function analyzeVariableScopes(document: TextDocument): JsoniqAnalysis {
 
     const collectReferencesBeforeChildren = (node: ParseTree): void => {
         if (node instanceof VarRefContext && !isDeclarationVarRef(node)) {
-            const name = varRefName(node);
-            recordReference(name, node, rangeFromNode(node, document));
+            const name = varRefNameOrNull(node);
+            if (name !== null) {
+                recordReference(name, node, rangeFromNode(node, document));
+            }
         }
 
         if (node instanceof FunctionCallContext || node instanceof NamedFunctionRefContext) {
             const nameNode = node._fn_name ?? node.qname();
-            const name = functionNameWithArity(node);
-            recordReference(name, node, rangeFromNode(nameNode, document));
+            const name = functionNameWithArityOrNull(node);
+            if (name !== null) {
+                recordReference(name, node, rangeFromNode(nameNode, document));
+            }
         }
     };
 

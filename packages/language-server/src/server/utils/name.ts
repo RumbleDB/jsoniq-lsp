@@ -9,10 +9,25 @@ export function varRefName(node: VarRefContext): string {
     return `$${node.qname().getText()}`;
 }
 
+export function varRefNameOrNull(node: VarRefContext): string | null {
+    const qname = node.qname();
+    const name = qname?.getText().trim();
+    return name === undefined || name === "" ? null : `$${name}`;
+}
+
 export function functionNameWithArity(node: FunctionDeclContext | FunctionCallContext | NamedFunctionRefContext): string {
     const functionName = node._fn_name?.getText() ?? node.qname().getText();
     const arity = functionArity(node);
     return `${functionName}#${arity}`;
+}
+
+export function functionNameWithArityOrNull(node: FunctionDeclContext | FunctionCallContext | NamedFunctionRefContext): string | null {
+    const functionName = (node._fn_name?.getText() ?? node.qname()?.getText())?.trim();
+    if (functionName === undefined || functionName === "") {
+        return null;
+    }
+
+    return `${functionName}#${functionArity(node)}`;
 }
 
 function functionArity(node: FunctionDeclContext | FunctionCallContext | NamedFunctionRefContext): number {
