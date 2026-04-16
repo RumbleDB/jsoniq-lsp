@@ -304,7 +304,7 @@ export function getVisibleDeclarationsAtOffset(document: TextDocument, offset: n
         // backward, the first declaration we keep for a name is the nearest (shadowing-aware).
         if (
             declaration !== undefined
-            && declarationVisibleFromOffset <= offset
+            && declarationVisibleFromOffset < offset
             && offset <= declaration.scopeEndOffset
             && !visibleByName.has(declaration.name)
         ) {
