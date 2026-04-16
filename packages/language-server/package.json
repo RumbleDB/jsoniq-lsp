@@ -5,7 +5,7 @@
     "type": "module",
     "scripts": {
         "generate:grammar": "antlr-ng -Dlanguage=TypeScript --generate-visitor true --generate-listener false --output-directory src/grammar src/grammar/jsoniq.g4",
-        "build": "pnpm run generate:grammar && tsc -p tsconfig.json",
+        "build": "tsc -p tsconfig.json",
         "watch": "tsc -w -p tsconfig.json",
         "start": "node ./dist/server/main.js",
         "test": "vitest run tests",
