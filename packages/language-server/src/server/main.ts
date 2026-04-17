@@ -8,7 +8,7 @@ import {
 } from "vscode-languageserver/node.js";
 import { TextDocument } from "vscode-languageserver-textdocument";
 
-import { collectSyntaxDiagnostics } from "./parser.js";
+import { parseJsoniqDocument } from "./parser.js";
 import { collectSemanticDiagnostics } from "./semantic.js";
 import { collectDocumentSymbols } from "./symbols.js";
 import { findDefinitionLocation } from "./definitions.js";
@@ -27,7 +27,7 @@ async function refreshDiagnostics(uri: string): Promise<void> {
         return;
     }
 
-    const syntaxDiagnostics = collectSyntaxDiagnostics(document);
+    const syntaxDiagnostics = parseJsoniqDocument(document).diagnostics;
     const semanticDiagnostics = syntaxDiagnostics.length === 0
         ? collectSemanticDiagnostics(document)
         : [];
