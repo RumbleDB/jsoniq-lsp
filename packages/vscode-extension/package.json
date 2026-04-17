@@ -32,7 +32,13 @@
                 "scopeName": "source.jsoniq",
                 "path": "./syntaxes/jsoniq.tmLanguage.json"
             }
-        ]
+        ],
+        "configurationDefaults": {
+            "[jsoniq]": {
+                "editor.wordBasedSuggestions": "off",
+                "editor.suggest.showWords": false
+            }
+        }
     },
     "scripts": {
         "build": "tsc -p tsconfig.json",
