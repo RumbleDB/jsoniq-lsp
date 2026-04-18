@@ -16,6 +16,7 @@ import { findReferenceLocations } from "./references.js";
 import { buildRenameWorkspaceEdit, prepareRename } from "./rename.js";
 import { findHover } from "./hover.js";
 import { findCompletions } from "./completion.js";
+import { initializeBuiltinFunctionDefinitions } from "./builtin-definitions.js";
 
 const connection = createConnection(ProposedFeatures.all);
 const documents = new TextDocuments(TextDocument);
@@ -41,25 +42,29 @@ async function refreshDiagnostics(uri: string): Promise<void> {
     });
 }
 
-connection.onInitialize((_params: InitializeParams): InitializeResult => ({
-    capabilities: {
-        textDocumentSync: TextDocumentSyncKind.Incremental,
-        documentSymbolProvider: true,
-        definitionProvider: true,
-        referencesProvider: true,
-        hoverProvider: true,
-        completionProvider: {
-            triggerCharacters: ["$"],
+connection.onInitialize(async (_params: InitializeParams): Promise<InitializeResult> => {
+    await initializeBuiltinFunctionDefinitions();
+
+    return {
+        capabilities: {
+            textDocumentSync: TextDocumentSyncKind.Incremental,
+            documentSymbolProvider: true,
+            definitionProvider: true,
+            referencesProvider: true,
+            hoverProvider: true,
+            completionProvider: {
+                triggerCharacters: ["$"],
+            },
+            renameProvider: {
+                prepareProvider: true,
+            },
         },
-        renameProvider: {
-            prepareProvider: true,
+        serverInfo: {
+            name: "jsoniq-lsp",
+            version: "0.1.0",
         },
-    },
-    serverInfo: {
-        name: "jsoniq-lsp",
-        version: "0.1.0",
-    },
-}));
+    };
+});
 
 connection.onDocumentSymbol((params) => {
     const document = documents.get(params.textDocument.uri);

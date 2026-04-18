@@ -29,6 +29,7 @@ import { rangeFromNode } from "./utils/range.js";
 import { isNewScopeNode } from "./utils/scope.js";
 import { comparePositions } from "./utils/position.js";
 import { functionNameWithArityOrNull, varRefNameOrNull } from "./utils/name.js";
+import { findBuiltinFunctionDefinition, type BuiltinFunctionDefinition } from "./builtin-definitions.js";
 
 type DefinitionKind =
     | "declare-variable"
@@ -64,6 +65,8 @@ export interface Definition {
     references: Reference[];
 }
 
+export type ResolvedDeclaration = Definition | BuiltinFunctionDefinition;
+
 /**
  * Represents a reference to a variable or function in the source code, along with a reference to the corresponding declaration (if it can be resolved).
  */
@@ -71,7 +74,7 @@ export interface Reference {
     name: string;
     node: ParseTree;
     range: Range;
-    declaration: Definition | undefined;
+    declaration: ResolvedDeclaration | undefined;
 }
 
 /**
@@ -184,7 +187,12 @@ export function analyzeVariableScopes(document: TextDocument): JsoniqAnalysis {
     };
 
     /** Resolves a variable name to its corresponding declaration by searching the scope stack from innermost to outermost scope. */
-    const resolve = (name: string): Definition | undefined => {
+    const resolve = (name: string): ResolvedDeclaration | undefined => {
+        const builtinDefinition = findBuiltinFunctionDefinition(name);
+        if (builtinDefinition !== undefined) {
+            return builtinDefinition;
+        }
+
         for (let index = scopeStack.length - 1; index >= 0; index -= 1) {
             const scope = scopeStack[index];
             const declarations = scope?.definitionByName.get(name);
@@ -193,7 +201,6 @@ export function analyzeVariableScopes(document: TextDocument): JsoniqAnalysis {
                 return declaration;
             }
         }
-        return undefined;
     };
 
     const attachDocumentSymbol = (symbols: DocumentSymbol[], symbol: DocumentSymbol | undefined): DocumentSymbol | undefined => {
@@ -223,7 +230,7 @@ export function analyzeVariableScopes(document: TextDocument): JsoniqAnalysis {
 
         references.push(reference);
 
-        if (declaration !== undefined) {
+        if (isSourceDefinition(declaration)) {
             declaration.references.push(reference);
 
             occurrenceIndex.push({
@@ -458,6 +465,10 @@ export function analyzeVariableScopes(document: TextDocument): JsoniqAnalysis {
         occurrenceIndex,
         documentSymbols,
     };
+}
+
+function isSourceDefinition(declaration: ResolvedDeclaration | undefined): declaration is Definition {
+    return declaration !== undefined && "selectionRange" in declaration;
 }
 
 /**
