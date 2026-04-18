@@ -342,7 +342,7 @@ export function analyzeVariableScopes(document: TextDocument): JsoniqAnalysis {
             const qname = node.qname();
             const name = qname?.getText().trim();
             if (name !== undefined && name !== "") {
-                const declaration = createDefinition(`$${name}`, "parameter", node, node, document);
+                const declaration = createDefinition(`$${name}`, "parameter", node, qname, document);
                 const dollarRange = rangeFromNode(node.Kdollar(), document);
                 declaration.selectionRange = {
                     start: dollarRange.start,
