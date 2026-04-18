@@ -59,3 +59,7 @@ export function findBuiltinFunctionDefinition(nameWithArity: string): BuiltinFun
 
     return undefined;
 }
+
+export function listBuiltinFunctionDefinitions(): BuiltinFunctionDefinition[] {
+    return [...builtinDefinitionsByName.values()];
+}

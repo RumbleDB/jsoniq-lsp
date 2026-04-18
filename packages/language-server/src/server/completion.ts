@@ -8,6 +8,7 @@ import { TextDocument } from "vscode-languageserver-textdocument";
 
 import { jsoniqParser } from "../grammar/jsoniqParser.js";
 import { type Definition, getVisibleDeclarationsAtPosition } from "./analysis.js";
+import { listBuiltinFunctionDefinitions } from "./builtin-definitions.js";
 import {
     EXPRESSION_KEYWORD_TOKENS,
     EXPRESSION_RULES,
@@ -81,9 +82,21 @@ export function findCompletions(document: TextDocument, position: Position): Com
                 })
         : [];
 
+    const allowBuiltinFunctionSuggestions = !typingVariablePrefix
+        && !declaringVariableName
+        && expressionReferenceContext;
+
+    const topLevelModuleStartContext = context.ruleStack.length === 0
+        && context.expectedTokenSet.contains(jsoniqParser.Kmodule);
+    const filterKeywordsAsExpression = expressionReferenceContext && !topLevelModuleStartContext;
+
+    const builtinFunctions = allowBuiltinFunctionSuggestions
+        ? getBuiltinFunctionCompletionItems()
+        : [];
+
     // We offer keyword completions when we are not typing name
     const keywords = !typingVariablePrefix && !typingNamePrefix && !expectingName
-        ? keywordCompletions(context, expressionReferenceContext)
+        ? keywordCompletions(context, filterKeywordsAsExpression)
         : [];
 
     // In case that we are declaring a variable and $ is not typed yet, offer a $ completion item to start the variable declaration
@@ -95,6 +108,7 @@ export function findCompletions(document: TextDocument, position: Position): Com
         ...declarationPrefix,
         ...keywords,
         ...variables,
+        ...builtinFunctions,
     ]);
 }
 
@@ -142,6 +156,10 @@ function isExpressionReferenceContext(context: JsoniqSyntaxContext): boolean {
     // With an empty rule stack, we can still distinguish the start of a module
     // from expression-capable locations by checking whether `module` is expected.
     if (context.ruleStack.length === 0) {
+        if (hasExpectedToken(context, NON_DOLLAR_EXPRESSION_START_TOKENS)) {
+            return true;
+        }
+
         return !context.expectedTokenSet.contains(jsoniqParser.Kmodule);
     }
 
@@ -193,6 +211,23 @@ function toCompletionItem(declaration: Definition): CompletionItem {
         kind: CompletionItemKind.Variable,
         detail: `JSONiq ${declaration.kind}`,
     };
+}
+
+function getBuiltinFunctionCompletionItems(): CompletionItem[] {
+    return listBuiltinFunctionDefinitions().map((definition) => {
+        const [name, arity] = definition.name.split("#", 2);
+        const parameterTypes = definition.signature.parameterTypes.join(", ");
+        const functionName = name ?? definition.name;
+        const detailArity = arity === undefined ? "JSONiq builtin function" : `JSONiq builtin function/${arity}`;
+        const signature = `${functionName}(${parameterTypes}) as ${definition.signature.returnType}`;
+
+        return {
+            label: functionName,
+            kind: CompletionItemKind.Function,
+            detail: detailArity,
+            documentation: signature,
+        };
+    });
 }
 
 function keywordCompletions(context: JsoniqSyntaxContext, expressionReferenceContext: boolean): CompletionItem[] {
