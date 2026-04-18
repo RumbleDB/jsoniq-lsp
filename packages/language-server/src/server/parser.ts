@@ -35,7 +35,7 @@ function createParser(source: string): { lexer: jsoniqLexer; parser: jsoniqParse
     return { lexer, parser, tokenStream };
 }
 
-interface JsoniqSyntaxContext {
+export interface JsoniqSyntaxContext {
     /**
      * List of token types that are expected at the position where code completion is invoked.
      */
@@ -45,17 +45,15 @@ interface JsoniqSyntaxContext {
      * The stack of parser rules that are active at the position where code completion is invoked, with the most recently entered rule first.
      * This can be used to determine the syntactic context for code completion suggestions (e.g., whether we are inside a function declaration, an expression, etc.).
      */
-    ruleStack: string[];
+    ruleStack: number[];
 
     offset: number;
 }
 
-export interface JsoniqCompletionContext extends JsoniqSyntaxContext {
-    /**
-     * The offset of the caret token for which this completion context was captured.
-     * This may differ from the `offset` property if the caret is on trailing whitespace or EOF, where the closest token for context collection can be just before or after the caret.
-     */
-    caretOffset: number;
+function toParserRuleStack(parser: jsoniqParser, ruleNames: string[]): number[] {
+    return ruleNames
+        .map((ruleName) => parser.getRuleIndex(ruleName))
+        .filter((ruleIndex) => ruleIndex >= 0);
 }
 
 export interface JsoniqParseResult {
@@ -90,7 +88,7 @@ class JsoniqErrorListener extends BaseErrorListener {
                 this.contexts.push({
                     offset,
                     expectedTokenSet: recognizer.getExpectedTokens(),
-                    ruleStack: recognizer.getRuleInvocationStack(),
+                    ruleStack: toParserRuleStack(recognizer, recognizer.getRuleInvocationStack()),
                 });
             } catch {
                 // The parser can be in an invalid state after a complete parse; diagnostics still matter.
@@ -189,7 +187,7 @@ export function parseJsoniqDocument(document: TextDocument): JsoniqParseResult {
  * @param cursorOffset The offset in the document where code completion is invoked
  * @returns 
  */
-export function collectCompletionContext(document: TextDocument, cursorOffset: number): JsoniqCompletionContext | null {
+export function collectCompletionContext(document: TextDocument, cursorOffset: number): JsoniqSyntaxContext | null {
     const cached = getCachedParse(document);
     const caret = findCaretToken(cached.tokens, cursorOffset);
     const tokenTypes = getCompletionTokenTypes(cached.parser, caret.tokenIndex);
@@ -207,7 +205,6 @@ export function collectCompletionContext(document: TextDocument, cursorOffset: n
             expectedTokenSet: context.expectedTokenSet,
             ruleStack: context.ruleStack,
             offset: context.offset,
-            caretOffset: caret.offset,
         };
     }
 
@@ -215,7 +212,6 @@ export function collectCompletionContext(document: TextDocument, cursorOffset: n
         expectedTokenSet: new IntervalSet([...tokenTypes]),
         ruleStack,
         offset: context?.offset ?? cursorOffset,
-        caretOffset: caret.offset,
     };
 }
 
@@ -259,7 +255,6 @@ function closestCompletionContext(
 function getCompletionTokenTypes(parser: jsoniqParser, caretTokenIndex: number): number[] {
     const core = new CodeCompletionCore(parser);
     core.ignoredTokens = IGNORED_COMPLETION_TOKENS;
-    core.preferredRules = new Set([jsoniqParser.RULE_qname]);
 
     const candidates = core.collectCandidates(caretTokenIndex);
     return [...candidates.tokens.keys()].filter((tokenType) => tokenType !== Token.EOF);
