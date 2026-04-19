@@ -42,7 +42,7 @@ export type DefinitionKind =
     | "function"
     | "builtin-function";
 
-export interface Definition {
+export interface BaseDefinition {
     name: string;
     kind: DefinitionKind;
 
@@ -56,7 +56,7 @@ export interface Definition {
  * Represents a variable declaration in the source code, including its name, kind (e.g. function parameter, FLWOR clause variable, etc.), 
  * the corresponding parse tree node, and the range of the declaration in the source document.
  */
-export interface SourceDefinition extends Definition {
+export interface SourceDefinition extends BaseDefinition {
     node: ParseTree;
 
     /// Range = the entire range of the declaration
@@ -72,6 +72,8 @@ export interface SourceDefinition extends Definition {
 
     isBuiltin: false;
 }
+
+type Definition = SourceDefinition | BuiltinFunctionDefinition;
 
 /**
  * Represents a reference to a variable or function in the source code, along with a reference to the corresponding declaration (if it can be resolved).
@@ -479,7 +481,7 @@ export function analyzeVariableScopes(document: TextDocument): JsoniqAnalysis {
     };
 }
 
-export function isSourceDefinition(declaration: Definition | undefined): declaration is SourceDefinition {
+export function isSourceDefinition(declaration: BaseDefinition | undefined): declaration is SourceDefinition {
     return declaration !== undefined && declaration.isBuiltin === false;
 }
 
@@ -526,9 +528,9 @@ function sanitizeSymbolName(name: string): string | null {
  * 2) Binary-search the insertion point for `position`.
  * 3) Scan backward to prefer nearest declarations first, keeping one declaration per name.
  */
-export function getVisibleDeclarationsAtPosition(document: TextDocument, position: Position): Definition[] {
+export function getVisibleDeclarationsAtPosition(document: TextDocument, position: Position): BaseDefinition[] {
     const analysis = getAnalysis(document);
-    const visibleByName = new Map<string, Definition>();
+    const visibleByName = new Map<string, BaseDefinition>();
     const source = document.getText();
     const positionOffset = document.offsetAt(position);
 

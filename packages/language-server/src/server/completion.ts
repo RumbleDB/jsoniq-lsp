@@ -7,7 +7,7 @@ import {
 import { TextDocument } from "vscode-languageserver-textdocument";
 
 import { jsoniqParser } from "../grammar/jsoniqParser.js";
-import { type Definition, getVisibleDeclarationsAtPosition } from "./analysis.js";
+import { type BaseDefinition, getVisibleDeclarationsAtPosition } from "./analysis.js";
 import { listBuiltinFunctionDefinitions } from "./builtin-definitions.js";
 import {
     EXPRESSION_KEYWORD_TOKENS,
@@ -196,7 +196,7 @@ function getDeclarationCompletionItems(document: TextDocument, position: Positio
     return getVisibleDeclarationsAtPosition(document, position).map(toCompletionItem);
 }
 
-function toCompletionItem(declaration: Definition): CompletionItem {
+function toCompletionItem(declaration: BaseDefinition): CompletionItem {
     if (declaration.kind === "function") {
         const [name, arity] = declaration.name.split("#", 2);
         return {

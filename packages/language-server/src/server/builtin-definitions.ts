@@ -1,7 +1,7 @@
-import { Definition } from "./analysis.js";
+import { BaseDefinition } from "./analysis.js";
 import { connection, type WrapperBuiltinFunctionSignature } from "./wrapper-connection.js";
 
-export interface BuiltinFunctionDefinition extends Definition {
+export interface BuiltinFunctionDefinition extends BaseDefinition {
     name: string;
     kind: "builtin-function";
     signature: WrapperBuiltinFunctionSignature;
