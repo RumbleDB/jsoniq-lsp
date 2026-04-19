@@ -73,7 +73,7 @@ export interface SourceDefinition extends BaseDefinition {
     isBuiltin: false;
 }
 
-type Definition = SourceDefinition | BuiltinFunctionDefinition;
+export type Definition = SourceDefinition | BuiltinFunctionDefinition;
 
 /**
  * Represents a reference to a variable or function in the source code, along with a reference to the corresponding declaration (if it can be resolved).
@@ -236,16 +236,21 @@ export function analyzeVariableScopes(document: TextDocument): JsoniqAnalysis {
             declaration,
         } satisfies Reference;
 
+        /// We still push reference so we can show unresolved references diagnostic
         references.push(reference);
+
+        if (declaration === undefined) {
+            return;
+        }
+
+        occurrenceIndex.push({
+            range: reference.range,
+            declaration,
+            reference,
+        });
 
         if (isSourceDefinition(declaration)) {
             declaration.references.push(reference);
-
-            occurrenceIndex.push({
-                range: reference.range,
-                declaration,
-                reference,
-            });
         }
     };
 

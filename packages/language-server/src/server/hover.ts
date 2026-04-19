@@ -9,35 +9,48 @@ import {
     findVariableOccurrenceNearPosition,
     getAnalysis,
     isSourceDefinition,
+    Definition,
 } from "./analysis.js";
 
 export function findHover(document: TextDocument, position: Position): Hover | null {
     const analysis = getAnalysis(document);
     const occurrence = findVariableOccurrenceNearPosition(analysis, position);
 
-    if (occurrence === undefined || occurrence.declaration === undefined){
+    if (occurrence === undefined || occurrence.declaration === undefined) {
         return null;
     }
 
     const declaration = occurrence.declaration;
-
-    if (!isSourceDefinition(declaration)) {
-        return null;
-    }
     
-    const declarationLine = declaration.selectionRange.start.line + 1;
-
     return {
-        range: occurrence.reference?.range ?? declaration.selectionRange,
+        range: occurrence.range,
         contents: {
             kind: MarkupKind.Markdown,
-            value: [
-                "```jsoniq",
-                declaration.name,
-                "```",
-                `kind: \`${declaration.kind}\``,
-                `declared at line ${declarationLine}`,
-            ].join("\n"),
+            value: createHoverContent(declaration),
         },
     };
 }
+
+function createHoverContent(declaration: Definition): string {
+    if (isSourceDefinition(declaration)) {
+        const declarationLine = declaration.selectionRange.start.line + 1;
+
+        return [
+            "```jsoniq",
+            declaration.name,
+            "```",
+            `kind: \`${declaration.kind}\``,
+            `declared at line ${declarationLine}`,
+        ].join("\n");
+    }
+    else {
+        return [
+            "```jsoniq",
+            declaration.name,
+            "```",
+            `kind: \`${declaration.kind}\``,
+            `(builtin function)`,
+        ].join("\n");
+    }
+}
+
