@@ -29,9 +29,9 @@ import java.util.Objects;
 public final class TypeInferencer {
     public static final Comparator<Position> POSITION_COMPARATOR = Comparator
             .comparingInt(Position::line)
-            .thenComparingInt(Position::column);
+            .thenComparingInt(Position::character);
 
-    public record Position(int line, int column) {
+    public record Position(int line, int character) {
     }
 
     public record SourceRange(String location, Position start, Position end) {
@@ -41,7 +41,7 @@ public final class TypeInferencer {
      * Represents the type of a variable.
      * 
      * @param line     the line number of the variable declaration
-     * @param column   the column number of the variable declaration
+     * @param character   the column number of the variable declaration
      * @param name     the name of the variable
      * @param type     the inferred type of the variable
      * @param nodeKind the kind of AST node that declares the variable (e.g.,
@@ -58,7 +58,7 @@ public final class TypeInferencer {
      * Represents the type of a function.
      * 
      * @param line           the line number of the function declaration
-     * @param column         the column number of the function declaration
+     * @param character         the column number of the function declaration
      * @param name           the name of the function
      * @param parameterTypes a map of parameter names to their types
      * @param returnType     the return type of the function
