@@ -1,22 +1,28 @@
+import { Position, Range } from "vscode-languageserver";
 import { ChildProcessWithoutNullStreams, spawn } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 export interface WrapperVariableType {
-    line: number;
-    column: number;
+    position: Position;
     name: string;
     type: string;
     nodeKind: string;
 }
 
 export interface WrapperFunctionType {
-    line: number;
-    column: number;
+    position: Position;
     name: string;
     parameterTypes: Record<string, string>;
     returnType: string;
+}
+
+export interface WrapperTypeError {
+    code: string;
+    message: string;
+    location: string;
+    range: Range;
 }
 
 export interface WrapperBuiltinFunctionSignature {
@@ -50,6 +56,7 @@ interface WrapperDaemonRequest {
 export interface QueryResponseBody {
     variableTypes: WrapperVariableType[];
     functionTypes: WrapperFunctionType[];
+    typeErrors: WrapperTypeError[];
 }
 
 export interface BuiltInFunctionListResponseBody {
@@ -100,6 +107,7 @@ export class RumbleWrapperConnection {
             body: {
                 variableTypes: [],
                 functionTypes: [],
+                typeErrors: [],
             },
             error: "Wrapper request failed.",
         });
