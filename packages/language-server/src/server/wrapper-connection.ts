@@ -3,12 +3,13 @@ import { ChildProcessWithoutNullStreams, spawn } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { VariableKind } from "./analysis.js";
 
 export interface WrapperVariableType {
     position: Position;
     name: string;
     type: string;
-    nodeKind: string;
+    kind: VariableKind;
 }
 
 export interface WrapperFunctionType {

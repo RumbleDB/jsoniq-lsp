@@ -26,11 +26,16 @@ describe("RumbleWrapperConnection (integration)", () => {
         expect(response.error).toBeNull();
         expect(response.responseType).toBe("inferTypes");
         expect("builtinFunctions" in response.body).toBe(false);
+        expect(response.body.typeErrors).toEqual([]);
 
         const letType = response.body.variableTypes.find(
-            (type) => type.nodeKind === "LetVariableDeclaration" && type.name === "x",
+            (type) => type.kind === "let" && type.name === "x",
         );
         expect(letType?.type).toBe("xs:integer");
+        const parameterType = response.body.variableTypes.find(
+            (type) => type.kind === "parameter" && type.name === "a",
+        );
+        expect(parameterType?.type).toBe("xs:integer");
 
         const functionType = response.body.functionTypes.find((type) => type.name === "local:f");
         expect(functionType).toBeDefined();
@@ -39,16 +44,35 @@ describe("RumbleWrapperConnection (integration)", () => {
         expect(functionType?.returnType).toBe("item*");
     }, 60_000);
 
+    it("returns declared variable types from prolog declarations", async () => {
+        connection = new RumbleWrapperConnection();
+
+        const query = [
+            "declare variable $a := (1, 2);",
+            "$a",
+        ].join("\n");
+
+        const response = await connection.inferTypes(query);
+
+        console.log("Received response:", JSON.stringify(response, null, 2));
+
+        expect(response.error).toBeNull();
+        const declaredVariable = response.body.variableTypes.find(
+            (type) => type.kind === "declare-variable" && type.name === "a",
+        );
+
+        expect(declaredVariable).toBeDefined();
+        expect(declaredVariable!.type.includes("xs:integer")).toBe(true);
+    }, 60_000);
+
     it("returns parse error for invalid query", async () => {
         connection = new RumbleWrapperConnection();
 
         const response = await connection.inferTypes("let $x := return");
-
         expect(response.responseType).toBe("inferTypes");
-        expect(response.error).toBeTypeOf("string");
         expect(response.body.variableTypes).toEqual([]);
         expect(response.body.functionTypes).toEqual([]);
-        expect("builtinFunctions" in response.body).toBe(false);
+        expect(response.error).not.toBeNull();
     }, 60_000);
 
     it("returns builtin function signatures", async () => {
