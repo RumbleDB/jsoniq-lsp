@@ -27,17 +27,16 @@ import java.util.Map;
 import java.util.Objects;
 
 public final class TypeInferencer {
-    private static final Comparator<VariableType> VARIABLE_TYPE_POSITION_COMPARATOR = Comparator
-            .comparingInt(VariableType::line)
-            .thenComparingInt(VariableType::column);
+    public static final Comparator<Position> POSITION_COMPARATOR = Comparator
+            .comparingInt(Position::line)
+            .thenComparingInt(Position::column);
 
-    private static final Comparator<FunctionType> FUNCTION_TYPE_POSITION_COMPARATOR = Comparator
-            .comparingInt(FunctionType::line)
-            .thenComparingInt(FunctionType::column);
-
-    private record SourceRange(String location, int startLine, int startColumn, int endLine, int endColumn) {
+    public record Position(int line, int column) {
     }
-    
+
+    public record SourceRange(String location, Position start, Position end) {
+    }
+
     /**
      * Represents the type of a variable.
      * 
@@ -49,8 +48,7 @@ public final class TypeInferencer {
      *                 "ForVariableDeclaration", "LetVariableDeclaration", etc.)
      */
     public record VariableType(
-            int line,
-            int column,
+            Position position,
             String name,
             String type,
             String nodeKind) {
@@ -66,8 +64,7 @@ public final class TypeInferencer {
      * @param returnType     the return type of the function
      */
     public record FunctionType(
-            int line,
-            int column,
+            Position position,
             String name,
             Map<String, String> parameterTypes,
             String returnType) {
@@ -77,10 +74,7 @@ public final class TypeInferencer {
             String code,
             String message,
             String location,
-            int line,
-            int column,
-            int endLine,
-            int endColumn) {
+            SourceRange range) {
     }
 
     public record InferenceResult(
@@ -124,8 +118,8 @@ public final class TypeInferencer {
         try {
             MainModule module = VisitorHelpers.parseMainModuleFromQuery(query, this.permissiveConfiguration);
             visitNodeAndCollectTypes(module, variableTypes, functionTypes);
-            variableTypes.sort(VARIABLE_TYPE_POSITION_COMPARATOR);
-            functionTypes.sort(FUNCTION_TYPE_POSITION_COMPARATOR);
+            variableTypes.sort((v1, v2) -> POSITION_COMPARATOR.compare(v1.position(), v2.position()));
+            functionTypes.sort((f1, f2) -> POSITION_COMPARATOR.compare(f1.position(), f2.position()));
         } catch (Throwable throwable) {
             /// Because we are using the permissive configuration, the only kind of error we
             /// expect here are parsing errors
@@ -156,16 +150,13 @@ public final class TypeInferencer {
                 ? ExceptionMetadata.EMPTY_METADATA
                 : exception.getMetadata();
         String code = exception.getErrorCode();
-        String message = Objects.toString(exception.getJSONiqErrorMessage(),  exception.getMessage());
+        String message = Objects.toString(exception.getJSONiqErrorMessage(), exception.getMessage());
         SourceRange range = chooseBestErrorRange(metadata);
         return new TypeError(
                 code,
                 message,
                 range.location(),
-                range.startLine(),
-                range.startColumn(),
-                range.endLine(),
-                range.endColumn());
+                range);
     }
 
     private static SourceRange chooseBestErrorRange(ExceptionMetadata metadata) {
@@ -173,10 +164,8 @@ public final class TypeInferencer {
         int startColumn = Math.max(0, metadata.getTokenColumnNumber());
         return new SourceRange(
                 Objects.toString(metadata.getLocation(), ""),
-                startLine,
-                startColumn,
-                startLine,
-                startColumn + 1);
+                new Position(startLine, startColumn),
+                new Position(startLine, startColumn + 1));
     }
 
     /**
@@ -246,8 +235,7 @@ public final class TypeInferencer {
         }
 
         functionTypes.add(new FunctionType(
-                line,
-                column,
+                new Position(line, column),
                 functionDeclaration.getFunctionIdentifier().getName().toString(),
                 parameterTypes,
                 returnType.toString()));
@@ -263,7 +251,8 @@ public final class TypeInferencer {
             Node node,
             List<VariableType> variableTypes) {
         if (node instanceof VariableDeclaration variableDeclaration) {
-            /// Global variable declaration does not Clause type, we need to handle it separately
+            /// Global variable declaration does not Clause type, we need to handle it
+            /// separately
             addDeclaredVariableType(variableDeclaration, variableTypes);
             return;
         }
@@ -344,8 +333,7 @@ public final class TypeInferencer {
 
         SequenceType variableType = variableDeclaration.getSequenceType();
         variableTypes.add(new VariableType(
-                metadata.getTokenLineNumber(),
-                metadata.getTokenColumnNumber(),
+                new Position(metadata.getTokenLineNumber(), metadata.getTokenColumnNumber()),
                 variableName.toString(),
                 variableType.toString(),
                 "DeclareVariableDeclaration"));
@@ -378,7 +366,8 @@ public final class TypeInferencer {
             int column = metadata.getTokenColumnNumber();
 
             variableTypes
-                    .add(new VariableType(line, column, variableName.toString(), variableType.toString(), nodeKind));
+                    .add(new VariableType(new Position(line, column), variableName.toString(), variableType.toString(),
+                            nodeKind));
             return true;
         } catch (Throwable ignored) {
             return false;
