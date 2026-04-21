@@ -358,7 +358,7 @@ public final class TypeInferencer implements RequestHandler {
         SequenceType variableType = variableDeclaration.getSequenceType();
         variableTypes.add(new VariableType(
                 createPosition(metadata),
-                variableName.toString(),
+                "$" + variableName.toString(),
                 variableType.toString(),
                 VariableKind.Declare));
     }
@@ -387,7 +387,7 @@ public final class TypeInferencer implements RequestHandler {
             SequenceType variableType = context.getVariableSequenceType(variableName);
             ExceptionMetadata metadata = context.getVariableMetadata(variableName);
             variableTypes
-                    .add(new VariableType(createPosition(metadata), variableName.toString(), variableType.toString(),
+                    .add(new VariableType(createPosition(metadata), "$" + variableName.toString(), variableType.toString(),
                             kind));
             return true;
         } catch (Throwable ignored) {

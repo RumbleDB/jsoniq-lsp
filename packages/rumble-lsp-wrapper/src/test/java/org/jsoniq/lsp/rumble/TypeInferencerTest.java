@@ -40,7 +40,7 @@ class TypeInferencerTest {
         Optional<TypeInferencer.VariableType> letVariableType = result.variableTypes()
                 .stream()
                 .filter(type -> VariableKind.Let.equals(type.kind()))
-                .filter(type -> "x".equals(type.name()))
+                .filter(type -> "$x".equals(type.name()))
                 .findFirst();
 
         assertTrue(letVariableType.isPresent());
@@ -59,7 +59,7 @@ class TypeInferencerTest {
         Optional<TypeInferencer.VariableType> declaredVariableType = result.variableTypes()
                 .stream()
                 .filter(type -> VariableKind.Declare.equals(type.kind()))
-                .filter(type -> "a".equals(type.name()))
+                .filter(type -> "$a".equals(type.name()))
                 .findFirst();
 
         assertTrue(declaredVariableType.isPresent());
@@ -106,7 +106,7 @@ class TypeInferencerTest {
         Set<String> xTypes = result.variableTypes()
                 .stream()
                 .filter(type -> VariableKind.Let.equals(type.kind()))
-                .filter(type -> "x".equals(type.name()))
+                .filter(type -> "$x".equals(type.name()))
                 .map(TypeInferencer.VariableType::type)
                 .collect(Collectors.toSet());
 
