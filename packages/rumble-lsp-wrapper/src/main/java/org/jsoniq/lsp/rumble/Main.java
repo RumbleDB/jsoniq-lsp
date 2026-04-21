@@ -87,31 +87,24 @@ public class Main {
     private static WrapperResponse processDaemonRequest(String requestLine) {
         long requestId = -1L;
         String requestType = REQUEST_TYPE_INFER_TYPES;
+
+        RequestHandler handler = DAEMON_HANDLERS.get(requestType);
+        if (handler == null) {
+            return new WrapperResponse(requestId, requestType, null,
+                    "Unsupported requestType '" + requestType + "'.");
+        }
+
         try {
             Request request = OBJECT_MAPPER.readValue(requestLine, Request.class);
             requestId = request.id();
             requestType = request.requestType();
 
-            RequestHandler handler = DAEMON_HANDLERS.get(requestType);
-            if (handler == null) {
-                return new WrapperResponse(requestId, requestType, fallbackResponseBody(requestType),
-                        "Unsupported requestType '" + requestType + "'.");
-            }
-
             return new WrapperResponse(requestId, requestType,
                     handler.handle(new Request(requestId, requestType, request.body())), null);
         } catch (Throwable throwable) {
             String errorMessage = Objects.toString(throwable.getMessage(), throwable.getClass().getName());
-            return new WrapperResponse(requestId, requestType, fallbackResponseBody(requestType), errorMessage);
+            return new WrapperResponse(requestId, requestType, handler.createEmptyResponse(), errorMessage);
         }
-    }
-
-    private static ResponseBody fallbackResponseBody(String requestType) {
-        if (REQUEST_TYPE_BUILTIN_FUNCTIONS.equals(requestType)) {
-            return BuiltinFunctions.EMPTY_RESPONSE_BODY;
-        }
-
-        return TypeInferencer.EMPTY_RESULT;
     }
 
     private static String readAllStdin() throws IOException {

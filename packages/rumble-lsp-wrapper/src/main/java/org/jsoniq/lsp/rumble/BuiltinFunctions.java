@@ -70,4 +70,9 @@ public class BuiltinFunctions implements RequestHandler{
     public ResponseBody handle(Request request) {
         return new Result(byNameWithArity());
     }
+
+    @Override
+    public ResponseBody createEmptyResponse() {
+        return EMPTY_RESPONSE_BODY;
+    }
 }

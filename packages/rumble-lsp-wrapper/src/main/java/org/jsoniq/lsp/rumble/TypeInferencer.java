@@ -402,4 +402,9 @@ public final class TypeInferencer implements RequestHandler {
         String query = new String(decodedBytes, StandardCharsets.UTF_8);
         return infer(query);
     }
+
+    @Override
+    public ResponseBody createEmptyResponse() {
+        return EMPTY_RESULT;
+    }
 }
