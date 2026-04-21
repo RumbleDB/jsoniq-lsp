@@ -80,8 +80,8 @@ class TypeInferencerTest {
                 .findFirst();
 
         assertTrue(functionType.isPresent());
-        assertEquals("xs:integer", functionType.get().parameterTypes().get("$a"));
-        assertEquals("item*", functionType.get().parameterTypes().get("$b"));
+        assertEquals("xs:integer", functionType.get().parameterTypes().get(0).type());
+        assertEquals("item*", functionType.get().parameterTypes().get(1).type());
         assertEquals("item*", functionType.get().returnType());
     }
 

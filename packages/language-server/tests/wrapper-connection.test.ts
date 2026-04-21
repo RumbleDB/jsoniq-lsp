@@ -35,8 +35,8 @@ describe("RumbleWrapperConnection (integration)", () => {
 
         const functionType = response.body.functionTypes.find((type) => type.name === "local:f");
         expect(functionType).toBeDefined();
-        expect(functionType?.parameterTypes["$a"]).toBe("xs:integer");
-        expect(functionType?.parameterTypes["$b"]).toBe("item*");
+        expect(functionType?.parameterTypes[0].type).toBe("xs:integer");
+        expect(functionType?.parameterTypes[1].type).toBe("item*");
         expect(functionType?.returnType).toBe("item*");
     }, 60_000);
 

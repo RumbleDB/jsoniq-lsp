@@ -15,7 +15,10 @@ export interface WrapperVariableType {
 export interface WrapperFunctionType {
     position: Position;
     name: string;
-    parameterTypes: Record<string, string>;
+    parameterTypes: Array<{
+        name: string;
+        type: string;
+    }>
     returnType: string;
 }
 

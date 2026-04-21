@@ -25,9 +25,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Comparator;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 
 public final class TypeInferencer implements RequestHandler {
@@ -76,6 +74,11 @@ public final class TypeInferencer implements RequestHandler {
             VariableKind kind) {
     }
 
+    public record ParameterType(
+            String name,
+            String type) {
+    }
+
     /**
      * Represents the type of a function.
      * 
@@ -88,7 +91,7 @@ public final class TypeInferencer implements RequestHandler {
     public record FunctionType(
             Position position,
             String name,
-            Map<String, String> parameterTypes,
+            List<ParameterType> parameterTypes,
             String returnType) {
     }
 
@@ -236,7 +239,7 @@ public final class TypeInferencer implements RequestHandler {
             return;
         }
 
-        Map<String, String> parameterTypes = new LinkedHashMap<>();
+        List<ParameterType> parameterTypes = new ArrayList<>();
         functionExpression.getParams().forEach((name, type) -> {
             /// I don't add parameters to variable list because we don't have the exact
             /// position of the parameters in the metadata (the metadata only contains the
@@ -247,7 +250,7 @@ public final class TypeInferencer implements RequestHandler {
             /// position information for parameters there.
             String parameterName = name.getLocalName() == null ? name.toString() : name.getLocalName();
             String parameterType = type == null ? "item*" : type.toString();
-            parameterTypes.put("$" + parameterName, parameterType);
+            parameterTypes.add(new ParameterType("$" + parameterName, parameterType));
         });
 
         SequenceType returnType = functionExpression.getReturnType();
