@@ -220,11 +220,11 @@ describe("JSONiq variable scope analysis", () => {
         ]);
     });
 
-    it("does not make an incomplete variable declaration visible from trailing initializer whitespace", () => {
+    it("does not make an incomplete variable declaration visible from trailing initializer whitespace", async () => {
         const source = "declare variable $a := ";
         const document = testDocument("scope-incomplete-var-init", source);
 
-        const visibleDeclarations = getVisibleDeclarationsAtPosition(document, {
+        const visibleDeclarations = await getVisibleDeclarationsAtPosition(document, {
             line: 0,
             character: source.length,
         });
@@ -232,11 +232,11 @@ describe("JSONiq variable scope analysis", () => {
         expect(visibleDeclarations.map((declaration) => declaration.name)).not.toContain("$a");
     });
 
-    it("makes a completed prolog variable visible after its semicolon", () => {
+    it("makes a completed prolog variable visible after its semicolon", async () => {
         const source = "declare variable $a := 1; ";
         const document = testDocument("scope-complete-var-init", source);
 
-        const visibleDeclarations = getVisibleDeclarationsAtPosition(document, {
+        const visibleDeclarations = await getVisibleDeclarationsAtPosition(document, {
             line: 0,
             character: source.length,
         });

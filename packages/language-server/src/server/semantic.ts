@@ -17,8 +17,8 @@ export const legend: SemanticTokensLegend = {
 const USER_MODIFIER_MASK = 1 << 0;
 const defaultLibraryModifierMask = 1 << 1;
 
-export function collectSemanticDiagnostics(document: TextDocument): Diagnostic[] {
-    const analysis = getAnalysis(document);
+export async function collectSemanticDiagnostics(document: TextDocument): Promise<Diagnostic[]> {
+    const analysis = await getAnalysis(document);
     const diagnostics: Diagnostic[] = [];
 
     for (const reference of analysis.unresolvedReferences) {
@@ -48,8 +48,8 @@ function addSemanticToken(
     );
 }
 
-export function collectSemanticTokens(document: TextDocument): SemanticTokens {
-    const analysis = getAnalysis(document);
+export async function collectSemanticTokens(document: TextDocument): Promise<SemanticTokens> {
+    const analysis = await getAnalysis(document);
     const builder = new SemanticTokensBuilder();
 
     for (const definition of analysis.definitions) {

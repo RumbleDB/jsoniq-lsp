@@ -23,7 +23,7 @@ import {
     type JsoniqSyntaxContext,
 } from "./parser.js";
 
-export function findCompletions(document: TextDocument, position: Position): CompletionItem[] {
+export async function findCompletions(document: TextDocument, position: Position): Promise<CompletionItem[]> {
     const source = document.getText();
     const cursorOffset = document.offsetAt(position);
     const context = collectCompletionContext(document, cursorOffset);
@@ -73,7 +73,7 @@ export function findCompletions(document: TextDocument, position: Position): Com
         };
 
     const variables = allowVariableSuggestions
-        ? getDeclarationCompletionItems(document, position)
+        ? (await getDeclarationCompletionItems(document, position))
             .map((item) => variableReplaceRange === null
                 ? item
                 : {
@@ -116,8 +116,8 @@ export function findCompletions(document: TextDocument, position: Position): Com
  * Returns only visible variable/function declarations. Tests use this directly
  * to keep scope analysis separate from grammar-driven keyword completion.
  */
-export function findVariableCompletions(document: TextDocument, position: Position): CompletionItem[] {
-    return withSortText(getDeclarationCompletionItems(document, position));
+export async function findVariableCompletions(document: TextDocument, position: Position): Promise<CompletionItem[]> {
+    return withSortText(await getDeclarationCompletionItems(document, position));
 }
 
 /**
@@ -192,8 +192,8 @@ function firstIndexOfRule(ruleStack: number[], candidates: Set<number>): number 
     return index;
 }
 
-function getDeclarationCompletionItems(document: TextDocument, position: Position): CompletionItem[] {
-    return getVisibleDeclarationsAtPosition(document, position).map(toCompletionItem);
+async function getDeclarationCompletionItems(document: TextDocument, position: Position): Promise<CompletionItem[]> {
+    return (await getVisibleDeclarationsAtPosition(document, position)).map(toCompletionItem);
 }
 
 function toCompletionItem(declaration: BaseDefinition): CompletionItem {

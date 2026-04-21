@@ -12,8 +12,8 @@ import {
     Definition,
 } from "./analysis.js";
 
-export function findHover(document: TextDocument, position: Position): Hover | null {
-    const analysis = getAnalysis(document);
+export async function findHover(document: TextDocument, position: Position): Promise<Hover | null> {
+    const analysis = await getAnalysis(document);
     const occurrence = findVariableOccurrenceNearPosition(analysis, position);
 
     if (occurrence === undefined || occurrence.declaration === undefined) {

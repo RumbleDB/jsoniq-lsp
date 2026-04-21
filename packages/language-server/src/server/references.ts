@@ -18,12 +18,12 @@ import {
  * @param includeDeclaration Whether to include the declaration location of the variable in the results, in addition to its references
  * @returns An array of Location objects representing all reference locations for the variable at the given position, optionally including the declaration location
  */
-export function findReferenceLocations(
+export async function findReferenceLocations(
     document: TextDocument,
     position: Position,
     includeDeclaration: boolean,
-): Location[] {
-    const analysis = getAnalysis(document);
+): Promise<Location[]> {
+    const analysis = await getAnalysis(document);
     const occurrence = findVariableOccurrenceNearPosition(analysis, position);
     const targetDeclaration = occurrence?.declaration;
 

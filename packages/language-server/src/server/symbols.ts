@@ -6,6 +6,7 @@ import { getAnalysis } from "./analysis.js";
 /**
  * Collects DocumentSymbols from the given TextDocument.
  */
-export function collectDocumentSymbols(document: TextDocument): DocumentSymbol[] {
-    return getAnalysis(document).documentSymbols;
+export async function collectDocumentSymbols(document: TextDocument): Promise<DocumentSymbol[]> {
+    const analysis = await getAnalysis(document);
+    return analysis.documentSymbols;
 }

@@ -580,8 +580,8 @@ function sanitizeSymbolName(name: string): string | null {
  * 2) Binary-search the insertion point for `position`.
  * 3) Scan backward to prefer nearest declarations first, keeping one declaration per name.
  */
-export function getVisibleDeclarationsAtPosition(document: TextDocument, position: Position): BaseDefinition[] {
-    const analysis = getAnalysis(document);
+export async function getVisibleDeclarationsAtPosition(document: TextDocument, position: Position): Promise<BaseDefinition[]> {
+    const analysis = await getAnalysis(document);
     const visibleByName = new Map<string, BaseDefinition>();
     const source = document.getText();
     const positionOffset = document.offsetAt(position);
@@ -824,7 +824,7 @@ const analysisCache = new Map<DocumentUri, CachedAnalysis>();
  * @param document The TextDocument representing the JSONiq source code to analyze
  * @returns The JsoniqVariableScopeAnalysis object containing the results of variable scope analysis for the given document
  */
-export function getAnalysis(document: TextDocument): JsoniqAnalysis {
+export async function getAnalysis(document: TextDocument): Promise<JsoniqAnalysis> {
     const cached = analysisCache.get(document.uri);
 
     if (cached !== undefined && cached.version === document.version) {

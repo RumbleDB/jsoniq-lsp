@@ -17,8 +17,8 @@ import {
  * @param position The Position in the document for which to find the definition location (e.g. the position of the cursor in the editor)
  * @returns A Location object representing the definition location of the variable at the given position, or null if no definition is found
  */
-export function findDefinitionLocation(document: TextDocument, position: Position): Location | null {
-    const analysis = getAnalysis(document);
+export async function findDefinitionLocation(document: TextDocument, position: Position): Promise<Location | null> {
+    const analysis = await getAnalysis(document);
     const occurrence = findVariableOccurrenceNearPosition(analysis, position);
     const declaration = occurrence?.declaration;
 

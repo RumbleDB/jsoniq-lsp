@@ -32,7 +32,7 @@ async function refreshDiagnostics(uri: string): Promise<void> {
 
     const syntaxDiagnostics = parseJsoniqDocument(document).diagnostics;
     const semanticDiagnostics = syntaxDiagnostics.length === 0
-        ? collectSemanticDiagnostics(document)
+        ? await collectSemanticDiagnostics(document)
         : [];
     const typeDiagnostics = syntaxDiagnostics.length === 0
         ? await collectTypeDiagnostics(document)

@@ -5,7 +5,7 @@ import { collectDocumentSymbols } from "../src/server/symbols.js";
 import { testDocument } from "./test-utils.js";
 
 describe("JSONiq document symbols", () => {
-    it("collects top-level declarations", () => {
+    it("collects top-level declarations", async () => {
         const document = testDocument("symbols", [
             "declare namespace app = \"https://example.com/app\";",
             "declare variable $app:value := 1;",
@@ -17,7 +17,7 @@ describe("JSONiq document symbols", () => {
             "app:double($app:value)",
         ]);
 
-        const symbols = flattenSymbols(collectDocumentSymbols(document));
+        const symbols = flattenSymbols(await collectDocumentSymbols(document));
 
         expect(symbols.map((symbol) => [symbol.name, symbol.kind])).toEqual(
             expect.arrayContaining([
@@ -31,20 +31,20 @@ describe("JSONiq document symbols", () => {
         );
     });
 
-    it("collects let-variable bindings", () => {
+    it("collects let-variable bindings", async () => {
         const document = testDocument("let-symbols", [
             "let $x := 2",
             "return $x",
         ]);
 
-        const symbols = flattenSymbols(collectDocumentSymbols(document));
+        const symbols = flattenSymbols(await collectDocumentSymbols(document));
 
         expect(symbols.map((symbol) => [symbol.name, symbol.kind])).toEqual([
             ["$x", SymbolKind.Variable],
         ]);
     });
 
-    it("nests symbols from a declaration initializer under the declaration symbol", () => {
+    it("nests symbols from a declaration initializer under the declaration symbol", async () => {
         const document = testDocument("nested-let-symbols", [
             "let $a := 3",
             "let $b := (",
@@ -54,33 +54,33 @@ describe("JSONiq document symbols", () => {
             "return $a",
         ]);
 
-        const symbols = collectDocumentSymbols(document);
+        const symbols = await collectDocumentSymbols(document);
         const bSymbol = symbols.find((symbol) => symbol.name === "$b");
 
         expect(symbols.map((symbol) => symbol.name)).toEqual(["$a", "$b"]);
         expect(bSymbol?.children?.map((symbol) => symbol.name)).toEqual(["$a"]);
     });
 
-    it("collects for-variable bindings", () => {
+    it("collects for-variable bindings", async () => {
         const document = testDocument("for-symbols", [
             "for $x in ( 1, 2 )",
             "return $x",
         ]);
 
-        const symbols = flattenSymbols(collectDocumentSymbols(document));
+        const symbols = flattenSymbols(await collectDocumentSymbols(document));
 
         expect(symbols.map((symbol) => [symbol.name, symbol.kind])).toEqual([
             ["$x", SymbolKind.Variable],
         ]);
     });
 
-    it("collects multiple variables from a single for clause", () => {
+    it("collects multiple variables from a single for clause", async () => {
         const document = testDocument("for-multi-symbols", [
             "for $x in (1, 2, 3), $y in (1, 2, 3)",
             "return 10 * $x + $y",
         ]);
 
-        const symbolNames = flattenSymbols(collectDocumentSymbols(document)).map((symbol) => symbol.name);
+        const symbolNames = flattenSymbols(await collectDocumentSymbols(document)).map((symbol) => symbol.name);
 
         expect(symbolNames).toEqual([
             "$x",
@@ -88,7 +88,7 @@ describe("JSONiq document symbols", () => {
         ]);
     });
 
-    it("collects function-parameter and FLWOR bindings", () => {
+    it("collects function-parameter and FLWOR bindings", async () => {
         const document = testDocument("flowr-symbols", [
             "declare function local:aggregate($seed, $extra as integer) {",
             "  for $x at $pos in (1, 2, 3)",
@@ -99,7 +99,7 @@ describe("JSONiq document symbols", () => {
             "};",
         ]);
 
-        const symbolNames = flattenSymbols(collectDocumentSymbols(document)).map((symbol) => symbol.name);
+        const symbolNames = flattenSymbols(await collectDocumentSymbols(document)).map((symbol) => symbol.name);
 
         expect(symbolNames).toEqual(
             expect.arrayContaining([
@@ -116,7 +116,7 @@ describe("JSONiq document symbols", () => {
         expect(symbolNames).toHaveLength(8);
     });
 
-    it("collects group-by and count bindings in flowr expressions", () => {
+    it("collects group-by and count bindings in flowr expressions", async () => {
         const document = testDocument("group-count-symbols", [
             "for $x in (1, 2, 3)",
             "group by $group := $x mod 2",
@@ -124,7 +124,7 @@ describe("JSONiq document symbols", () => {
             "return {\"k\": $group, \"i\": $index}",
         ]);
 
-        const symbolNames = flattenSymbols(collectDocumentSymbols(document)).map((symbol) => symbol.name);
+        const symbolNames = flattenSymbols(await collectDocumentSymbols(document)).map((symbol) => symbol.name);
 
         expect(symbolNames).toEqual([
             "$x",
@@ -133,25 +133,25 @@ describe("JSONiq document symbols", () => {
         ]);
     });
 
-    it("never emits empty or invalid symbol names for malformed input", () => {
+    it("never emits empty or invalid symbol names for malformed input", async () => {
         const document = testDocument("broken-symbols", [
             "declare function local:($x) {",
             "  for $ in (1, 2, 3)",
             "  return 1",
         ]);
 
-        const symbols = flattenSymbols(collectDocumentSymbols(document));
+        const symbols = flattenSymbols(await collectDocumentSymbols(document));
 
         expect(symbols.every((symbol) => symbol.name.trim().length > 0 && symbol.name !== "$")).toBe(true);
     });
 
-    it("handles incomplete trailing function parameters", () => {
+    it("handles incomplete trailing function parameters", async () => {
         const document = testDocument("trailing-parameter-symbols", [
             "declare function local:f($a, $b as integer, ) {",
             "}",
         ]);
 
-        const symbols = flattenSymbols(collectDocumentSymbols(document));
+        const symbols = flattenSymbols(await collectDocumentSymbols(document));
 
         expect(symbols.map((symbol) => symbol.name)).toEqual(expect.arrayContaining([
             "local:f",
