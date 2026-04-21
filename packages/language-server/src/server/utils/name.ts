@@ -15,19 +15,21 @@ export function varRefNameOrNull(node: VarRefContext): string | null {
     return name === undefined || name === "" ? null : `$${name}`;
 }
 
+export function functionName(node: FunctionDeclContext | FunctionCallContext | NamedFunctionRefContext): string {
+    return (node._fn_name?.getText() ?? node.qname().getText()).trim();
+}
+
 export function functionNameWithArity(node: FunctionDeclContext | FunctionCallContext | NamedFunctionRefContext): string {
-    const functionName = node._fn_name?.getText() ?? node.qname().getText();
-    const arity = functionArity(node);
-    return `${functionName}#${arity}`;
+    return `${functionName(node)}#${functionArity(node)}`;
 }
 
 export function functionNameWithArityOrNull(node: FunctionDeclContext | FunctionCallContext | NamedFunctionRefContext): string | null {
-    const functionName = (node._fn_name?.getText() ?? node.qname()?.getText())?.trim();
-    if (functionName === undefined || functionName === "") {
+    const name = functionName(node);
+    if (name === undefined || name === "") {
         return null;
     }
 
-    return `${functionName}#${functionArity(node)}`;
+    return `${name}#${functionArity(node)}`;
 }
 
 function functionArity(node: FunctionDeclContext | FunctionCallContext | NamedFunctionRefContext): number {

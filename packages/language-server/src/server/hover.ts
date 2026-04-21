@@ -41,6 +41,7 @@ function createHoverContent(declaration: Definition): string {
             "```",
             `kind: \`${declaration.kind}\``,
             `declared at line ${declarationLine}`,
+            `inferred type: \`${declaration.inferredType ?? "unknown"}\``,
         ].join("\n");
     }
     else {

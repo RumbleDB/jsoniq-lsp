@@ -29,7 +29,7 @@ describe("RumbleWrapperConnection (integration)", () => {
         expect(response.body.typeErrors).toEqual([]);
 
         const letType = response.body.variableTypes.find(
-            (type) => type.kind === "let" && type.name === "x",
+            (type) => type.kind === "let" && type.name === "$x",
         );
         expect(letType?.type).toBe("xs:integer");
 
@@ -52,7 +52,7 @@ describe("RumbleWrapperConnection (integration)", () => {
 
         expect(response.error).toBeNull();
         const declaredVariable = response.body.variableTypes.find(
-            (type) => type.kind === "declare-variable" && type.name === "a",
+            (type) => type.kind === "declare-variable" && type.name === "$a",
         );
 
         expect(declaredVariable).toBeDefined();

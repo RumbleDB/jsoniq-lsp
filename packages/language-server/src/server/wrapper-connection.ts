@@ -1,4 +1,4 @@
-import { Position, Range } from "vscode-languageserver";
+import { Position } from "vscode-languageserver";
 import { ChildProcessWithoutNullStreams, spawn } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
@@ -6,7 +6,6 @@ import { fileURLToPath } from "node:url";
 import { VariableKind } from "./analysis.js";
 
 export interface WrapperVariableType {
-    position: Position;
     name: string;
     type: string;
     kind: VariableKind;
@@ -167,11 +166,15 @@ export class RumbleWrapperConnection {
                 timeout,
             });
 
-            child.stdin.write(`${encodedRequest}\n`, "utf8", (error) => {
-                if (error !== undefined && error !== null) {
-                    this.rejectPending(id, error);
-                }
-            });
+            try {
+                child.stdin.write(`${encodedRequest}\n`, "utf8", (error) => {
+                    if (error !== undefined && error !== null) {
+                        this.rejectPending(id, error);
+                    }
+                });
+            } catch (error) {
+                this.rejectPending(id, error instanceof Error ? error : new Error("Wrapper write failed."));
+            }
         }).catch((error: unknown) => ({
             ...fallbackResponse,
             id,
