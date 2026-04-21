@@ -30,7 +30,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
-public final class TypeInferencer implements RequestHandler{
+public final class TypeInferencer implements RequestHandler {
     public static final Comparator<Position> POSITION_COMPARATOR = Comparator
             .comparingInt(Position::line)
             .thenComparingInt(Position::character);
@@ -44,8 +44,7 @@ public final class TypeInferencer implements RequestHandler{
         For("for"),
         ForPosition("for-position"),
         GroupBy("group-by"),
-        Count("count"),
-        Parameter("parameter");
+        Count("count");
 
         private final String value;
 
@@ -103,8 +102,7 @@ public final class TypeInferencer implements RequestHandler{
     public record Result(
             List<VariableType> variableTypes,
             List<FunctionType> functionTypes,
-            List<TypeError> typeErrors
-    ) implements ResponseBody {
+            List<TypeError> typeErrors) implements ResponseBody {
     }
 
     public final static Result EMPTY_RESULT = new Result(List.of(), List.of(), List.of());
@@ -183,7 +181,8 @@ public final class TypeInferencer implements RequestHandler{
      * 1 is subtracted from the line number to make it uniform.
      * 
      * @param metadata the exception metadata to create the position from
-     * @return a Position object representing the position of the error in the source code
+     * @return a Position object representing the position of the error in the
+     *         source code
      */
     private static Position createPosition(ExceptionMetadata metadata) {
         int line = Math.max(0, metadata.getTokenLineNumber() - 1);
@@ -239,14 +238,16 @@ public final class TypeInferencer implements RequestHandler{
 
         Map<String, String> parameterTypes = new LinkedHashMap<>();
         functionExpression.getParams().forEach((name, type) -> {
+            /// I don't add parameters to variable list because we don't have the exact
+            /// position of the parameters in the metadata (the metadata only contains the
+            /// start position of the function declaration)
+            /// But because parameter names are unique within a function, we can still
+            /// identify them first by function and then by parameter name
+            /// In our LSP, we do have exact position for parameters, so we can complete the
+            /// position information for parameters there.
             String parameterName = name.getLocalName() == null ? name.toString() : name.getLocalName();
             String parameterType = type == null ? "item*" : type.toString();
             parameterTypes.put("$" + parameterName, parameterType);
-            addVariableTypeFromContext(
-                    functionExpression.getStaticContext(),
-                    name,
-                    VariableKind.Parameter,
-                    variableTypes);
         });
 
         SequenceType returnType = functionExpression.getReturnType();
@@ -396,7 +397,7 @@ public final class TypeInferencer implements RequestHandler{
         if (request.body() == null) {
             throw new IllegalArgumentException("Request body is null.");
         }
-        
+
         byte[] decodedBytes = Base64.getDecoder().decode(request.body());
         String query = new String(decodedBytes, StandardCharsets.UTF_8);
         return infer(query);

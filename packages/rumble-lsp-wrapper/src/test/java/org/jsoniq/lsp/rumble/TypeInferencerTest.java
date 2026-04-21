@@ -83,22 +83,6 @@ class TypeInferencerTest {
         assertEquals("xs:integer", functionType.get().parameterTypes().get("$a"));
         assertEquals("item*", functionType.get().parameterTypes().get("$b"));
         assertEquals("item*", functionType.get().returnType());
-
-        Optional<TypeInferencer.VariableType> parameterAType = result.variableTypes()
-                .stream()
-                .filter(type -> VariableKind.Parameter.equals(type.kind()))
-                .filter(type -> "a".equals(type.name()))
-                .findFirst();
-        Optional<TypeInferencer.VariableType> parameterBType = result.variableTypes()
-                .stream()
-                .filter(type -> VariableKind.Parameter.equals(type.kind()))
-                .filter(type -> "b".equals(type.name()))
-                .findFirst();
-
-        assertTrue(parameterAType.isPresent());
-        assertTrue(parameterBType.isPresent());
-        assertEquals("xs:integer", parameterAType.get().type());
-        assertEquals("item*", parameterBType.get().type());
     }
 
     @Test
