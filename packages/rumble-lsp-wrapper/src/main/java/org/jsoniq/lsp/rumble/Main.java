@@ -86,24 +86,25 @@ public class Main {
 
     private static WrapperResponse processDaemonRequest(String requestLine) {
         long requestId = -1L;
-        String requestType = REQUEST_TYPE_INFER_TYPES;
-
-        RequestHandler handler = DAEMON_HANDLERS.get(requestType);
-        if (handler == null) {
-            return new WrapperResponse(requestId, requestType, null,
-                    "Unsupported requestType '" + requestType + "'.");
-        }
+        String requestType = null;
 
         try {
             Request request = OBJECT_MAPPER.readValue(requestLine, Request.class);
             requestId = request.id();
             requestType = request.requestType();
+            RequestHandler handler = DAEMON_HANDLERS.get(requestType);
+            if (handler == null) {
+                return new WrapperResponse(requestId, requestType, null,
+                        "Unsupported requestType '" + requestType + "'.");
+            }
 
             return new WrapperResponse(requestId, requestType,
                     handler.handle(new Request(requestId, requestType, request.body())), null);
         } catch (Throwable throwable) {
             String errorMessage = Objects.toString(throwable.getMessage(), throwable.getClass().getName());
-            return new WrapperResponse(requestId, requestType, handler.createEmptyResponse(), errorMessage);
+            RequestHandler handler = DAEMON_HANDLERS.get(requestType);
+            ResponseBody emptyResponse = handler == null ? null : handler.createEmptyResponse();
+            return new WrapperResponse(requestId, requestType, emptyResponse, errorMessage);
         }
     }
 
