@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
-    analyzeVariableScopes,
+    buildAnalysis,
     findVariableOccurrenceAtPosition,
     getVisibleDeclarationsAtPosition,
     isSourceDefinition,
@@ -20,7 +20,7 @@ describe("JSONiq variable scope analysis", () => {
             "};",
         ]);
 
-        const analysis = analyzeVariableScopes(document);
+        const analysis = buildAnalysis(document);
         const declarationNames = analysis.definitions.map((declaration) => declaration.name);
 
         expect(declarationNames).toEqual([
@@ -45,7 +45,7 @@ describe("JSONiq variable scope analysis", () => {
             "local:f($x)",
         ]);
 
-        const analysis = analyzeVariableScopes(document);
+        const analysis = buildAnalysis(document);
         const references = analysis.references.filter((reference) => reference.name.startsWith("$")).map((reference) => ({
             name: reference.name,
             line: reference.range.start.line,
@@ -69,7 +69,7 @@ describe("JSONiq variable scope analysis", () => {
             "local:add(1, 2)",
         ]);
 
-        const analysis = analyzeVariableScopes(document);
+        const analysis = buildAnalysis(document);
         const functionReference = analysis.references.find((reference) => reference.name === "local:add#2");
 
         expect(functionReference).toMatchObject({
@@ -91,7 +91,7 @@ describe("JSONiq variable scope analysis", () => {
             "return 10 * $x + $y",
         ]);
 
-        const analysis = analyzeVariableScopes(document);
+        const analysis = buildAnalysis(document);
 
         expect(analysis.definitions.map((declaration) => declaration.name)).toEqual([
             "$x",
@@ -114,7 +114,7 @@ describe("JSONiq variable scope analysis", () => {
             "return $x + $ix + $y + $iy",
         ]);
 
-        const analysis = analyzeVariableScopes(document);
+        const analysis = buildAnalysis(document);
 
         expect(analysis.definitions.map((declaration) => ({
             name: declaration.name,
@@ -148,7 +148,7 @@ describe("JSONiq variable scope analysis", () => {
             "};",
         ]);
 
-        const analysis = analyzeVariableScopes(document);
+        const analysis = buildAnalysis(document);
         const parameter = analysis.definitions.find((declaration) => declaration.name === "$x" && declaration.kind === "parameter");
 
         expect(parameter).toBeDefined();
@@ -173,7 +173,7 @@ describe("JSONiq variable scope analysis", () => {
             "};",
         ]);
 
-        const analysis = analyzeVariableScopes(document);
+        const analysis = buildAnalysis(document);
         const parameter = analysis.definitions.find((declaration) => declaration.name === "$x" && declaration.kind === "parameter");
 
         expect(parameter).toBeDefined();
@@ -198,7 +198,7 @@ describe("JSONiq variable scope analysis", () => {
             "return $x",
         ]);
 
-        const analysis = analyzeVariableScopes(document);
+        const analysis = buildAnalysis(document);
         const xDeclarations = analysis.definitions.filter((declaration) => declaration.name === "$x" && declaration.kind === "let");
 
         expect(xDeclarations).toHaveLength(2);

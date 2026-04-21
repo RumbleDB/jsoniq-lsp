@@ -162,7 +162,7 @@ interface SymbolTraversalState {
  * @param document The TextDocument representing the JSONiq source code to analyze
  * @returns An object containing the results of variable scope analysis, including all variable declarations and references along with their relationships
  */
-export function analyzeVariableScopes(document: TextDocument): JsoniqAnalysis {
+export function buildAnalysis(document: TextDocument): JsoniqAnalysis {
     const parseResult = parseJsoniqDocument(document);
     const definitions: SourceDefinition[] = [];
     const references: ResolvedReference[] = [];
@@ -831,7 +831,7 @@ export async function getAnalysis(document: TextDocument): Promise<JsoniqAnalysi
         return cached.analysis;
     }
 
-    const analysis = analyzeVariableScopes(document);
+    const analysis = buildAnalysis(document);
 
     analysisCache.set(document.uri, {
         version: document.version,
