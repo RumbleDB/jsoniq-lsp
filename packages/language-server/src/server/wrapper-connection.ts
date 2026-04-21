@@ -23,7 +23,7 @@ export interface WrapperTypeError {
     code: string;
     message: string;
     location: string;
-    range: Range;
+    position: Position;
 }
 
 export interface WrapperBuiltinFunctionSignature {
