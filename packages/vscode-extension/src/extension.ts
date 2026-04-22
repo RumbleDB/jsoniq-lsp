@@ -23,7 +23,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
                 execArgv: ["--nolazy", "--inspect=6009"],
                 env: {
                     ...process.env,
-                    "NODE_ENV": "development",
+                    "JSONIQ_LSP_DEBUG": "1",
                 },
             },
         },

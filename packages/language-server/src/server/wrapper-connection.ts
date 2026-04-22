@@ -113,10 +113,6 @@ export class RumbleWrapperConnection {
     private stdoutBuffer = "";
     private readonly pending = new Map<number, PendingRequest>();
 
-    public constructor() {
-        this.ensureProcess();
-    }
-
     public async inferTypes(query: string): Promise<QueryResponse> {
         const body = Buffer.from(query, "utf8").toString("base64");
         return this.sendRequest<"inferTypes">({
@@ -151,7 +147,6 @@ export class RumbleWrapperConnection {
         requestPayload: RequestPayloadByType[RequestType],
         fallbackResponse: ResponseByType[RequestType],
     ): Promise<ResponseByType[RequestType]> {
-        this.ensureProcess();
         const id = this.nextRequestId;
         this.nextRequestId += 1;
 
@@ -213,7 +208,7 @@ export class RumbleWrapperConnection {
         }
     }
 
-    private ensureProcess(): void {
+    public ensureProcess(): void {
         if (this.child !== undefined) {
             return;
         }
@@ -317,7 +312,7 @@ function resolveWrapperLaunchConfig(): WrapperLaunchConfig {
     }
 
     /// 2. In the development environment, the wrapper jar is expected to be built by the user and available in the target directory.
-    if (process.env.NODE_ENV === "development") {
+    if (process.env.JSONIQ_LSP_DEBUG === "1") {
         const jarPath = pickLatestJarFromDirectory(WRAPPER_JAR_DEVELOPMENT_FOLDER);
         return {
             args: ["-jar", jarPath, "--daemon"],
@@ -350,9 +345,4 @@ function pickLatestJarFromDirectory(directory: string): string {
     return wrapperJars[0]!;
 };
 
-
 export const connection = new RumbleWrapperConnection();
-
-process.on("exit", () => {
-    connection.dispose();
-});
