@@ -24,7 +24,7 @@ interface PendingRequest {
     timeout: NodeJS.Timeout;
 }
 
-export class RumbleWrapperClient {
+class RumbleWrapperClient {
     private child: ChildProcessWithoutNullStreams | undefined;
     private nextRequestId = 1;
     private stdoutBuffer = "";
