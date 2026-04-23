@@ -30,8 +30,7 @@ import { isNewScopeNode } from "./utils/scope.js";
 import { comparePositions } from "./utils/position.js";
 import { functionName, functionNameWithArityOrNull, varRefNameOrNull } from "./utils/name.js";
 import { findBuiltinFunctionDefinition, type BuiltinFunctionDefinition } from "./wrapper/builtin-functions.js";
-import { type QueryResponseBody } from "./wrapper/protocol.js";
-import { getTypeInference } from "./wrapper/type-inference.js";
+import { getTypeInference, type TypeInferenceResult } from "./wrapper/type-inference.js";
 
 export type VariableKind =
     | "declare-variable"
@@ -849,7 +848,7 @@ export async function getAnalysis(document: TextDocument): Promise<JsoniqAnalysi
     return analysis;
 }
 
-export function injectInferredTypeToAnalysis(analysis: JsoniqAnalysis, inferredTypes: QueryResponseBody): void {
+export function injectInferredTypeToAnalysis(analysis: JsoniqAnalysis, inferredTypes: TypeInferenceResult): void {
     const variables = inferredTypes.variableTypes.values();
     const functions = inferredTypes.functionTypes.values();
 

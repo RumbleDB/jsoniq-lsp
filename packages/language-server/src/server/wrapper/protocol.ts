@@ -1,85 +1,29 @@
-import { Position } from "vscode-languageserver";
+import type { BuiltinFunctionsRequestPayload, REQUEST_TYPE_BUILTIN_FUNCTIONS } from "./builtin-functions.js";
+import type { InferTypesRequestPayload, REQUEST_TYPE_INFER_TYPES } from "./type-inference.js";
 
-export type WrapperVariableKind =
-    | "declare-variable"
-    | "let"
-    | "for"
-    | "for-position"
-    | "group-by"
-    | "count";
-
-export interface WrapperVariableType {
-    name: string;
-    type: string;
-    kind: WrapperVariableKind;
+export interface WrapperRequestPayloadByType {
+    [REQUEST_TYPE_INFER_TYPES]: InferTypesRequestPayload;
+    [REQUEST_TYPE_BUILTIN_FUNCTIONS]: BuiltinFunctionsRequestPayload;
 }
 
-export interface WrapperFunctionType {
-    position: Position;
-    name: string;
-    parameterTypes: Array<{
-        name: string;
-        type: string;
-    }>;
-    returnType: string;
-}
-
-export interface WrapperTypeError {
-    code: string;
-    message: string;
-    location: string;
-    position: Position;
-}
-
-export interface WrapperBuiltinFunctionSignature {
-    parameterTypes: string[];
-    returnType: string;
-}
-
-export type WrapperRequestType = "inferTypes" | "builtinFunctions";
+export type WrapperRequestType = keyof WrapperRequestPayloadByType;
 
 export type RequestPayloadByType = {
-    inferTypes: {
-        requestType: "inferTypes";
-        body: string;
-    };
-    builtinFunctions: {
-        requestType: "builtinFunctions";
-    };
+    [RequestType in WrapperRequestType]: WrapperRequestPayloadByType[RequestType];
 };
 
-export interface WrapperDaemonRequest {
-    id: number;
-    requestType: WrapperRequestType;
-    body?: string;
-}
+export type WrapperRequestPayload<RequestType extends WrapperRequestType = WrapperRequestType> =
+    WrapperRequestPayloadByType[RequestType];
 
-export interface QueryResponseBody {
-    variableTypes: WrapperVariableType[];
-    functionTypes: WrapperFunctionType[];
-    typeErrors: WrapperTypeError[];
-}
+export type WrapperDaemonRequest<RequestType extends WrapperRequestType = WrapperRequestType> =
+    { id: number } & WrapperRequestPayloadByType[RequestType];
 
-export interface BuiltInFunctionListResponseBody {
-    builtinFunctions: Record<string, WrapperBuiltinFunctionSignature>;
-}
-
-export type ResponseBodyByType = {
-    inferTypes: QueryResponseBody;
-    builtinFunctions: BuiltInFunctionListResponseBody;
-};
-
-export interface WrapperDaemonResponse<ResponseType extends WrapperRequestType = WrapperRequestType> {
+export type WrapperDaemonResponse<
+    ResponseType extends WrapperRequestType,
+    ResponseBody,
+> = {
     id: number;
     responseType: ResponseType;
-    body: ResponseBodyByType[ResponseType];
+    body: ResponseBody;
     error: string | null;
-}
-
-export type QueryResponse = WrapperDaemonResponse<"inferTypes">;
-export type BuiltInFunctionListResponse = WrapperDaemonResponse<"builtinFunctions">;
-
-export type ResponseByType = {
-    inferTypes: QueryResponse;
-    builtinFunctions: BuiltInFunctionListResponse;
 };

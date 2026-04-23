@@ -6,8 +6,7 @@ import {
 } from "vscode-languageserver";
 import { TextDocument } from "vscode-languageserver-textdocument";
 
-import { getTypeInference } from "./wrapper/type-inference.js";
-import { type WrapperTypeError } from "./wrapper/protocol.js";
+import { getTypeInference, type WrapperTypeError } from "./wrapper/type-inference.js";
 
 export async function collectTypeDiagnostics(document: TextDocument): Promise<Diagnostic[]> {
     const response = await getTypeInference(document);

@@ -1,12 +1,28 @@
 import type { BaseDefinition } from "../analysis.js";
+import type { WrapperDaemonResponse } from "./protocol.js";
 import { wrapperClient } from "./client.js";
-import { type WrapperBuiltinFunctionSignature } from "./protocol.js";
+
+export interface WrapperBuiltinFunctionSignature {
+    parameterTypes: string[];
+    returnType: string;
+}
+
+export interface BuiltInFunctionListResponseBody {
+    builtinFunctions: Record<string, WrapperBuiltinFunctionSignature>;
+}
+
+export const REQUEST_TYPE_BUILTIN_FUNCTIONS = "builtinFunctions" as const;
+
+export interface BuiltinFunctionsRequestPayload {
+    requestType: typeof REQUEST_TYPE_BUILTIN_FUNCTIONS;
+}
+
+export type BuiltinFunctionListResponse = WrapperDaemonResponse<typeof REQUEST_TYPE_BUILTIN_FUNCTIONS, BuiltInFunctionListResponseBody>;
 
 export interface BuiltinFunctionDefinition extends BaseDefinition {
     name: string;
     kind: "builtin-function";
     signature: WrapperBuiltinFunctionSignature;
-
     isBuiltin: true;
 }
 

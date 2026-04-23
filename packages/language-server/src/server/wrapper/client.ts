@@ -1,20 +1,30 @@
 import { ChildProcessWithoutNullStreams, spawn } from "node:child_process";
 
 import { resolveWrapperLaunchConfig } from "./jar-resolution.js";
-import {
-    type RequestPayloadByType,
-    type ResponseByType,
-    type WrapperDaemonRequest,
-    type WrapperDaemonResponse,
-    type WrapperRequestType,
-    type QueryResponse,
-    type BuiltInFunctionListResponse,
+import type {
+    RequestPayloadByType,
+    WrapperDaemonRequest,
+    WrapperDaemonResponse,
+    WrapperRequestType,
 } from "./protocol.js";
+import type { TypeInferenceResponse, TypeInferenceResult } from "./type-inference.js";
+import type { BuiltinFunctionListResponse, BuiltInFunctionListResponseBody } from "./builtin-functions.js";
+
+interface WrapperResponseBodyByType {
+    inferTypes: TypeInferenceResult;
+    builtinFunctions: BuiltInFunctionListResponseBody;
+}
+
+type ResponseByType = {
+    [RequestType in WrapperRequestType]: WrapperDaemonResponse<RequestType, WrapperResponseBodyByType[RequestType]>;
+};
+
+type AnyWrapperResponse = ResponseByType[WrapperRequestType];
 
 interface PendingRequest {
     expectedResponseType: WrapperRequestType;
-    fallbackResponse: WrapperDaemonResponse;
-    resolve: (response: WrapperDaemonResponse) => void;
+    fallbackResponse: AnyWrapperResponse;
+    resolve: (response: AnyWrapperResponse) => void;
     reject: (error: Error) => void;
     timeout: NodeJS.Timeout;
 }
@@ -25,8 +35,9 @@ export class RumbleWrapperClient {
     private stdoutBuffer = "";
     private readonly pending = new Map<number, PendingRequest>();
 
-    public async inferTypes(query: string): Promise<QueryResponse> {
+    public async inferTypes(query: string): Promise<TypeInferenceResponse> {
         const body = Buffer.from(query, "utf8").toString("base64");
+
         return this.sendRequest<"inferTypes">({
             requestType: "inferTypes",
             body,
@@ -42,7 +53,7 @@ export class RumbleWrapperClient {
         });
     }
 
-    public async listBuiltinFunctions(): Promise<BuiltInFunctionListResponse> {
+    public async listBuiltinFunctions(): Promise<BuiltinFunctionListResponse> {
         return this.sendRequest<"builtinFunctions">({
             requestType: "builtinFunctions",
         }, {
@@ -105,7 +116,7 @@ export class RumbleWrapperClient {
         const id = this.nextRequestId;
         this.nextRequestId += 1;
 
-        const request: WrapperDaemonRequest = {
+        const request: WrapperDaemonRequest<RequestType> = {
             id,
             ...requestPayload,
         };
@@ -129,7 +140,7 @@ export class RumbleWrapperClient {
             this.pending.set(id, {
                 expectedResponseType: requestPayload.requestType,
                 fallbackResponse,
-                resolve: resolve as unknown as (response: WrapperDaemonResponse) => void,
+                resolve: resolve as unknown as (response: AnyWrapperResponse) => void,
                 reject,
                 timeout,
             });
@@ -165,9 +176,9 @@ export class RumbleWrapperClient {
     }
 
     private handleResponseLine(line: string): void {
-        let response: WrapperDaemonResponse;
+        let response: AnyWrapperResponse;
         try {
-            response = JSON.parse(line) as WrapperDaemonResponse;
+            response = JSON.parse(line) as AnyWrapperResponse;
         } catch {
             return;
         }
@@ -216,5 +227,5 @@ export class RumbleWrapperClient {
     }
 }
 
-/// Singleton instance of the wrapper client used across the language server.
+// Singleton instance of the wrapper client used across the language server.
 export const wrapperClient = new RumbleWrapperClient();

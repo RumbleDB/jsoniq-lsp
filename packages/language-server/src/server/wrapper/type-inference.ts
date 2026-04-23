@@ -1,25 +1,71 @@
-import { DocumentUri } from "vscode-languageserver";
+import type { DocumentUri, Position } from "vscode-languageserver";
 import { TextDocument } from "vscode-languageserver-textdocument";
 
+import type { WrapperDaemonResponse } from "./protocol.js";
 import { wrapperClient } from "./client.js";
-import { type QueryResponse } from "./protocol.js";
+
+export type WrapperVariableKind =
+    | "declare-variable"
+    | "let"
+    | "for"
+    | "for-position"
+    | "group-by"
+    | "count";
+
+export interface WrapperVariableType {
+    name: string;
+    type: string;
+    kind: WrapperVariableKind;
+}
+
+export interface WrapperFunctionType {
+    position: Position;
+    name: string;
+    parameterTypes: Array<{
+        name: string;
+        type: string;
+    }>;
+    returnType: string;
+}
+
+export interface WrapperTypeError {
+    code: string;
+    message: string;
+    location: string;
+    position: Position;
+}
+
+export interface TypeInferenceResult {
+    variableTypes: WrapperVariableType[];
+    functionTypes: WrapperFunctionType[];
+    typeErrors: WrapperTypeError[];
+}
+
+export const REQUEST_TYPE_INFER_TYPES = "inferTypes" as const;
+
+export interface InferTypesRequestPayload {
+    requestType: typeof REQUEST_TYPE_INFER_TYPES;
+    body: string;
+}
+
+export type TypeInferenceResponse = WrapperDaemonResponse<typeof REQUEST_TYPE_INFER_TYPES, TypeInferenceResult>;
 
 interface CachedTypeInference {
     version: number;
-    response: QueryResponse;
+    response: TypeInferenceResponse;
 }
 
 const typeInferenceCache = new Map<DocumentUri, CachedTypeInference>();
 
 // Avoid sending multiple identical inference requests for the same document.
-const pendingInferenceByUri = new Map<DocumentUri, Promise<QueryResponse>>();
+const pendingInferenceByUri = new Map<DocumentUri, Promise<TypeInferenceResponse>>();
 
 export function clearTypeInferenceCache(uri: DocumentUri): void {
     typeInferenceCache.delete(uri);
     pendingInferenceByUri.delete(uri);
 }
 
-export async function getTypeInference(document: TextDocument): Promise<QueryResponse> {
+export async function getTypeInference(document: TextDocument): Promise<TypeInferenceResponse> {
     const cached = typeInferenceCache.get(document.uri);
     if (cached !== undefined && cached.version === document.version) {
         return cached.response;
@@ -54,7 +100,7 @@ export async function getTypeInference(document: TextDocument): Promise<QueryRes
                     typeErrors: [],
                 },
                 error: "Wrapper request failed.",
-            } satisfies QueryResponse;
+            } satisfies TypeInferenceResponse;
         });
 
     pendingInferenceByUri.set(document.uri, inferencePromise);
