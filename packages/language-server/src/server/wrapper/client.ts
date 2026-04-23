@@ -32,14 +32,13 @@ class RumbleWrapperClient {
     private handshakeCompleted = false;
     private rumbleVersion: string | null = null;
 
-    public async ensureProcess(): Promise<void> {
+    public async connect(): Promise<void> {
         if (this.child !== undefined && this.handshakeCompleted) {
             return;
         }
 
         if (this.processReadyPromise !== undefined) {
-            await this.processReadyPromise;
-            return;
+            return await this.processReadyPromise;
         }
 
         this.processReadyPromise = this.startAndHandshake();
@@ -108,7 +107,7 @@ class RumbleWrapperClient {
     public async sendRequest<RequestType extends WrapperRequestType>(
         payload: RequestPayloadByType[RequestType]
     ): Promise<ResponseByType[RequestType]> {
-        await this.ensureProcess();
+        await this.connect();
         return this.sendRequestInternal(payload);
     }
 
