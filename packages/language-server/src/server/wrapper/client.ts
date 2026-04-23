@@ -234,3 +234,8 @@ class RumbleWrapperClient {
 
 // Singleton instance of the wrapper client used across the language server.
 export const wrapperClient = new RumbleWrapperClient();
+
+process.on("exit", () => {
+    /// Ensure the wrapper process is killed when the main process exits.
+    wrapperClient.dispose();
+});
