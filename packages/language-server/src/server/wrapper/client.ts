@@ -67,6 +67,7 @@ class RumbleWrapperClient {
             });
 
             this.child.on("error", (error) => {
+                console.error("Wrapper process error:", error);
                 this.rejectAllPending(error);
                 this.child = undefined;
                 this.stdoutBuffer = "";
@@ -74,6 +75,7 @@ class RumbleWrapperClient {
             });
 
             this.child.on("close", () => {
+                console.warn("Wrapper process closed.");
                 this.rejectAllPending(new Error("Wrapper process closed."));
                 this.child = undefined;
                 this.stdoutBuffer = "";
@@ -112,8 +114,6 @@ class RumbleWrapperClient {
         requestPayload: RequestPayloadByType[RequestType],
         fallbackResponse: ResponseByType[RequestType],
     ): Promise<ResponseByType[RequestType]> {
-        await this.ensureProcess();
-
         const id = this.nextRequestId;
         this.nextRequestId += 1;
 
@@ -240,9 +240,3 @@ export function getWrapperClient(): RumbleWrapperClient {
     }
     return instance;
 }
-
-process.on("exit", () => {
-    if (instance !== null) {
-        instance.dispose();
-    }
-});
