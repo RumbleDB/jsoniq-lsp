@@ -11,23 +11,21 @@ import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import java.util.Objects;
 
+import org.jsoniq.lsp.rumble.handlers.BuiltinFunctions;
+import org.jsoniq.lsp.rumble.handlers.RequestHandler;
+import org.jsoniq.lsp.rumble.handlers.TypeInferencer;
+import org.jsoniq.lsp.rumble.messages.Request;
+import org.jsoniq.lsp.rumble.messages.Response;
+import org.jsoniq.lsp.rumble.messages.ResponseBody;
+
 public class Main {
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final TypeInferencer INFERENCER = new TypeInferencer();
     private static final BuiltinFunctions BUILTIN_FUNCTIONS = new BuiltinFunctions();
-    private static final String REQUEST_TYPE_INFER_TYPES = "inferTypes";
-    private static final String REQUEST_TYPE_BUILTIN_FUNCTIONS = "builtinFunctions";
 
     private static final Map<String, RequestHandler> DAEMON_HANDLERS = Map.of(
-            REQUEST_TYPE_INFER_TYPES, INFERENCER,
-            REQUEST_TYPE_BUILTIN_FUNCTIONS, BUILTIN_FUNCTIONS);
-
-    private record WrapperResponse(
-            long id,
-            String responseType,
-            ResponseBody body,
-            String error) {
-    }
+            INFERENCER.getRequestType(), INFERENCER,
+            BUILTIN_FUNCTIONS.getRequestType(), BUILTIN_FUNCTIONS);
 
     private static long requestIdCounter = 0;
 
@@ -37,20 +35,22 @@ public class Main {
             return;
         }
 
+        /// For now, the non-daemon mode only supports type inference
+        /// I might remove this one, or improve it using arg parser in the future
         try {
             String query = readAllStdin();
             TypeInferencer.Result result = INFERENCER.infer(query);
-            writeAndExit(new WrapperResponse(
+            writeAndExit(new Response(
                     requestIdCounter++,
-                    REQUEST_TYPE_INFER_TYPES,
+                    INFERENCER.getRequestType(),
                     result,
                     null),
                     0);
         } catch (Throwable throwable) {
             String errorMessage = Objects.toString(throwable.getMessage(), throwable.getClass().getName());
-            writeAndExit(new WrapperResponse(
+            writeAndExit(new Response(
                     requestIdCounter++,
-                    REQUEST_TYPE_INFER_TYPES,
+                    INFERENCER.getRequestType(),
                     null,
                     errorMessage), 1);
         }
@@ -74,7 +74,7 @@ public class Main {
                 if (line.isBlank()) {
                     continue;
                 }
-                WrapperResponse response = processDaemonRequest(line);
+                Response response = processDaemonRequest(line);
                 writer.println(OBJECT_MAPPER.writeValueAsString(response));
                 writer.flush();
             }
@@ -84,7 +84,7 @@ public class Main {
         }
     }
 
-    private static WrapperResponse processDaemonRequest(String requestLine) {
+    private static Response processDaemonRequest(String requestLine) {
         long requestId = -1L;
         String requestType = null;
 
@@ -94,17 +94,17 @@ public class Main {
             requestType = request.requestType();
             RequestHandler handler = DAEMON_HANDLERS.get(requestType);
             if (handler == null) {
-                return new WrapperResponse(requestId, requestType, null,
+                return new Response(requestId, requestType, null,
                         "Unsupported requestType '" + requestType + "'.");
             }
 
-            return new WrapperResponse(requestId, requestType,
+            return new Response(requestId, requestType,
                     handler.handle(new Request(requestId, requestType, request.body())), null);
         } catch (Throwable throwable) {
             String errorMessage = Objects.toString(throwable.getMessage(), throwable.getClass().getName());
             RequestHandler handler = DAEMON_HANDLERS.get(requestType);
             ResponseBody emptyResponse = handler == null ? null : handler.createEmptyResponse();
-            return new WrapperResponse(requestId, requestType, emptyResponse, errorMessage);
+            return new Response(requestId, requestType, emptyResponse, errorMessage);
         }
     }
 
@@ -124,7 +124,7 @@ public class Main {
         return content.toString();
     }
 
-    private static void writeAndExit(WrapperResponse response, int exitCode) {
+    private static void writeAndExit(Response response, int exitCode) {
         try {
             System.out.println(OBJECT_MAPPER.writeValueAsString(response));
         } catch (JsonProcessingException exception) {

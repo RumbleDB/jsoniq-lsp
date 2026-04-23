@@ -1,6 +1,7 @@
 package org.jsoniq.lsp.rumble;
 
-import org.jsoniq.lsp.rumble.TypeInferencer.VariableKind;
+import org.jsoniq.lsp.rumble.handlers.TypeInferencer;
+import org.jsoniq.lsp.rumble.handlers.TypeInferencer.VariableKind;
 import org.junit.jupiter.api.Test;
 
 import java.util.Optional;

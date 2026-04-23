@@ -1,5 +1,7 @@
-package org.jsoniq.lsp.rumble;
+package org.jsoniq.lsp.rumble.handlers;
 
+import org.jsoniq.lsp.rumble.messages.Request;
+import org.jsoniq.lsp.rumble.messages.ResponseBody;
 import org.rumbledb.context.BuiltinFunction;
 import org.rumbledb.context.BuiltinFunctionCatalogue;
 import org.rumbledb.context.FunctionIdentifier;
@@ -74,5 +76,10 @@ public class BuiltinFunctions implements RequestHandler{
     @Override
     public ResponseBody createEmptyResponse() {
         return EMPTY_RESPONSE_BODY;
+    }
+
+    @Override
+    public String getRequestType() {
+        return "builtinFunctions";
     }
 }

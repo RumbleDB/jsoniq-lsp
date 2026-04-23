@@ -1,5 +1,6 @@
 package org.jsoniq.lsp.rumble;
 
+import org.jsoniq.lsp.rumble.handlers.BuiltinFunctions;
 import org.junit.jupiter.api.Test;
 
 import java.util.Optional;

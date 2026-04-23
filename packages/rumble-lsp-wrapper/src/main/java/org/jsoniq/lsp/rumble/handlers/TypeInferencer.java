@@ -1,5 +1,7 @@
-package org.jsoniq.lsp.rumble;
+package org.jsoniq.lsp.rumble.handlers;
 
+import org.jsoniq.lsp.rumble.messages.ResponseBody;
+import org.jsoniq.lsp.rumble.messages.Request;
 import org.rumbledb.compiler.VisitorHelpers;
 import org.rumbledb.config.RumbleRuntimeConfiguration;
 import org.rumbledb.context.Name;
@@ -387,7 +389,8 @@ public final class TypeInferencer implements RequestHandler {
             SequenceType variableType = context.getVariableSequenceType(variableName);
             ExceptionMetadata metadata = context.getVariableMetadata(variableName);
             variableTypes
-                    .add(new VariableType(createPosition(metadata), "$" + variableName.toString(), variableType.toString(),
+                    .add(new VariableType(createPosition(metadata), "$" + variableName.toString(),
+                            variableType.toString(),
                             kind));
             return true;
         } catch (Throwable ignored) {
@@ -409,5 +412,10 @@ public final class TypeInferencer implements RequestHandler {
     @Override
     public ResponseBody createEmptyResponse() {
         return EMPTY_RESULT;
+    }
+
+    @Override
+    public String getRequestType() {
+        return "inferTypes";
     }
 }
