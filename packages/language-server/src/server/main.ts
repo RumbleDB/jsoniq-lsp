@@ -19,7 +19,6 @@ import { findCompletions } from "./completion.js";
 import { initializeBuiltinFunctionDefinitions } from "./wrapper/builtin-functions.js";
 import { clearTypeInferenceCache } from "./wrapper/type-inference.js";
 import { collectTypeDiagnostics } from "./type-diagnostics.js";
-import { wrapperClient } from "./wrapper/client.js";
 
 const connection = createConnection(ProposedFeatures.all);
 const documents = new TextDocuments(TextDocument);
@@ -50,7 +49,6 @@ async function refreshDiagnostics(uri: string): Promise<void> {
 }
 
 connection.onInitialize(async (_params: InitializeParams): Promise<InitializeResult> => {
-    wrapperClient.ensureProcess();
     await initializeBuiltinFunctionDefinitions();
 
     return {

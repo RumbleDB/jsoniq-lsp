@@ -1,6 +1,7 @@
 import { ChildProcessWithoutNullStreams, spawn } from "node:child_process";
 
 import { resolveWrapperLaunchConfig } from "./jar-resolution.js";
+import { FALLBACK_HANDSHAKE_RESPONSE, REQUEST_TYPE_HANDSHAKE } from "./handshake.js";
 import type {
     RequestPayloadByType,
     WrapperDaemonRequest,
@@ -28,38 +29,73 @@ export class RumbleWrapperClient {
     private nextRequestId = 1;
     private stdoutBuffer = "";
     private readonly pending = new Map<number, PendingRequest>();
+    private processReadyPromise: Promise<void> | undefined;
+    private handshakeCompleted = false;
+    private rumbleVersion: string | null = null;
 
-    public ensureProcess(): void {
-        if (this.child !== undefined) {
+    public async ensureProcess(): Promise<void> {
+        if (this.child !== undefined && this.handshakeCompleted) {
             return;
         }
 
-        const launchConfig = resolveWrapperLaunchConfig();
-        console.log(`Launching wrapper with args: ${launchConfig.args.join(" ")}`);
+        if (this.processReadyPromise !== undefined) {
+            await this.processReadyPromise;
+            return;
+        }
 
-        this.child = spawn("java", launchConfig.args, {
-            stdio: "pipe",
-        });
+        this.processReadyPromise = this.startAndHandshake();
+        try {
+            await this.processReadyPromise;
+        } finally {
+            this.processReadyPromise = undefined;
+        }
+    }
 
-        this.child.stdout.setEncoding("utf8");
-        this.child.stdout.on("data", (chunk: string) => {
-            this.handleStdoutChunk(chunk);
-        });
+    private async startAndHandshake(): Promise<void> {
+        if (this.child === undefined) {
+            const launchConfig = resolveWrapperLaunchConfig();
+            console.log(`Launching wrapper with args: ${launchConfig.args.join(" ")}`);
 
-        this.child.on("error", (error) => {
-            this.rejectAllPending(error);
-            this.child = undefined;
-            this.stdoutBuffer = "";
-        });
+            this.child = spawn("java", launchConfig.args, {
+                stdio: "pipe",
+            });
 
-        this.child.on("close", () => {
-            this.rejectAllPending(new Error("Wrapper process closed."));
-            this.child = undefined;
-            this.stdoutBuffer = "";
-        });
+            this.handshakeCompleted = false;
+            this.child.stdout.setEncoding("utf8");
+            this.child.stdout.on("data", (chunk: string) => {
+                this.handleStdoutChunk(chunk);
+            });
+
+            this.child.on("error", (error) => {
+                this.rejectAllPending(error);
+                this.child = undefined;
+                this.stdoutBuffer = "";
+                this.handshakeCompleted = false;
+            });
+
+            this.child.on("close", () => {
+                this.rejectAllPending(new Error("Wrapper process closed."));
+                this.child = undefined;
+                this.stdoutBuffer = "";
+                this.handshakeCompleted = false;
+            });
+        }
+
+        const handshakeResponse = await this.sendRequest<typeof REQUEST_TYPE_HANDSHAKE>({
+            requestType: REQUEST_TYPE_HANDSHAKE,
+        }, FALLBACK_HANDSHAKE_RESPONSE);
+
+        if (handshakeResponse.error !== null) {
+            throw new Error(handshakeResponse.error);
+        }
+
+        this.rumbleVersion = handshakeResponse.body.rumbleVersion;
+        this.handshakeCompleted = true;
     }
 
     public dispose(): void {
+        this.handshakeCompleted = false;
+
         for (const pendingRequest of this.pending.values()) {
             clearTimeout(pendingRequest.timeout);
             pendingRequest.reject(new Error("Wrapper client disposed."));
@@ -72,10 +108,12 @@ export class RumbleWrapperClient {
         }
     }
 
-    async sendRequest<RequestType extends WrapperRequestType>(
+    public async sendRequest<RequestType extends WrapperRequestType>(
         requestPayload: RequestPayloadByType[RequestType],
         fallbackResponse: ResponseByType[RequestType],
     ): Promise<ResponseByType[RequestType]> {
+        await this.ensureProcess();
+
         const id = this.nextRequestId;
         this.nextRequestId += 1;
 
@@ -187,6 +225,10 @@ export class RumbleWrapperClient {
             pendingRequest.reject(error);
             this.pending.delete(id);
         }
+    }
+
+    public getRumbleVersion(): string | null {
+        return this.rumbleVersion;
     }
 }
 

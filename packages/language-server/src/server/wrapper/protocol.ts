@@ -1,9 +1,11 @@
 import type { BuiltInFunctionListResponseBody, BuiltinFunctionsRequestPayload, REQUEST_TYPE_BUILTIN_FUNCTIONS } from "./builtin-functions.js";
+import type { HandshakeRequestPayload, HandshakeResponseBody, REQUEST_TYPE_HANDSHAKE } from "./handshake.js";
 import type { InferTypesRequestPayload, REQUEST_TYPE_INFER_TYPES, TypeInferenceResult } from "./type-inference.js";
 
 export type WrapperRequestPayloadByType = {
     [REQUEST_TYPE_INFER_TYPES]: InferTypesRequestPayload;
     [REQUEST_TYPE_BUILTIN_FUNCTIONS]: BuiltinFunctionsRequestPayload;
+    [REQUEST_TYPE_HANDSHAKE]: HandshakeRequestPayload;
 };
 
 export type WrapperRequestType = keyof WrapperRequestPayloadByType;
@@ -31,4 +33,5 @@ export type WrapperDaemonResponse<
 export type WrapperResponseBodyByType = {
     [REQUEST_TYPE_INFER_TYPES]: TypeInferenceResult;
     [REQUEST_TYPE_BUILTIN_FUNCTIONS]: BuiltInFunctionListResponseBody;
-}
+    [REQUEST_TYPE_HANDSHAKE]: HandshakeResponseBody;
+};
