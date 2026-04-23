@@ -7,10 +7,9 @@ import { TextDocument } from "vscode-languageserver-textdocument";
 
 import {
     findVariableOccurrenceNearPosition,
-    getAnalysis,
-    isSourceDefinition,
-    Definition,
-} from "./analysis.js";
+} from "./analysis/queries.js";
+import { getAnalysis } from "./analysis/service.js";
+import { isSourceDefinition, type Definition } from "./analysis/model.js";
 
 export async function findHover(document: TextDocument, position: Position): Promise<Hover | null> {
     const analysis = await getAnalysis(document);
@@ -54,4 +53,3 @@ function createHoverContent(declaration: Definition): string {
         ].join("\n");
     }
 }
-

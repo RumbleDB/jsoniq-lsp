@@ -6,9 +6,9 @@ import { TextDocument } from "vscode-languageserver-textdocument";
 
 import {
     findVariableOccurrenceNearPosition,
-    getAnalysis,
-    isSourceDefinition,
-} from "./analysis.js";
+} from "./analysis/queries.js";
+import { getAnalysis } from "./analysis/service.js";
+import { isSourceDefinition } from "./analysis/model.js";
 
 /**
  * Finds all reference locations for the variable at the given position in the document, optionally including the declaration location.

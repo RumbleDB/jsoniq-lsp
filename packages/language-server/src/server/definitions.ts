@@ -5,10 +5,10 @@ import {
 import { TextDocument } from "vscode-languageserver-textdocument";
 
 import {
-    getAnalysis,
     findVariableOccurrenceNearPosition,
-    isSourceDefinition,
-} from "./analysis.js";
+} from "./analysis/queries.js";
+import { getAnalysis } from "./analysis/service.js";
+import { isSourceDefinition } from "./analysis/model.js";
 
 /**
  * Finds the definition location for the variable at the given position in the document, by analyzing variable scopes and occurrences.

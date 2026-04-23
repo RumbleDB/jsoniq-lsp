@@ -1,4 +1,4 @@
-import type { BaseDefinition } from "../analysis.js";
+import type { BaseDefinition } from "../analysis/model.js";
 import { createLogger } from "../utils/logger.js";
 import type { WrapperDaemonResponse } from "./protocol.js";
 import { getWrapperClient } from "./client.js";

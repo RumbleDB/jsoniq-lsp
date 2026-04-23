@@ -7,7 +7,8 @@ import {
 import { TextDocument } from "vscode-languageserver-textdocument";
 
 import { jsoniqParser } from "../grammar/jsoniqParser.js";
-import { type BaseDefinition, getVisibleDeclarationsAtPosition } from "./analysis.js";
+import type { BaseDefinition } from "./analysis/model.js";
+import { getVisibleDeclarationsAtPosition } from "./analysis/queries.js";
 import { listBuiltinFunctionDefinitions } from "./wrapper/builtin-functions.js";
 import {
     EXPRESSION_KEYWORD_TOKENS,

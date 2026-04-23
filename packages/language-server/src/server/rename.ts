@@ -8,11 +8,9 @@ import { TextDocument } from "vscode-languageserver-textdocument";
 
 import {
     findVariableOccurrenceNearPosition,
-    getAnalysis,
-    type JsoniqAnalysis,
-    type SourceDefinition,
-    isSourceDefinition,
-} from "./analysis.js";
+} from "./analysis/queries.js";
+import { getAnalysis } from "./analysis/service.js";
+import { type JsoniqAnalysis, type SourceDefinition, isSourceDefinition } from "./analysis/model.js";
 
 interface RenameTarget {
     declaration: SourceDefinition;

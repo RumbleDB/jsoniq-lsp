@@ -1,7 +1,7 @@
 import { DocumentSymbol } from "vscode-languageserver";
 import { TextDocument } from "vscode-languageserver-textdocument";
 
-import { getAnalysis } from "./analysis.js";
+import { getAnalysis } from "./analysis/service.js";
 
 /**
  * Collects DocumentSymbols from the given TextDocument.
