@@ -33,24 +33,18 @@ export function resolveWrapperLaunchConfig(): WrapperLaunchConfig {
     }
 
     // 2. In development, the wrapper jar is expected in the target directory.
-    if (process.env.JSONIQ_LSP_DEBUG === "1") {
-        const thinJarPath = pickLatestJarFromDirectory(WRAPPER_JAR_DEVELOPMENT_FOLDER, { preferThin: true });
-        const classpathPath = path.join(WRAPPER_JAR_DEVELOPMENT_FOLDER, WRAPPER_RUNTIME_CLASSPATH_FILE);
+    const thinJarPath = pickLatestJarFromDirectory(WRAPPER_JAR_DEVELOPMENT_FOLDER, { preferThin: true });
+    const classpathPath = path.join(WRAPPER_JAR_DEVELOPMENT_FOLDER, WRAPPER_RUNTIME_CLASSPATH_FILE);
 
-        if (thinJarPath !== undefined && fs.existsSync(classpathPath)) {
-            const runtimeClasspath = fs.readFileSync(classpathPath, "utf8").trim();
-            const classpath = runtimeClasspath === ""
-                ? thinJarPath
-                : `${thinJarPath}${path.delimiter}${runtimeClasspath}`;
+    if (thinJarPath !== undefined && fs.existsSync(classpathPath)) {
+        const runtimeClasspath = fs.readFileSync(classpathPath, "utf8").trim();
+        const classpath = runtimeClasspath === ""
+            ? thinJarPath
+            : `${thinJarPath}${path.delimiter}${runtimeClasspath}`;
 
-            return {
-                args: ["-cp", classpath, WRAPPER_MAIN_CLASS, "--daemon"],
-            };
-        }
-
-        console.warn(
-            `Development wrapper launch requires both a thin jar and '${WRAPPER_RUNTIME_CLASSPATH_FILE}' in '${WRAPPER_JAR_DEVELOPMENT_FOLDER}'. Falling back to production jar launch.`,
-        );
+        return {
+            args: ["-cp", classpath, WRAPPER_MAIN_CLASS, "--daemon"],
+        };
     }
 
     // 3. In production, the wrapper jar is expected to be copied to ./dist/wrapper.

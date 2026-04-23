@@ -13,7 +13,7 @@
         "sync-wrapper": "node ./scripts/sync-wrapper.mjs",
         "watch": "tsc -w -p tsconfig.json",
         "start": "node ./dist/server/main.js",
-        "test": "JSONIQ_LSP_DEBUG=1 vitest run tests",
+        "test": "vitest run tests",
         "test:samples": "pnpm test -- tests/test-samples.test.ts"
     },
     "dependencies": {
