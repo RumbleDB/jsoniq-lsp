@@ -4,7 +4,7 @@
     "packageManager": "pnpm@10.33.0",
     "scripts": {
         "build": "pnpm run build:wrapper && pnpm run build:server && pnpm run build:client",
-        "build:prod": "pnpm run build:wrapper:prod && pnpm run build:server:prod && pnpm run build:client",
+        "build:prod": "pnpm run clean && pnpm run build:wrapper:prod && pnpm run build:server:prod && pnpm run build:client",
         "build:wrapper": "mvn -f packages/rumble-lsp-wrapper/pom.xml -q package",
         "build:wrapper:prod": "mvn -f packages/rumble-lsp-wrapper/pom.xml -q -Pprod package",
         "build:server": "pnpm --filter @jsoniq-lsp/language-server run build",
