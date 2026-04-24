@@ -1,0 +1,60 @@
+name: Publish Language Server (Dev) to GitHub Packages
+
+on:
+  push:
+    branches:
+      - "**"
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  publish-language-server:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v5
+        with:
+          version: 10.33.0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+          registry-url: https://npm.pkg.github.com
+
+      - name: Set up Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: maven
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build production artifacts
+        run: pnpm run build:prod
+
+      - name: Stamp dev version for this commit
+        working-directory: packages/language-server
+        run: |
+          OWNER_LOWER="${GITHUB_REPOSITORY_OWNER,,}"
+          PUBLISH_NAME="@${OWNER_LOWER}/jsoniq-language-server"
+          BASE_VERSION="$(node -p "require('./package.json').version")"
+          DEV_VERSION="${BASE_VERSION}-dev.${GITHUB_RUN_NUMBER}.${GITHUB_SHA::7}"
+          npm pkg set name="${PUBLISH_NAME}"
+          npm version "${DEV_VERSION}" --no-git-tag-version
+          echo "Publishing ${PUBLISH_NAME}@${DEV_VERSION}"
+
+      - name: Publish package
+        working-directory: packages/language-server
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npm publish --tag dev --registry=https://npm.pkg.github.com
