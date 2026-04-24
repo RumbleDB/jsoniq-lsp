@@ -13,6 +13,7 @@
         "generate:grammar": "pnpm --filter @jsoniq-lsp/language-server run generate:grammar",
         "start": "pnpm --filter @jsoniq-lsp/language-server run start",
         "test": "pnpm --filter @jsoniq-lsp/language-server run test",
-        "test:samples": "pnpm --filter @jsoniq-lsp/language-server run test:samples"
+        "test:samples": "pnpm --filter @jsoniq-lsp/language-server run test:samples",
+        "clean": "pnpm --filter @jsoniq-lsp/language-server run clean && mvn -f packages/rumble-lsp-wrapper/pom.xml -q clean && pnpm --filter @jsoniq-lsp/vscode-extension run clean"
     }
 }

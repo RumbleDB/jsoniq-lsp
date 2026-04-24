@@ -42,7 +42,8 @@
     },
     "scripts": {
         "build": "tsc -p tsconfig.json",
-        "watch": "tsc -w -p tsconfig.json"
+        "watch": "tsc -w -p tsconfig.json",
+        "clean": "rm -rf dist"
     },
     "dependencies": {
         "@jsoniq-lsp/language-server": "workspace:*",
