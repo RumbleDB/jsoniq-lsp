@@ -171,3 +171,22 @@ jobs:
         with:
           tag_name: ${{ steps.wrapper_release_meta.outputs.tag_name }}
           files: ${{ steps.pack_language_server.outputs.package_asset_path }}
+
+      - name: Prepare language server package for npm publish
+        working-directory: packages/language-server
+        env:
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          OWNER_LOWER="${GITHUB_REPOSITORY_OWNER,,}"
+          PUBLISH_NAME="@${OWNER_LOWER}/jsoniq-language-server"
+          BASE_VERSION="$(node -p "require('./package.json').version")"
+          DEV_VERSION="${BASE_VERSION}-dev.${GITHUB_RUN_NUMBER}.${HEAD_SHA::7}"
+          pnpm pkg set name="${PUBLISH_NAME}"
+          pnpm version "${DEV_VERSION}" --no-git-tag-version
+          echo "Publishing ${PUBLISH_NAME}@${DEV_VERSION}"
+
+      - name: Publish language server package to GitHub Packages registry
+        working-directory: packages/language-server
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: pnpm publish --tag dev --registry=https://npm.pkg.github.com
