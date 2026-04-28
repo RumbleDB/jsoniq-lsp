@@ -1,5 +1,5 @@
 {
-    "name": "@jsoniq-lsp/vscode-extension",
+    "name": "@caijimmy/jsoniq-vscode-extension",
     "displayName": "JSONiq Language Support",
     "description": "VS Code client for the JSONiq language server.",
     "version": "0.1.0",
@@ -46,7 +46,7 @@
         "clean": "rm -rf dist"
     },
     "dependencies": {
-        "@jsoniq-lsp/language-server": "workspace:*",
+        "@caijimmy/jsoniq-language-server": "workspace:*",
         "vscode-languageclient": "^9.0.1"
     },
     "devDependencies": {

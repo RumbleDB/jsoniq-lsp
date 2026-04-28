@@ -1,5 +1,5 @@
 {
-    "name": "@jsoniq-lsp/language-server",
+    "name": "@caijimmy/jsoniq-language-server",
     "version": "0.1.0",
     "private": false,
     "type": "module",

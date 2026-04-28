@@ -38,7 +38,7 @@ importers:
 
   packages/vscode-extension:
     dependencies:
-      '@jsoniq-lsp/language-server':
+      '@caijimmy/jsoniq-language-server':
         specifier: workspace:*
         version: link:../language-server
       vscode-languageclient:
