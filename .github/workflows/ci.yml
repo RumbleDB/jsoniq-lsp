@@ -187,4 +187,4 @@ jobs:
         working-directory: packages/language-server
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: pnpm publish --tag dev --registry=https://npm.pkg.github.com
+        run: pnpm publish --tag dev --registry=https://npm.pkg.github.com --no-git-checks
