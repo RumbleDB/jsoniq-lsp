@@ -4,6 +4,9 @@ on:
   push:
   pull_request:
 
+env:
+  RELEASE_OUTPUT_DIR: .release-assets
+
 permissions:
   id-token: write # Required for OIDC authentication when publishing to npm
   contents: write
@@ -159,9 +162,9 @@ jobs:
       - name: Pack language server
         id: pack_language_server
         run: |
-          mkdir -p .release-assets
-          pnpm --dir packages/language-server pack --pack-destination ../../.release-assets
-          PACKAGE_ASSET_PATH="$(ls .release-assets/*.tgz | head -n 1)"
+          mkdir -p "${RELEASE_OUTPUT_DIR}"
+          pnpm --dir packages/language-server pack --pack-destination "../../${RELEASE_OUTPUT_DIR}"
+          PACKAGE_ASSET_PATH="$(ls "${RELEASE_OUTPUT_DIR}"/*.tgz | head -n 1)"
           PACKAGE_ASSET_NAME="$(basename "${PACKAGE_ASSET_PATH}")"
 
           echo "package_asset_path=${PACKAGE_ASSET_PATH}" >> "${GITHUB_OUTPUT}"
@@ -198,7 +201,7 @@ jobs:
           EXTENSION_NAME="$(node -p "require('./package.json').name")"
           BASE_VERSION="$(node -p "require('./package.json').version")"
           DEV_VERSION="${BASE_VERSION}-dev.${GITHUB_SHA::7}"
-          LANGUAGE_SERVER_PACKAGE_PATH="${{ steps.pack_language_server.outputs.package_asset_path }}"
+          LANGUAGE_SERVER_PACKAGE_PATH="${GITHUB_WORKSPACE}/${{ steps.pack_language_server.outputs.package_asset_path }}"
           LANGUAGE_SERVER_PACKAGE_NAME="$(node -p "require('../language-server/package.json').name")"
           LANGUAGE_SERVER_SCOPE_DIR="node_modules/$(dirname "${LANGUAGE_SERVER_PACKAGE_NAME}")"
           LANGUAGE_SERVER_TARGET_DIR="node_modules/${LANGUAGE_SERVER_PACKAGE_NAME}"
