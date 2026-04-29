@@ -11,6 +11,9 @@
     "categories": [
         "Programming Languages"
     ],
+    "repository": {
+        "url": "https://github.com/CaiJimmy/jsoniq-lsp"
+    },
     "main": "./dist/extension.js",
     "contributes": {
         "languages": [
