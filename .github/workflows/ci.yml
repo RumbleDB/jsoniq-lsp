@@ -192,37 +192,33 @@ jobs:
         run: pnpm publish --tag dev --access public --no-git-checks
 
       # VSCE (Visual Studio Code Extension Manager) does not support pnpm symbolic links,
-      # so we need to prepare the extension package in a separate step before we can publish it.
-      # We first build the extension, then we copy manually the built language server package into the extension's node_modules, 
-      # and finally we pack the extension using vsce.
+      # so we prepare a packaging-only npm install for the extension before publishing it.
       - name: Prepare VS Code extension package
         working-directory: packages/vscode-extension
         run: |
           EXTENSION_NAME="$(node -p "require('./package.json').name")"
           BASE_VERSION="$(node -p "require('./package.json').version")"
           DEV_VERSION="${BASE_VERSION}-dev.${GITHUB_SHA::7}"
-          LANGUAGE_SERVER_PACKAGE_PATH="${GITHUB_WORKSPACE}/${{ steps.pack_language_server.outputs.package_asset_path }}"
           LANGUAGE_SERVER_PACKAGE_NAME="$(node -p "require('../language-server/package.json').name")"
-          LANGUAGE_SERVER_SCOPE_DIR="node_modules/$(dirname "${LANGUAGE_SERVER_PACKAGE_NAME}")"
-          LANGUAGE_SERVER_TARGET_DIR="node_modules/${LANGUAGE_SERVER_PACKAGE_NAME}"
+          LANGUAGE_SERVER_PACKAGE_PATH="${GITHUB_WORKSPACE}/${{ steps.pack_language_server.outputs.package_asset_path }}"
+          LANGUAGE_SERVER_FILE_SPEC="file:${LANGUAGE_SERVER_PACKAGE_PATH}"
 
           pnpm version "${DEV_VERSION}" --no-git-tag-version
           echo "Packing ${EXTENSION_NAME}@${DEV_VERSION} extension"
-          echo "Copying ${LANGUAGE_SERVER_PACKAGE_NAME} from ${LANGUAGE_SERVER_PACKAGE_PATH} into extension's node_modules"
+          echo "Reinstalling runtime dependencies with npm using ${LANGUAGE_SERVER_PACKAGE_NAME} from ${LANGUAGE_SERVER_PACKAGE_PATH}"
 
-          mkdir -p "${LANGUAGE_SERVER_SCOPE_DIR}"
-          rm -rf "${LANGUAGE_SERVER_TARGET_DIR}"
-          tar -xzf "${LANGUAGE_SERVER_PACKAGE_PATH}" -C "${LANGUAGE_SERVER_SCOPE_DIR}"
-          mv "${LANGUAGE_SERVER_SCOPE_DIR}/package" "${LANGUAGE_SERVER_TARGET_DIR}"
+          rm -rf node_modules package-lock.json
+          npm pkg set "dependencies.${LANGUAGE_SERVER_PACKAGE_NAME}=${LANGUAGE_SERVER_FILE_SPEC}"
+          npm install --omit=dev
 
-          echo "Prepared packaged dependency at ${LANGUAGE_SERVER_TARGET_DIR}"
-          test -f "${LANGUAGE_SERVER_TARGET_DIR}/package.json"
-          test -f "${LANGUAGE_SERVER_TARGET_DIR}/dist/server/main.js"
+          test -f "node_modules/${LANGUAGE_SERVER_PACKAGE_NAME}/package.json"
+          test -f "node_modules/${LANGUAGE_SERVER_PACKAGE_NAME}/dist/server/main.js"
+          test -f "node_modules/vscode-languageclient/package.json"
 
       - name: Pack VS Code extension
         working-directory: packages/vscode-extension
         run: |
-          pnpm dlx @vscode/vsce package --no-dependencies --skip-license
+          pnpm dlx @vscode/vsce package --skip-license
 
       - name: Upload VS Code extension package to release
         uses: softprops/action-gh-release@v3
