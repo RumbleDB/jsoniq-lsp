@@ -18,7 +18,7 @@ export interface SemanticDeclarationEvent {
     kind: SourceDefinitionKind;
     range: Range;
     selectionRange: Range;
-    timing: "beforeChildren" | "afterChildren";
+    availability: "beforeChildren" | "afterChildren";
 }
 
 export interface SemanticReferenceEvent {
