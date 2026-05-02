@@ -5,8 +5,6 @@ import { TextDocument } from "vscode-languageserver-textdocument";
 import {
     CountClauseContext,
     ForVarContext,
-    FlowrExprContext,
-    FlowrStatementContext,
     FunctionDeclContext,
     FunctionCallContext,
     GroupByVarContext,

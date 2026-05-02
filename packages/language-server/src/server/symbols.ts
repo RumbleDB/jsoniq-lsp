@@ -1,12 +1,12 @@
 import { DocumentSymbol } from "vscode-languageserver";
 import { TextDocument } from "vscode-languageserver-textdocument";
 
-import { getAnalysis } from "./analysis/service.js";
+import { SymbolsBuilder } from "./analysis/symbols.js";
 
 /**
  * Collects DocumentSymbols from the given TextDocument.
  */
 export async function collectDocumentSymbols(document: TextDocument): Promise<DocumentSymbol[]> {
-    const analysis = await getAnalysis(document);
-    return analysis.documentSymbols;
+    const builder = new SymbolsBuilder(document);
+    return builder.build();
 }
