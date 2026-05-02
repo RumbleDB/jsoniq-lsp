@@ -1,17 +1,19 @@
-import {
-    type Position,
-    type Range,
-} from "vscode-languageserver";
+import { type Range } from "vscode-languageserver";
 import { TextDocument } from "vscode-languageserver-textdocument";
 
 import { parseDocument } from "server/parser/index.js";
 import type {
-    SemanticDeclarationEvent,
-    SemanticEvent,
+    SemanticDeclaration,
     ScopeKind,
 } from "server/parser/semantic-events.js";
 import { findBuiltinFunctionDefinition } from "server/wrapper/builtin-functions.js";
 import { comparePositions } from "../utils/position.js";
+import {
+    isVisibleOnEnter,
+    PendingDeclarations,
+} from "./declarations.js";
+import { createSourceDefinition } from "./definitions.js";
+import { Scope } from "./scope.js";
 import {
     type Definition,
     type JsoniqAnalysis,
@@ -19,24 +21,16 @@ import {
     type Reference,
     type ResolvedReference,
     type SourceDefinition,
-    type SourceFunctionDefinition,
-    type SourceParameterDefinition,
-    type SourceVariableDefinition,
     isSourceDefinition,
 } from "./model.js";
-
-interface ScopeFrame {
-    definitionByName: Map<string, SourceDefinition[]>;
-    scopeKind?: ScopeKind;
-}
 
 class AnalysisBuilder {
     private readonly definitions: SourceDefinition[] = [];
     private readonly references: ResolvedReference[] = [];
     private readonly unresolvedReferences: Reference[] = [];
     private readonly occurrenceIndex: OccurrenceIndexEntry[] = [];
-    private readonly scopeStack: ScopeFrame[] = [{ definitionByName: new Map() }];
-    private readonly functionStack: SourceFunctionDefinition[] = [];
+    private readonly pendingDeclarations = new PendingDeclarations();
+    private currentScope = Scope.module();
 
     public constructor(private readonly document: TextDocument) { }
 
@@ -45,8 +39,11 @@ class AnalysisBuilder {
 
         for (const event of events) {
             switch (event.type) {
-                case "declaration":
-                    this.handleDeclaration(event);
+                case "enterDeclaration":
+                    this.enterDeclaration(event.declaration);
+                    break;
+                case "exitDeclaration":
+                    this.exitDeclaration(event.declaration);
                     break;
                 case "reference":
                     this.recordReference(event.name, event.range);
@@ -63,12 +60,7 @@ class AnalysisBuilder {
         }
 
         const documentEnd = this.document.positionAt(this.document.getText().length);
-        for (const scopedDefinitions of this.scopeStack[0]?.definitionByName.values() ?? []) {
-            const lastDefinition = scopedDefinitions[scopedDefinitions.length - 1];
-            if (lastDefinition !== undefined) {
-                lastDefinition.scopeEnd = documentEnd;
-            }
-        }
+        this.currentScope.close(documentEnd);
 
         this.occurrenceIndex.sort((left, right) => {
             const startComparison = comparePositions(left.range.start, right.range.start);
@@ -86,64 +78,38 @@ class AnalysisBuilder {
             references: this.references,
             unresolvedReferences: this.unresolvedReferences,
             occurrenceIndex: this.occurrenceIndex,
-            documentSymbols: [],
         };
     }
 
     private pushScope(scopeKind: ScopeKind): void {
-        this.scopeStack.push({
-            definitionByName: new Map(),
-            scopeKind,
-        });
-
+        let owner: SourceDefinition | undefined;
         if (scopeKind === "function") {
-            const currentFunction = this.definitions[this.definitions.length - 1];
-            if (currentFunction === undefined || currentFunction.kind !== "function") {
+            const currentDefinition = this.pendingDeclarations.currentDefinition();
+            if (currentDefinition === undefined || currentDefinition.kind !== "function") {
                 throw new Error("Function scope entered without a preceding function declaration.");
             }
-            this.functionStack.push(currentFunction);
+            owner = currentDefinition;
         }
+
+        this.currentScope = this.currentScope.enter(scopeKind, owner);
     }
 
-    private popScope(scopeEnd: Position, scopeKind: ScopeKind): void {
-        const scope = this.scopeStack.pop();
-        if (scope !== undefined) {
-            for (const scopedDefinitions of scope.definitionByName.values()) {
-                const lastDefinition = scopedDefinitions[scopedDefinitions.length - 1];
-                if (lastDefinition !== undefined) {
-                    lastDefinition.scopeEnd = scopeEnd;
-                }
-            }
-
-            if (scopeKind === "function") {
-                this.functionStack.pop();
-            }
+    private popScope(scopeEnd: Range["end"], scopeKind: ScopeKind): void {
+        if (this.currentScope.kind !== scopeKind) {
+            throw new Error(`Tried to exit ${scopeKind} scope while inside ${this.currentScope.kind} scope.`);
         }
+
+        this.currentScope.close(scopeEnd);
+
+        const parent = this.currentScope.parent;
+        if (parent === undefined) {
+            throw new Error("Cannot exit the module scope.");
+        }
+        this.currentScope = parent;
     }
 
-    private currentScope(): ScopeFrame {
-        const scope = this.scopeStack[this.scopeStack.length - 1];
-        if (scope === undefined) {
-            throw new Error("Variable scope stack is unexpectedly empty.");
-        }
-        return scope;
-    }
-
-    private declare(newDefinition: SourceDefinition): void {
+    private registerDefinition(newDefinition: SourceDefinition): void {
         this.definitions.push(newDefinition);
-
-        const scope = this.currentScope();
-        if (!scope.definitionByName.has(newDefinition.name)) {
-            scope.definitionByName.set(newDefinition.name, []);
-        }
-
-        const definitionsWithSameName = scope.definitionByName.get(newDefinition.name)!;
-        const lastDefinition = definitionsWithSameName[definitionsWithSameName.length - 1];
-        if (lastDefinition !== undefined) {
-            lastDefinition.scopeEnd = newDefinition.range.end;
-        }
-        definitionsWithSameName.push(newDefinition);
-
         this.occurrenceIndex.push({
             range: newDefinition.selectionRange,
             declaration: newDefinition,
@@ -151,50 +117,25 @@ class AnalysisBuilder {
         });
     }
 
-    private handleDeclaration(event: SemanticDeclarationEvent): void {
-        const definition = this.createDefinition(event);
-        this.declare(definition);
+    private enterDeclaration(declaration: SemanticDeclaration): void {
+        const definition = createSourceDefinition(declaration, this.currentScope.owningFunction);
+        this.registerDefinition(definition);
+        this.pendingDeclarations.enter(declaration, definition);
 
         if (definition.kind === "parameter") {
             definition.function.parameters.push(definition);
         }
+
+        if (isVisibleOnEnter(definition.kind)) {
+            this.currentScope.declare(definition);
+        }
     }
 
-    private createDefinition(event: SemanticDeclarationEvent): SourceDefinition {
-        const base = {
-            name: event.name,
-            range: event.range,
-            selectionRange: event.selectionRange,
-            scopeEnd: { line: 0, character: 0 },
-            references: [],
-            isBuiltin: false as const,
-        };
-
-        if (event.kind === "function") {
-            return {
-                ...base,
-                kind: "function",
-                parameters: [],
-            } satisfies SourceFunctionDefinition;
+    private exitDeclaration(declaration: SemanticDeclaration): void {
+        const definition = this.pendingDeclarations.exit(declaration);
+        if (!isVisibleOnEnter(definition.kind)) {
+            this.currentScope.declare(definition);
         }
-
-        if (event.kind === "parameter") {
-            const containingFunction = this.functionStack[this.functionStack.length - 1];
-            if (containingFunction === undefined) {
-                throw new Error("Parameter declaration must belong to a function.");
-            }
-
-            return {
-                ...base,
-                kind: "parameter",
-                function: containingFunction,
-            } satisfies SourceParameterDefinition;
-        }
-
-        return {
-            ...base,
-            kind: event.kind,
-        } satisfies SourceVariableDefinition;
     }
 
     private resolve(name: string): Definition | undefined {
@@ -203,14 +144,7 @@ class AnalysisBuilder {
             return builtinDefinition;
         }
 
-        for (let index = this.scopeStack.length - 1; index >= 0; index -= 1) {
-            const scope = this.scopeStack[index];
-            const declarations = scope?.definitionByName.get(name);
-            const declaration = declarations?.[declarations.length - 1];
-            if (declaration !== undefined) {
-                return declaration;
-            }
-        }
+        return this.currentScope.resolve(name);
     }
 
     private recordReference(name: string, range: Range): void {

@@ -1,5 +1,8 @@
 import type { SemanticDeclaration } from "server/parser/semantic-events.js";
-import type { SourceDefinition } from "./model.js";
+import type {
+    SourceDefinition,
+    SourceDefinitionKind,
+} from "./model.js";
 
 interface PendingDeclaration {
     declaration: SemanticDeclaration;
@@ -29,4 +32,8 @@ export class PendingDeclarations {
 
         return pending.definition;
     }
+}
+
+export function isVisibleOnEnter(kind: SourceDefinitionKind): boolean {
+    return kind === "function";
 }

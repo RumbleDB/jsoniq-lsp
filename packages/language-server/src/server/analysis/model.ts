@@ -1,5 +1,4 @@
 import type {
-    DocumentSymbol,
     Position,
     Range,
 } from "vscode-languageserver";
@@ -96,8 +95,6 @@ export interface JsoniqAnalysis {
     // Declarations and references, sorted by source position.
     occurrenceIndex: OccurrenceIndexEntry[];
 
-    // Document symbols discovered during traversal.
-    documentSymbols: DocumentSymbol[];
 }
 
 export function isSourceDefinition(declaration: BaseDefinition | undefined): declaration is SourceDefinition {
