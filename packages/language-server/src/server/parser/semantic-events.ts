@@ -19,7 +19,6 @@ export interface SemanticDeclarationEvent {
     range: Range;
     selectionRange: Range;
     timing: "beforeChildren" | "afterChildren";
-    containingFunctionName?: string;
 }
 
 export interface SemanticReferenceEvent {
