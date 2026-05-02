@@ -15,10 +15,10 @@ export interface ParserKeywordCompletion {
 }
 
 export interface CompletionIntent {
-    insideVariableBindingHeader: boolean;
-    declaringVariableName: boolean;
-    expectingName: boolean;
-    expressionReferenceContext: boolean;
+    allowVariableReferences: boolean;
+    allowBuiltinFunctions: boolean;
+    allowKeywords: boolean;
+    allowVariableDeclarationStarter: boolean;
     keywords: ParserKeywordCompletion[];
 }
 

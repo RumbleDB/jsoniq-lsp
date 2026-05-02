@@ -11,6 +11,9 @@ import { getVisibleDeclarationsAtPosition } from "./analysis/queries.js";
 import { listBuiltinFunctionDefinitions } from "./wrapper/builtin-functions.js";
 import { collectCompletionIntent } from "./parser/index.js";
 
+const VARIABLE_PREFIX_PATTERN = /\$[A-Za-z0-9_.:-]*$/;
+const NAME_PREFIX_PATTERN = /(?:^|[^$A-Za-z0-9_.:-])[A-Za-z_][A-Za-z0-9_.:-]*$/;
+
 export async function findCompletions(document: TextDocument, position: Position): Promise<CompletionItem[]> {
     const source = document.getText();
     const cursorOffset = document.offsetAt(position);
@@ -30,9 +33,8 @@ export async function findCompletions(document: TextDocument, position: Position
 
     // We allow variable completions when:
     // - We are not declaring a variable name
-    // - AND EITHER we are typing a variable reference (i.e. we have a "$" prefix) OR we are in an expression context where a variable reference could be expected.
-    const allowVariableSuggestions = !intent.insideVariableBindingHeader
-        && (typingVariablePrefix || intent.expressionReferenceContext);
+    // - AND EITHER we are typing a variable reference (i.e. we have a "$" prefix) OR we are in an expression context where an expression could be expected.
+    const allowVariableSuggestions = typingVariablePrefix || intent.allowVariableReferences;
 
     // If we have already typed part of a variable name, we want to replace that prefix with the completion,
     // This is to avoid inserting the completion after the prefix, which would result in an invalid variable name 
@@ -54,20 +56,19 @@ export async function findCompletions(document: TextDocument, position: Position
         : [];
 
     const allowBuiltinFunctionSuggestions = !typingVariablePrefix
-        && !intent.declaringVariableName
-        && intent.expressionReferenceContext;
+        && intent.allowBuiltinFunctions;
 
     const builtinFunctions = allowBuiltinFunctionSuggestions
         ? getBuiltinFunctionCompletionItems()
         : [];
 
     // We offer keyword completions when we are not typing name.
-    const keywords = !typingVariablePrefix && !typingNamePrefix && !intent.expectingName
+    const keywords = !typingVariablePrefix && !typingNamePrefix && intent.allowKeywords
         ? keywordCompletions(intent.keywords)
         : [];
 
     // In case that we are declaring a variable and $ is not typed yet, offer a $ completion item to start the variable declaration.
-    const declarationPrefix = intent.declaringVariableName && !typingVariablePrefix
+    const declarationPrefix = intent.allowVariableDeclarationStarter && !typingVariablePrefix
         ? [DOLLAR_COMPLETION]
         : [];
 
@@ -143,9 +144,6 @@ function withSortText(items: CompletionItem[]): CompletionItem[] {
             sortText: `${index.toString().padStart(5, "0")}:${item.label}`,
         }));
 }
-
-const VARIABLE_PREFIX_PATTERN = /\$[A-Za-z0-9_.:-]*$/;
-const NAME_PREFIX_PATTERN = /(?:^|[^$A-Za-z0-9_.:-])[A-Za-z_][A-Za-z0-9_.:-]*$/;
 
 const DOLLAR_COMPLETION: CompletionItem = {
     label: "$",

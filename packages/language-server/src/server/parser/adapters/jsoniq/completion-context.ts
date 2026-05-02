@@ -70,10 +70,10 @@ export function getCompletionIntent(context: ParserSyntaxContext): CompletionInt
         && context.expectedTokenSet.contains(jsoniqParser.Kmodule);
 
     return {
-        insideVariableBindingHeader,
-        declaringVariableName,
-        expectingName,
-        expressionReferenceContext,
+        allowVariableReferences: !insideVariableBindingHeader && expressionReferenceContext,
+        allowBuiltinFunctions: !declaringVariableName && expressionReferenceContext,
+        allowKeywords: !expectingName,
+        allowVariableDeclarationStarter: declaringVariableName,
         keywords: keywordCompletions(context, expressionReferenceContext && !topLevelModuleStartContext),
     };
 }
