@@ -75,16 +75,23 @@ function toCompletionIntent(context: JSONiqParserSyntaxContext): CompletionInten
 
     // Do we expect an expression here?
     const expressionReferenceContext = isExpressionReferenceContext(context);
+    const variableReferenceNameContext = isVariableReferenceNameContext(context);
     const topLevelModuleStartContext = context.ruleStack.length === 0
         && context.expectedTokenSet.contains(jsoniqParser.Kmodule);
+    const expressionKeywordContext = expressionReferenceContext
+        && !topLevelModuleStartContext
+        && !declaringVariableName;
 
     return {
-        allowVariableReferences: !insideVariableBindingHeader && expressionReferenceContext,
-        allowBuiltinFunctions: !declaringVariableName && expressionReferenceContext,
-        allowKeywords: !expectingName,
-        allowVariableDeclarationStarter: declaringVariableName,
-        keywords: keywordCompletions(context, expressionReferenceContext && !topLevelModuleStartContext),
+        allowExpression: !declaringVariableName && (expressionReferenceContext || variableReferenceNameContext),
+        keywords: expectingName && !declaringVariableName
+            ? []
+            : keywordCompletions(context, expressionKeywordContext),
     };
+}
+
+function isVariableReferenceNameContext(context: JSONiqParserSyntaxContext): boolean {
+    return context.ruleStack.includes(jsoniqParser.RULE_varRef);
 }
 
 function closestCompletionContext(

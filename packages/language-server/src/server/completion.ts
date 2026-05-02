@@ -31,11 +31,6 @@ export async function findCompletions(document: TextDocument, position: Position
     // Similarly, check if the user is typing a name (e.g. for a function or variable declaration) to offer appropriate completions and filtering.
     const typingNamePrefix = NAME_PREFIX_PATTERN.test(source.slice(0, cursorOffset));
 
-    // We allow variable completions when:
-    // - We are not declaring a variable name
-    // - AND EITHER we are typing a variable reference (i.e. we have a "$" prefix) OR we are in an expression context where an expression could be expected.
-    const allowVariableSuggestions = typingVariablePrefix || intent.allowVariableReferences;
-
     // If we have already typed part of a variable name, we want to replace that prefix with the completion,
     // This is to avoid inserting the completion after the prefix, which would result in an invalid variable name 
     const variableReplaceRange = variablePrefix === null
@@ -45,7 +40,9 @@ export async function findCompletions(document: TextDocument, position: Position
             end: position,
         };
 
-    const variables = allowVariableSuggestions
+    // We allow declaration completions when we are in an expression context where an expression could be expected.
+    // The editor will filter declarations by the typed prefix, whether that prefix is a "$" variable prefix or a function/name prefix.
+    const declarations = intent.allowExpression
         ? (await getDeclarationCompletionItems(document, position))
             .map((item) => variableReplaceRange === null
                 ? item
@@ -56,26 +53,20 @@ export async function findCompletions(document: TextDocument, position: Position
         : [];
 
     const allowBuiltinFunctionSuggestions = !typingVariablePrefix
-        && intent.allowBuiltinFunctions;
+        && intent.allowExpression;
 
     const builtinFunctions = allowBuiltinFunctionSuggestions
         ? getBuiltinFunctionCompletionItems()
         : [];
 
     // We offer keyword completions when we are not typing name.
-    const keywords = !typingVariablePrefix && !typingNamePrefix && intent.allowKeywords
+    const keywords = !typingVariablePrefix && !typingNamePrefix
         ? keywordCompletions(intent.keywords)
         : [];
 
-    // In case that we are declaring a variable and $ is not typed yet, offer a $ completion item to start the variable declaration.
-    const declarationPrefix = intent.allowVariableDeclarationStarter && !typingVariablePrefix
-        ? [DOLLAR_COMPLETION]
-        : [];
-
     return withSortText([
-        ...declarationPrefix,
         ...keywords,
-        ...variables,
+        ...declarations,
         ...builtinFunctions,
     ]);
 }
@@ -144,10 +135,3 @@ function withSortText(items: CompletionItem[]): CompletionItem[] {
             sortText: `${index.toString().padStart(5, "0")}:${item.label}`,
         }));
 }
-
-const DOLLAR_COMPLETION: CompletionItem = {
-    label: "$",
-    insertText: "$",
-    kind: CompletionItemKind.Variable,
-    detail: "JSONiq variable declaration",
-};

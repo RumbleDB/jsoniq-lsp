@@ -77,6 +77,7 @@ export const EXPRESSION_RULES = new Set([
 ]);
 
 export const KEYWORD_COMPLETIONS: KeywordCompletion[] = [
+    keyword(jsoniqParser.Kdollar, "$"),
     ...[
         jsoniqParser.Kcopy,
         jsoniqParser.Kdelete,
