@@ -40,3 +40,10 @@ export function rangeFromNode(node: ParserRuleContext | ParseTree, document: Tex
         end: document.positionAt(stop + 1),
     };
 }
+
+export function sameRange(left: Range, right: Range): boolean {
+    return left.start.line === right.start.line
+        && left.start.character === right.start.character
+        && left.end.line === right.end.line
+        && left.end.character === right.end.character;
+}
