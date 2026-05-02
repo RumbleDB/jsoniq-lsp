@@ -5,6 +5,8 @@ import { TextDocument } from "vscode-languageserver-textdocument";
 import {
     CountClauseContext,
     ForVarContext,
+    FlowrExprContext,
+    FlowrStatementContext,
     FunctionDeclContext,
     FunctionCallContext,
     GroupByVarContext,
@@ -19,10 +21,10 @@ import type {
     SemanticDeclarationEvent,
     SemanticEvent,
     SemanticReferenceEvent,
+    ScopeKind,
 } from "server/parser/semantic-events.js";
 import { functionNameWithArityOrNull, varRefNameOrNull } from "server/utils/name.js";
 import { rangeFromNode } from "server/utils/range.js";
-import { isNewScopeNode } from "server/utils/scope.js";
 
 class SemanticEventCollector {
     private events: SemanticEvent[] = [];
@@ -75,10 +77,11 @@ class SemanticEventCollector {
         });
     };
 
-    public scope(range: Range, enter: boolean): void {
+    public scope(range: Range, enter: boolean, scopeKind: ScopeKind): void {
         this.emit({
             type: enter ? "enterScope" : "exitScope",
             range,
+            scopeKind,
         });
     }
 }
@@ -165,8 +168,9 @@ export function collectSemanticEvents(tree: ModuleAndThisIsItContext, document: 
     const visit = (node: ParseTree): void => {
         collectDefinitionsBeforeScope(node);
 
-        if (isNewScopeNode(node)) {
-            events.scope(rangeFromNode(node, document), true);
+        const scopeKind = getScopeKind(node);
+        if (scopeKind !== null) {
+            events.scope(rangeFromNode(node, document), true, scopeKind);
         }
 
         collectDefinitionsBeforeChildren(node);
@@ -181,14 +185,26 @@ export function collectSemanticEvents(tree: ModuleAndThisIsItContext, document: 
 
         collectDefinitionsAfterChildren(node);
 
-        if (isNewScopeNode(node)) {
-            events.scope(rangeFromNode(node, document), false);
+        if (scopeKind !== null) {
+            events.scope(rangeFromNode(node, document), false, scopeKind);
         }
     };
 
     visit(tree);
 
     return events.collectedEvents;
+}
+
+function getScopeKind(node: ParseTree): ScopeKind | null {
+    if (node instanceof FunctionDeclContext) {
+        return "function";
+    }
+
+    if (node instanceof FlowrExprContext || node instanceof FlowrStatementContext) {
+        return "flowr";
+    }
+
+    return null;
 }
 
 /**
