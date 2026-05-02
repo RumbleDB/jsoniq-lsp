@@ -106,7 +106,7 @@ export function isSourceDefinition(declaration: BaseDefinition | undefined): dec
 }
 
 export function isSourceVariableDefinition(declaration: BaseDefinition | undefined): declaration is SourceVariableDefinition {
-    return isSourceDefinition(declaration) && declaration.kind !== "parameter" && declaration.kind !== "function";
+    return ["declare-variable", "let", "for", "for-position", "group-by", "count"].includes(declaration?.kind ?? "");
 }
 
 export function isSourceParameterDefinition(declaration: BaseDefinition | undefined): declaration is SourceParameterDefinition {

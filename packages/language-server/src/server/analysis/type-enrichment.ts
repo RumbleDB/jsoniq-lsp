@@ -1,5 +1,8 @@
-import type { JsoniqAnalysis } from "./model.js";
+import { isSourceVariableDefinition, type JsoniqAnalysis } from "./model.js";
 import type { TypeInferenceResult } from "../wrapper/type-inference.js";
+import { createLogger } from "server/utils/logger.js";
+
+const logger = createLogger("type-enrichment");
 
 export function injectInferredTypeToAnalysis(analysis: JsoniqAnalysis, inferredTypes: TypeInferenceResult): void {
     const variables = inferredTypes.variableTypes.values();
@@ -43,16 +46,21 @@ export function injectInferredTypeToAnalysis(analysis: JsoniqAnalysis, inferredT
             continue;
         }
 
-        const variableType = variables.next();
-        if (variableType.done) {
-            throw new Error(`Requested inferred type for ${definition.name}, but no more variable types are available in the inference response.`);
+        if (isSourceVariableDefinition(definition)) {
+            const variableType = variables.next();
+            if (variableType.done) {
+                throw new Error(`Requested inferred type for ${definition.name}, but no more variable types are available in the inference response.`);
+            }
+
+            const { name: expectedName, type } = variableType.value;
+            if (definition.name !== expectedName) {
+                throw new Error(`Inferred variable type name ${expectedName} does not match the variable declaration name ${definition.name} in the source code.`);
+            }
+
+            definition.inferredType = type;
         }
 
-        const { name: expectedName, type } = variableType.value;
-        if (definition.name !== expectedName) {
-            throw new Error(`Inferred variable type name ${expectedName} does not match the variable declaration name ${definition.name} in the source code.`);
-        }
-
-        definition.inferredType = type;
+        logger.warn(`Received inferred type for ${definition.name} of kind ${definition.kind}, but no handling logic is implemented for this kind of definition. Skipping type injection for this definition.`);
+        continue;
     }
 }
