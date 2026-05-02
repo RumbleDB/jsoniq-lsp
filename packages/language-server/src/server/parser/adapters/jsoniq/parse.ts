@@ -18,18 +18,13 @@ import { jsoniqLexer } from "grammar/jsoniqLexer.js";
 import { jsoniqParser } from "grammar/jsoniqParser.js";
 import type {
     ParseResult,
-    ParsedDocument,
     SyntaxContext,
 } from "server/parser/types.js";
 import { collectSemanticEvents } from "./semantic-events.js";
 
-export type JsoniqSyntaxContext = SyntaxContext;
-export type JsoniqParseResult = ParseResult;
-
-export interface JsoniqParsedDocument extends ParsedDocument {
+export interface JsoniqParsedDocument extends ParseResult {
     parser: jsoniqParser;
     tokens: Token[];
-    result: JsoniqParseResult;
 }
 
 class JsoniqErrorListener extends BaseErrorListener {
@@ -108,11 +103,9 @@ export function parseJsoniq(document: TextDocument): JsoniqParsedDocument {
     return {
         parser,
         tokens: tokenStream.getTokens(),
-        result: {
-            diagnostics: errorListener.diagnostics,
-            completionContexts: errorListener.contexts,
-            semanticEvents: collectSemanticEvents(tree, document),
-        },
+        diagnostics: errorListener.diagnostics,
+        completionContexts: errorListener.contexts,
+        semanticEvents: collectSemanticEvents(tree, document),
     };
 }
 

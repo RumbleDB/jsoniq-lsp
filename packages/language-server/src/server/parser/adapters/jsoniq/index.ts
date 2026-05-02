@@ -6,9 +6,7 @@ import {
 } from "./parse.js";
 
 export type {
-    JsoniqParseResult,
     JsoniqParsedDocument,
-    JsoniqSyntaxContext,
 } from "./parse.js";
 
 export const jsoniqParserAdapter: ParserAdapter = {
