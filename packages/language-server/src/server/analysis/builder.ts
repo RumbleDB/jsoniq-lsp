@@ -1,33 +1,17 @@
-import { ParserRuleContext, type ParseTree } from "antlr4ng";
 import {
-    DocumentSymbol,
     type Position,
     type Range,
-    SymbolKind,
 } from "vscode-languageserver";
 import { TextDocument } from "vscode-languageserver-textdocument";
 
-import {
-    ContextItemDeclContext,
-    CountClauseContext,
-    ForVarContext,
-    FunctionDeclContext,
-    FunctionCallContext,
-    GroupByVarContext,
-    LetVarContext,
-    NamedFunctionRefContext,
-    NamespaceDeclContext,
-    ParamContext,
-    TypeDeclContext,
-    VarDeclContext,
-    VarRefContext,
-} from "../../grammar/jsoniqParser.js";
-import { parseJsoniqDocument } from "../parser/index.js";
+import { parseDocument } from "server/parser/index.js";
+import type {
+    SemanticDeclarationEvent,
+    SemanticEvent,
+    ScopeKind,
+} from "server/parser/semantic-events.js";
+import { findBuiltinFunctionDefinition } from "server/wrapper/builtin-functions.js";
 import { comparePositions } from "../utils/position.js";
-import { rangeFromNode } from "../utils/range.js";
-import { isNewScopeNode } from "../utils/scope.js";
-import { functionNameWithArityOrNull, varRefNameOrNull } from "../utils/name.js";
-import { findBuiltinFunctionDefinition } from "../wrapper/builtin-functions.js";
 import {
     type Definition,
     type JsoniqAnalysis,
@@ -35,40 +19,92 @@ import {
     type Reference,
     type ResolvedReference,
     type SourceDefinition,
-    type SourceDefinitionKind,
     type SourceFunctionDefinition,
     type SourceParameterDefinition,
     type SourceVariableDefinition,
-    type VariableKind,
     isSourceDefinition,
 } from "./model.js";
 
 interface ScopeFrame {
-    definitionByName: Map<string, Array<SourceDefinition>>;
+    definitionByName: Map<string, SourceDefinition[]>;
+    scopeKind?: ScopeKind;
 }
 
-interface SymbolTraversalState {
-    childSymbols: DocumentSymbol[];
-    declarationContainerSymbol?: DocumentSymbol;
-    declarationChildSymbols?: DocumentSymbol[];
-}
+class AnalysisBuilder {
+    private readonly definitions: SourceDefinition[] = [];
+    private readonly references: ResolvedReference[] = [];
+    private readonly unresolvedReferences: Reference[] = [];
+    private readonly occurrenceIndex: OccurrenceIndexEntry[] = [];
+    private readonly scopeStack: ScopeFrame[] = [{ definitionByName: new Map() }];
+    private readonly functionStack: SourceFunctionDefinition[] = [];
 
-export function buildAnalysis(document: TextDocument): JsoniqAnalysis {
-    const parseResult = parseJsoniqDocument(document);
-    const definitions: SourceDefinition[] = [];
-    const references: ResolvedReference[] = [];
-    const unresolvedReferences: Reference[] = [];
-    const occurrenceIndex: OccurrenceIndexEntry[] = [];
-    const documentSymbols: DocumentSymbol[] = [];
-    const scopeStack: ScopeFrame[] = [{ definitionByName: new Map() }];
-    const functionStack: SourceFunctionDefinition[] = [];
+    public constructor(private readonly document: TextDocument) { }
 
-    const pushScope = (): void => {
-        scopeStack.push({ definitionByName: new Map() });
-    };
+    public build(events: readonly SemanticEvent[]): JsoniqAnalysis {
+        for (const event of events) {
+            switch (event.type) {
+                case "declaration":
+                    this.handleDeclaration(event);
+                    break;
+                case "reference":
+                    this.recordReference(event.name, event.range);
+                    break;
+                case "enterScope":
+                    this.pushScope(event.scopeKind);
+                    break;
+                case "exitScope":
+                    this.popScope(event.range.end, event.scopeKind);
+                    break;
+                default:
+                    throw event satisfies never;
+            }
+        }
 
-    const popScope = (scopeEnd: Position): void => {
-        const scope = scopeStack.pop();
+        const documentEnd = this.document.positionAt(this.document.getText().length);
+        for (const scopedDefinitions of this.scopeStack[0]?.definitionByName.values() ?? []) {
+            const lastDefinition = scopedDefinitions[scopedDefinitions.length - 1];
+            if (lastDefinition !== undefined) {
+                lastDefinition.scopeEnd = documentEnd;
+            }
+        }
+
+        this.occurrenceIndex.sort((left, right) => {
+            const startComparison = comparePositions(left.range.start, right.range.start);
+            if (startComparison !== 0) {
+                return startComparison;
+            }
+
+            return comparePositions(left.range.end, right.range.end);
+        });
+
+        this.definitions.sort((left, right) => comparePositions(left.range.start, right.range.start));
+
+        return {
+            definitions: this.definitions,
+            references: this.references,
+            unresolvedReferences: this.unresolvedReferences,
+            occurrenceIndex: this.occurrenceIndex,
+            documentSymbols: [],
+        };
+    }
+
+    private pushScope(scopeKind: ScopeKind): void {
+        this.scopeStack.push({
+            definitionByName: new Map(),
+            scopeKind,
+        });
+
+        if (scopeKind === "function") {
+            const currentFunction = this.definitions[this.definitions.length - 1];
+            if (currentFunction === undefined || currentFunction.kind !== "function") {
+                throw new Error("Function scope entered without a preceding function declaration.");
+            }
+            this.functionStack.push(currentFunction);
+        }
+    }
+
+    private popScope(scopeEnd: Position, scopeKind: ScopeKind): void {
+        const scope = this.scopeStack.pop();
         if (scope !== undefined) {
             for (const scopedDefinitions of scope.definitionByName.values()) {
                 const lastDefinition = scopedDefinitions[scopedDefinitions.length - 1];
@@ -76,75 +112,109 @@ export function buildAnalysis(document: TextDocument): JsoniqAnalysis {
                     lastDefinition.scopeEnd = scopeEnd;
                 }
             }
-        }
-    };
 
-    const currentScope = (): ScopeFrame => {
-        const scope = scopeStack[scopeStack.length - 1];
+            if (scopeKind === "function") {
+                this.functionStack.pop();
+            }
+        }
+    }
+
+    private currentScope(): ScopeFrame {
+        const scope = this.scopeStack[this.scopeStack.length - 1];
         if (scope === undefined) {
             throw new Error("Variable scope stack is unexpectedly empty.");
         }
         return scope;
-    };
+    }
 
-    const declare = (newDef: SourceDefinition): void => {
-        definitions.push(newDef);
-        const scope = currentScope();
+    private declare(newDefinition: SourceDefinition): void {
+        this.definitions.push(newDefinition);
 
-        if (!scope.definitionByName.has(newDef.name)) {
-            scope.definitionByName.set(newDef.name, []);
+        const scope = this.currentScope();
+        if (!scope.definitionByName.has(newDefinition.name)) {
+            scope.definitionByName.set(newDefinition.name, []);
         }
 
-        const defsWithSameName = scope.definitionByName.get(newDef.name)!;
-        const lastDefWithSameName = defsWithSameName[defsWithSameName.length - 1];
-        if (lastDefWithSameName !== undefined) {
-            lastDefWithSameName.scopeEnd = newDef.range.end;
+        const definitionsWithSameName = scope.definitionByName.get(newDefinition.name)!;
+        const lastDefinition = definitionsWithSameName[definitionsWithSameName.length - 1];
+        if (lastDefinition !== undefined) {
+            lastDefinition.scopeEnd = newDefinition.range.end;
         }
-        defsWithSameName.push(newDef);
+        definitionsWithSameName.push(newDefinition);
 
-        occurrenceIndex.push({
-            range: newDef.selectionRange,
-            declaration: newDef,
+        this.occurrenceIndex.push({
+            range: newDefinition.selectionRange,
+            declaration: newDefinition,
             reference: undefined,
         });
-    };
+    }
 
-    const resolve = (name: string): Definition | undefined => {
+    private handleDeclaration(event: SemanticDeclarationEvent): void {
+        const definition = this.createDefinition(event);
+        this.declare(definition);
+
+        if (definition.kind === "parameter") {
+            definition.function.parameters.push(definition);
+        }
+    }
+
+    private createDefinition(event: SemanticDeclarationEvent): SourceDefinition {
+        const base = {
+            name: event.name,
+            range: event.range,
+            selectionRange: event.selectionRange,
+            scopeEnd: { line: 0, character: 0 },
+            references: [],
+            isBuiltin: false as const,
+        };
+
+        if (event.kind === "function") {
+            return {
+                ...base,
+                kind: "function",
+                parameters: [],
+            } satisfies SourceFunctionDefinition;
+        }
+
+        if (event.kind === "parameter") {
+            const containingFunction = this.functionStack[this.functionStack.length - 1];
+            if (containingFunction === undefined) {
+                throw new Error("Parameter declaration must belong to a function.");
+            }
+
+            return {
+                ...base,
+                kind: "parameter",
+                function: containingFunction,
+            } satisfies SourceParameterDefinition;
+        }
+
+        return {
+            ...base,
+            kind: event.kind,
+        } satisfies SourceVariableDefinition;
+    }
+
+    private resolve(name: string): Definition | undefined {
         const builtinDefinition = findBuiltinFunctionDefinition(name);
         if (builtinDefinition !== undefined) {
             return builtinDefinition;
         }
 
-        for (let index = scopeStack.length - 1; index >= 0; index -= 1) {
-            const scope = scopeStack[index];
+        for (let index = this.scopeStack.length - 1; index >= 0; index -= 1) {
+            const scope = this.scopeStack[index];
             const declarations = scope?.definitionByName.get(name);
             const declaration = declarations?.[declarations.length - 1];
             if (declaration !== undefined) {
                 return declaration;
             }
         }
-    };
+    }
 
-    const attachDocumentSymbol = (symbols: DocumentSymbol[], symbol: DocumentSymbol | undefined): DocumentSymbol | undefined => {
-        if (symbol !== undefined) {
-            symbols.push(symbol);
-        }
-        return symbol;
-    };
-
-    const declareVariable = (kind: VariableKind, node: ParserRuleContext, varRef: VarRefContext): void => {
-        const name = varRefNameOrNull(varRef);
-        if (name === null) {
-            return;
-        }
-
-        declare(createDefinition(name, kind, node, varRef, document));
-    };
-
-    const recordReference = (name: string, range: Range): void => {
-        const declaration = resolve(name);
+    private recordReference(name: string, range: Range): void {
+        const declaration = this.resolve(name);
         if (declaration === undefined) {
-            unresolvedReferences.push({
+            this.unresolvedReferences.push({
                 name,
                 range,
             });
@@ -157,9 +227,8 @@ export function buildAnalysis(document: TextDocument): JsoniqAnalysis {
             declaration,
         } satisfies ResolvedReference;
 
-        references.push(reference);
-
-        occurrenceIndex.push({
+        this.references.push(reference);
+        this.occurrenceIndex.push({
             range: reference.range,
             declaration,
             reference,
@@ -168,337 +237,10 @@ export function buildAnalysis(document: TextDocument): JsoniqAnalysis {
         if (isSourceDefinition(declaration)) {
             declaration.references.push(reference);
         }
-    };
-
-    const collectSymbolsBeforeChildren = (node: ParseTree, symbols: DocumentSymbol[]): SymbolTraversalState => {
-        const state: SymbolTraversalState = { childSymbols: symbols };
-
-        const collectChildSymbolsUnder = (symbol: DocumentSymbol | undefined): void => {
-            if (symbol === undefined) {
-                return;
-            }
-
-            state.declarationContainerSymbol = symbol;
-            state.declarationChildSymbols = [];
-            state.childSymbols = state.declarationChildSymbols;
-        };
-
-        if (node instanceof FunctionDeclContext) {
-            const nameNode = node._fn_name ?? node.qname();
-            const name = node._fn_name?.getText() ?? node.qname()?.getText();
-            const functionSymbol = nameNode === null || name === undefined
-                ? undefined
-                : attachDocumentSymbol(symbols, createDocumentSymbol(
-                    name,
-                    SymbolKind.Function,
-                    node,
-                    nameNode,
-                    document,
-                ));
-            if (functionSymbol !== undefined) {
-                functionSymbol.children ??= [];
-                state.childSymbols = functionSymbol.children;
-            }
-        }
-
-        if (node instanceof ForVarContext) {
-            const variableRefs = node.varRef();
-            let boundVariableSymbol: DocumentSymbol | undefined;
-            for (const varRef of variableRefs) {
-                const name = varRefNameOrNull(varRef);
-                const symbol = name === null ? undefined : attachDocumentSymbol(symbols, createDocumentSymbol(name, SymbolKind.Variable, node, varRef, document));
-                if (varRef === variableRefs[0]) {
-                    boundVariableSymbol = symbol;
-                }
-            }
-            collectChildSymbolsUnder(boundVariableSymbol);
-        }
-
-        if (node instanceof VarDeclContext || node instanceof LetVarContext || node instanceof GroupByVarContext || node instanceof CountClauseContext) {
-            const varRef = node.varRef();
-            const name = varRefNameOrNull(varRef);
-            const symbol = name === null ? undefined : attachDocumentSymbol(symbols, createDocumentSymbol(name, SymbolKind.Variable, node, varRef, document));
-            if (!(node instanceof CountClauseContext)) {
-                collectChildSymbolsUnder(symbol);
-            }
-        }
-
-        if (node instanceof TypeDeclContext) {
-            const nameNode = node._type_name ?? node.qname();
-            const name = node._type_name?.getText() ?? node.qname()?.getText();
-            if (nameNode !== null && name !== undefined) {
-                attachDocumentSymbol(symbols, createDocumentSymbol(
-                    name,
-                    SymbolKind.Struct,
-                    node,
-                    nameNode,
-                    document,
-                ));
-            }
-        }
-
-        if (node instanceof ContextItemDeclContext) {
-            attachDocumentSymbol(symbols, createDocumentSymbol("context item", SymbolKind.Variable, node, node, document));
-        }
-
-        if (node instanceof NamespaceDeclContext) {
-            attachDocumentSymbol(symbols, createDocumentSymbol(node.NCName().getText(), SymbolKind.Namespace, node, node.NCName(), document));
-        }
-
-        if (node instanceof ParamContext) {
-            const qname = node.qname();
-            const name = qname?.getText().trim();
-            if (name !== undefined && name !== "") {
-                attachDocumentSymbol(symbols, createDocumentSymbol(`$${name}`, SymbolKind.Variable, node, qname, document));
-            }
-        }
-
-        return state;
-    };
-
-    const collectDefinitionsBeforeScope = (node: ParseTree): void => {
-        if (node instanceof FunctionDeclContext) {
-            const name = functionNameWithArityOrNull(node);
-            if (name !== null) {
-                const declaration = createDefinition(name, "function", node, node._fn_name ?? node.qname(), document);
-                declare(declaration);
-                functionStack.push(declaration);
-            }
-        }
-    };
-
-    const collectDefinitionsBeforeChildren = (node: ParseTree): void => {
-        if (node instanceof ParamContext) {
-            const qname = node.qname();
-            const name = qname?.getText().trim();
-            if (name !== undefined && name !== "") {
-                const containingFunction = functionStack[functionStack.length - 1];
-                if (containingFunction === undefined) {
-                    return;
-                }
-
-                const declaration = createDefinition(`$${name}`, "parameter", node, qname, document, containingFunction);
-                const dollarRange = rangeFromNode(node.Kdollar(), document);
-                declaration.selectionRange = {
-                    start: dollarRange.start,
-                    end: declaration.selectionRange.end,
-                };
-                declare(declaration);
-                containingFunction.parameters.push(declaration);
-            }
-        }
-    };
-
-    const collectReferencesBeforeChildren = (node: ParseTree): void => {
-        if (node instanceof VarRefContext && !isDeclarationVarRef(node)) {
-            const name = varRefNameOrNull(node);
-            if (name !== null) {
-                recordReference(name, rangeFromNode(node, document));
-            }
-        }
-
-        if (node instanceof FunctionCallContext || node instanceof NamedFunctionRefContext) {
-            const nameNode = node._fn_name ?? node.qname();
-            const name = functionNameWithArityOrNull(node);
-            if (name !== null) {
-                recordReference(name, rangeFromNode(nameNode, document));
-            }
-        }
-    };
-
-    const collectDefinitionsAfterChildren = (node: ParseTree): void => {
-        if (node instanceof VarDeclContext) {
-            declareVariable("declare-variable", node, node.varRef());
-        } else if (node instanceof ForVarContext) {
-            const variableRefs = node.varRef();
-            const boundVariable = variableRefs[0];
-            if (boundVariable !== undefined) {
-                declareVariable("for", node, boundVariable);
-            }
-            const positionVariable = variableRefs[1];
-            if (positionVariable !== undefined) {
-                declareVariable("for-position", node, positionVariable);
-            }
-        } else if (node instanceof LetVarContext) {
-            declareVariable("let", node, node.varRef());
-        } else if (node instanceof GroupByVarContext) {
-            declareVariable("group-by", node, node.varRef());
-        } else if (node instanceof CountClauseContext) {
-            declareVariable("count", node, node.varRef());
-        }
-
-        if (node instanceof FunctionDeclContext) {
-            functionStack.pop();
-        }
-    };
-
-    const finishSymbolCollectionAfterChildren = (state: SymbolTraversalState): void => {
-        if (state.declarationChildSymbols !== undefined && state.declarationChildSymbols.length > 0) {
-            if (state.declarationContainerSymbol !== undefined) {
-                state.declarationContainerSymbol.children = state.declarationChildSymbols;
-            }
-        }
-    };
-
-    const visit = (node: ParseTree, symbols: DocumentSymbol[]): void => {
-        const symbolState = collectSymbolsBeforeChildren(node, symbols);
-
-        collectDefinitionsBeforeScope(node);
-
-        if (isNewScopeNode(node)) {
-            pushScope();
-        }
-
-        collectDefinitionsBeforeChildren(node);
-        collectReferencesBeforeChildren(node);
-
-        for (let index = 0; index < node.getChildCount(); index += 1) {
-            const child = node.getChild(index);
-            if (child !== null) {
-                visit(child, symbolState.childSymbols);
-            }
-        }
-
-        collectDefinitionsAfterChildren(node);
-        finishSymbolCollectionAfterChildren(symbolState);
-
-        if (isNewScopeNode(node)) {
-            popScope(rangeFromNode(node, document).end);
-        }
-    };
-
-    visit(parseResult.tree, documentSymbols);
-
-    occurrenceIndex.sort((left, right) => {
-        const startComparison = comparePositions(left.range.start, right.range.start);
-        if (startComparison !== 0) {
-            return startComparison;
-        }
-
-        return comparePositions(left.range.end, right.range.end);
-    });
-
-    for (const declaration of scopeStack[0]?.definitionByName.values() ?? []) {
-        const lastDeclaration = declaration[declaration.length - 1];
-        if (lastDeclaration !== undefined) {
-            lastDeclaration.scopeEnd = document.positionAt(document.getText().length);
-        }
     }
-
-    definitions.sort((left, right) => comparePositions(left.range.start, right.range.start));
-
-    return {
-        definitions,
-        references,
-        unresolvedReferences,
-        occurrenceIndex,
-        documentSymbols,
-    };
 }
 
-function createDocumentSymbol(
-    name: string,
-    kind: SymbolKind,
-    declarationNode: ParserRuleContext,
-    selectionNode: ParserRuleContext | ParseTree,
-    document: TextDocument,
-): DocumentSymbol | undefined {
-    const sanitizedName = sanitizeSymbolName(name);
-    if (sanitizedName === null) {
-        return undefined;
-    }
-
-    const range = rangeFromNode(declarationNode, document);
-
-    return {
-        name: sanitizedName,
-        kind,
-        range,
-        selectionRange: rangeFromNode(selectionNode, document) ?? range,
-    };
-}
-
-function sanitizeSymbolName(name: string): string | null {
-    const trimmed = name.trim();
-    const isValid = trimmed !== "" && trimmed !== "$";
-    return isValid ? trimmed : null;
-}
-
-function createDefinition(
-    name: string,
-    kind: "function",
-    declarationNode: ParserRuleContext,
-    selectionNode: ParseTree,
-    document: TextDocument,
-): SourceFunctionDefinition;
-function createDefinition(
-    name: string,
-    kind: "parameter",
-    declarationNode: ParserRuleContext,
-    selectionNode: ParseTree,
-    document: TextDocument,
-    containingFunction: SourceFunctionDefinition,
-): SourceParameterDefinition;
-function createDefinition(
-    name: string,
-    kind: VariableKind,
-    declarationNode: ParserRuleContext,
-    selectionNode: ParseTree,
-    document: TextDocument,
-): SourceVariableDefinition;
-function createDefinition(
-    name: string,
-    kind: SourceDefinitionKind,
-    declarationNode: ParserRuleContext,
-    selectionNode: ParseTree,
-    document: TextDocument,
-    containingFunction?: SourceFunctionDefinition,
-): SourceDefinition {
-    const result = {
-        name,
-        range: rangeFromNode(declarationNode, document),
-        selectionRange: rangeFromNode(selectionNode, document),
-        scopeEnd: { line: 0, character: 0 },
-        references: [],
-        isBuiltin: false as const,
-    };
-
-    if (kind === "function") {
-        return {
-            ...result,
-            kind: "function",
-            parameters: [],
-        } satisfies SourceFunctionDefinition;
-    }
-
-    if (kind === "parameter") {
-        if (containingFunction === undefined) {
-            throw new Error("Parameter declaration must belong to a function.");
-        }
-
-        return {
-            ...result,
-            kind: "parameter",
-            function: containingFunction,
-        } satisfies SourceParameterDefinition;
-    }
-
-    return {
-        ...result,
-        kind,
-    } satisfies SourceVariableDefinition;
-}
-
-function isDeclarationVarRef(node: VarRefContext): boolean {
-    const parent = node.parent;
-
-    if (parent instanceof VarDeclContext || parent instanceof LetVarContext || parent instanceof GroupByVarContext || parent instanceof CountClauseContext) {
-        return parent.varRef() === node;
-    }
-
-    if (parent instanceof ForVarContext) {
-        return parent.varRef().some((entry) => entry === node);
-    }
-
-    return false;
+export function buildAnalysis(document: TextDocument): JsoniqAnalysis {
+    const parseResult = parseDocument(document);
+    return new AnalysisBuilder(document).build(parseResult.semanticEvents);
 }
