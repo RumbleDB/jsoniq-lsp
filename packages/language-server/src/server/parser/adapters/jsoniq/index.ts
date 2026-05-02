@@ -1,5 +1,8 @@
 import type { ParserAdapter } from "server/parser/types.js";
-import { collectCompletionContext } from "./completion-context.js";
+import {
+    collectCompletionContext,
+    getCompletionIntent,
+} from "./completion-context.js";
 import {
     parseJsoniq,
     type JsoniqParsedDocument,
@@ -14,4 +17,5 @@ export const jsoniqParserAdapter: ParserAdapter = {
     supports: () => true,
     parse: parseJsoniq,
     collectCompletionContext: (parsed, cursorOffset) => collectCompletionContext(parsed as JsoniqParsedDocument, cursorOffset),
+    getCompletionIntent,
 };

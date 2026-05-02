@@ -9,6 +9,19 @@ export interface ParserSyntaxContext {
     offset: number;
 }
 
+export interface ParserKeywordCompletion {
+    label: string;
+    insertText?: string;
+}
+
+export interface CompletionIntent {
+    insideVariableBindingHeader: boolean;
+    declaringVariableName: boolean;
+    expectingName: boolean;
+    expressionReferenceContext: boolean;
+    keywords: ParserKeywordCompletion[];
+}
+
 export interface ParseResult {
     diagnostics: Diagnostic[];
     completionContexts: ParserSyntaxContext[];
@@ -23,4 +36,6 @@ export interface ParserAdapter {
     parse(document: TextDocument): ParseResult;
 
     collectCompletionContext(parsed: ParseResult, cursorOffset: number): ParserSyntaxContext | null;
+
+    getCompletionIntent(context: ParserSyntaxContext): CompletionIntent;
 }
