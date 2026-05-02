@@ -40,7 +40,9 @@ class AnalysisBuilder {
 
     public constructor(private readonly document: TextDocument) { }
 
-    public build(events: readonly SemanticEvent[]): JsoniqAnalysis {
+    public build(): JsoniqAnalysis {
+        const events = parseDocument(this.document).semanticEvents;
+
         for (const event of events) {
             switch (event.type) {
                 case "declaration":
@@ -241,6 +243,5 @@ class AnalysisBuilder {
 }
 
 export function buildAnalysis(document: TextDocument): JsoniqAnalysis {
-    const parseResult = parseDocument(document);
-    return new AnalysisBuilder(document).build(parseResult.semanticEvents);
+    return new AnalysisBuilder(document).build();
 }
