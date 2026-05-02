@@ -1,17 +1,15 @@
 import type { DocumentUri } from "vscode-languageserver";
 import { TextDocument } from "vscode-languageserver-textdocument";
 
-import type { ParsedDocument, ParserAdapter } from "./types.js";
-import type { JsoniqParseResult, JsoniqSyntaxContext } from "./adapters/jsoniq/index.js";
+import type { ParseResult, ParserAdapter } from "./types.js";
+import type { JsoniqSyntaxContext } from "./adapters/jsoniq/index.js";
 import { getParserAdapterForDocument } from "./registry.js";
-
-export type { JsoniqParseResult, JsoniqSyntaxContext };
 
 interface CachedParsedDocument {
     version: number;
     adapterId: string;
     adapter: ParserAdapter;
-    parsed: ParsedDocument;
+    parsed: ParseResult;
 }
 
 const parseCache = new Map<DocumentUri, CachedParsedDocument>();
@@ -33,13 +31,13 @@ function getCachedParsedDocument(document: TextDocument): CachedParsedDocument {
     } satisfies CachedParsedDocument;
 
     parseCache.set(document.uri, next);
-    
+
     return next;
 }
 
-export function parseJsoniqDocument(document: TextDocument): JsoniqParseResult {
+export function parseDocument(document: TextDocument): ParseResult {
     const cached = getCachedParsedDocument(document);
-    return cached.parsed.result as JsoniqParseResult;
+    return cached.parsed;
 }
 
 export function collectCompletionContext(document: TextDocument, cursorOffset: number): JsoniqSyntaxContext | null {

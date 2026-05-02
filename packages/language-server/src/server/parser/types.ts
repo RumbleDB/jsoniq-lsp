@@ -15,16 +15,12 @@ export interface ParseResult {
     semanticEvents: readonly SemanticEvent[];
 }
 
-export interface ParsedDocument {
-    result: ParseResult;
-}
-
 export interface ParserAdapter {
     readonly id: string;
 
     supports(document: TextDocument): boolean;
 
-    parse(document: TextDocument): ParsedDocument;
+    parse(document: TextDocument): ParseResult;
 
-    collectCompletionContext(parsed: ParsedDocument, cursorOffset: number): SyntaxContext | null;
+    collectCompletionContext(parsed: ParseResult, cursorOffset: number): SyntaxContext | null;
 }
