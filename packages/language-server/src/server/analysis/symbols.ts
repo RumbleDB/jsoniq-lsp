@@ -110,6 +110,10 @@ function sanitizeSymbolName(name: string): string | null {
 
 function definitionKindToSymbolKind(kind: SourceDefinitionKind): SymbolKind {
     switch (kind) {
+        case "namespace":
+            return SymbolKind.Namespace;
+        case "context-item":
+            return SymbolKind.Variable;
         case "declare-variable":
         case "let":
         case "for":
@@ -118,6 +122,8 @@ function definitionKindToSymbolKind(kind: SourceDefinitionKind): SymbolKind {
         case "count":
         case "parameter":
             return SymbolKind.Variable;
+        case "type":
+            return SymbolKind.Struct;
         case "function":
             return SymbolKind.Function;
         default:

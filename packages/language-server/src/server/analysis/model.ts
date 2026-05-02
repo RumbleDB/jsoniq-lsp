@@ -15,6 +15,9 @@ export type VariableKind =
 
 export type SourceDefinitionKind =
     | VariableKind
+    | "namespace"
+    | "context-item"
+    | "type"
     | "parameter"
     | "function";
 
@@ -62,7 +65,8 @@ export interface SourceFunctionDefinition extends BaseSourceDefinition {
 export type SourceDefinition =
     | SourceVariableDefinition
     | SourceParameterDefinition
-    | SourceFunctionDefinition;
+    | SourceFunctionDefinition
+    | (BaseSourceDefinition & { kind: "namespace" | "context-item" | "type" });
 
 export type Definition = SourceDefinition | BuiltinFunctionDefinition;
 

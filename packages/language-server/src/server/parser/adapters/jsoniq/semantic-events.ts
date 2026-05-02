@@ -3,7 +3,9 @@ import { type Range } from "vscode-languageserver";
 import { TextDocument } from "vscode-languageserver-textdocument";
 
 import {
+    ContextItemDeclContext,
     CountClauseContext,
+    NamespaceDeclContext,
     ForVarContext,
     FunctionDeclContext,
     FunctionCallContext,
@@ -11,6 +13,7 @@ import {
     LetVarContext,
     NamedFunctionRefContext,
     ParamContext,
+    TypeDeclContext,
     VarDeclContext,
     VarRefContext,
     type ModuleAndThisIsItContext,
@@ -95,6 +98,44 @@ export function collectSemanticEvents(tree: ModuleAndThisIsItContext, document: 
     const events = new SemanticEventCollector(document);
 
     const collectDeclarations = (node: ParseTree): SemanticDeclaration[] => {
+        if (node instanceof NamespaceDeclContext) {
+            const nameNode = node.NCName();
+            const name = nameNode.getText().trim();
+            if (name !== "") {
+                return [{
+                    name,
+                    kind: "namespace",
+                    range: rangeFromNode(node, document),
+                    selectionRange: rangeFromNode(nameNode, document),
+                }];
+            }
+        }
+
+        if (node instanceof ContextItemDeclContext) {
+            return [{
+                name: "context item",
+                kind: "context-item",
+                range: rangeFromNode(node, document),
+                selectionRange: {
+                    start: rangeFromNode(node.Kcontext(), document).start,
+                    end: rangeFromNode(node.Kitem(), document).end,
+                },
+            }];
+        }
+
+        if (node instanceof TypeDeclContext) {
+            const nameNode = node.qname();
+            const name = nameNode.getText().trim();
+            if (name !== "") {
+                return [{
+                    name,
+                    kind: "type",
+                    range: rangeFromNode(node, document),
+                    selectionRange: rangeFromNode(nameNode, document),
+                }];
+            }
+        }
+
         if (node instanceof FunctionDeclContext) {
             const name = functionNameWithArityOrNull(node);
             const selectionNode = node._fn_name ?? node.qname();

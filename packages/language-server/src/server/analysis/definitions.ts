@@ -39,6 +39,14 @@ export function createSourceDefinition(
         } satisfies SourceParameterDefinition;
     }
 
+    if (declaration.kind === "namespace" || declaration.kind === "context-item" || declaration.kind === "type") {
+        /// TODO: Add more support for these kinds of definitions
+        return {
+            ...base,
+            kind: declaration.kind,
+        } satisfies SourceDefinition;
+    }
+
     return {
         ...base,
         kind: declaration.kind,
