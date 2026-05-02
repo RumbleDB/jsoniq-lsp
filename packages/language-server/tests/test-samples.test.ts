@@ -3,7 +3,7 @@ import path from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { parseJsoniqDocument } from "../src/server/parser/index";
+import { parseDocument } from "../src/server/parser/index";
 import { testDocumentFromUri } from "./test-utils.js";
 
 type SampleExpectation = "valid" | "invalid";
@@ -27,7 +27,7 @@ async function parseSample(filePath: string): Promise<number> {
         uri: `file://${filePath}`,
     });
 
-    return parseJsoniqDocument(document).diagnostics.length;
+    return parseDocument(document).diagnostics.length;
 }
 
 describe("JSONiq sample corpus", async () => {
