@@ -11,9 +11,9 @@ export type {
     JsoniqSyntaxContext,
 } from "./parse.js";
 
-export const jsoniqParserAdapter: ParserAdapter<JsoniqParsedDocument> = {
+export const jsoniqParserAdapter: ParserAdapter = {
     id: "jsoniq",
     supports: () => true,
     parse: parseJsoniq,
-    collectCompletionContext,
+    collectCompletionContext: (parsed, cursorOffset) => collectCompletionContext(parsed as JsoniqParsedDocument, cursorOffset),
 };

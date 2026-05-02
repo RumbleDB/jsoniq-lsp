@@ -9,23 +9,22 @@ export interface SyntaxContext {
     offset: number;
 }
 
-export interface ParseResult<Tree = unknown, Context extends SyntaxContext = SyntaxContext> {
+export interface ParseResult {
     diagnostics: Diagnostic[];
-    completionContexts: Context[];
+    completionContexts: SyntaxContext[];
     semanticEvents: readonly SemanticEvent[];
-    tree: Tree;
 }
 
-export interface ParsedDocument<Result extends ParseResult = ParseResult> {
-    result: Result;
+export interface ParsedDocument {
+    result: ParseResult;
 }
 
-export interface ParserAdapter<Parsed extends ParsedDocument = ParsedDocument> {
+export interface ParserAdapter {
     readonly id: string;
 
     supports(document: TextDocument): boolean;
 
-    parse(document: TextDocument): Parsed;
+    parse(document: TextDocument): ParsedDocument;
 
-    collectCompletionContext(parsed: Parsed, cursorOffset: number): SyntaxContext | null;
+    collectCompletionContext(parsed: ParsedDocument, cursorOffset: number): SyntaxContext | null;
 }

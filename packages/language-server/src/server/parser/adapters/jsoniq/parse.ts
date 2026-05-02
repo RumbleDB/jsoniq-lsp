@@ -15,15 +15,18 @@ import {
 import { TextDocument } from "vscode-languageserver-textdocument";
 
 import { jsoniqLexer } from "grammar/jsoniqLexer.js";
-import { jsoniqParser, type ModuleAndThisIsItContext } from "grammar/jsoniqParser.js";
-import type { ParsedDocument, ParseResult, SyntaxContext } from "server/parser/types.js";
+import { jsoniqParser } from "grammar/jsoniqParser.js";
+import type {
+    ParseResult,
+    ParsedDocument,
+    SyntaxContext,
+} from "server/parser/types.js";
 import { collectSemanticEvents } from "./semantic-events.js";
 
 export type JsoniqSyntaxContext = SyntaxContext;
+export type JsoniqParseResult = ParseResult;
 
-export type JsoniqParseResult = ParseResult<ModuleAndThisIsItContext, JsoniqSyntaxContext>;
-
-export interface JsoniqParsedDocument extends ParsedDocument<JsoniqParseResult> {
+export interface JsoniqParsedDocument extends ParsedDocument {
     parser: jsoniqParser;
     tokens: Token[];
     result: JsoniqParseResult;
@@ -31,7 +34,7 @@ export interface JsoniqParsedDocument extends ParsedDocument<JsoniqParseResult> 
 
 class JsoniqErrorListener extends BaseErrorListener {
     public readonly diagnostics: Diagnostic[] = [];
-    public readonly contexts: JsoniqSyntaxContext[] = [];
+    public readonly contexts: SyntaxContext[] = [];
 
     public constructor(private readonly document: TextDocument) {
         super();
@@ -109,7 +112,6 @@ export function parseJsoniq(document: TextDocument): JsoniqParsedDocument {
             diagnostics: errorListener.diagnostics,
             completionContexts: errorListener.contexts,
             semanticEvents: collectSemanticEvents(tree, document),
-            tree,
         },
     };
 }

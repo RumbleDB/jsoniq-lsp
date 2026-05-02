@@ -31,7 +31,9 @@ function getCachedParsedDocument(document: TextDocument): CachedParsedDocument {
         adapter,
         parsed,
     } satisfies CachedParsedDocument;
+
     parseCache.set(document.uri, next);
+    
     return next;
 }
 
