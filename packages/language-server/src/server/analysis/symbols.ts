@@ -19,13 +19,9 @@ export class SymbolsBuilder {
             current!.push(symbol);
         }
 
-        const getLastSymbol = (): DocumentSymbol => {
+        const getLastSymbol = (): DocumentSymbol | undefined => {
             const current = stack[stack.length - 1];
             const last = current?.[current?.length - 1];
-
-            if (!current || !last) {
-                throw new Error("No symbol to attach to");
-            }
 
             return last;
         }
