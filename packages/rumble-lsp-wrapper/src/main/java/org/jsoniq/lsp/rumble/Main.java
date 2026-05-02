@@ -102,7 +102,7 @@ public class Main {
             }
 
             return new Response(requestId, requestType,
-                    handler.handle(new Request(requestId, requestType, request.body())), null);
+                    handler.handle(new Request(requestId, requestType, request.body(), request.documentUri())), null);
         } catch (Throwable throwable) {
             String errorMessage = Objects.toString(throwable.getMessage(), throwable.getClass().getName());
             RequestHandler handler = DAEMON_HANDLERS.get(requestType);

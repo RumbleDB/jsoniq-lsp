@@ -9,7 +9,7 @@ import {
 let client: LanguageClient | undefined;
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
-    const serverModule = require.resolve("@jsoniq-lsp/language-server/server");
+    const serverModule = require.resolve("@jimmycai/jsoniq-language-server/server");
 
     const serverOptions: ServerOptions = {
         run: {

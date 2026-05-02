@@ -47,6 +47,7 @@ export const REQUEST_TYPE_INFER_TYPES = "inferTypes" as const;
 export interface InferTypesRequestPayload {
     requestType: typeof REQUEST_TYPE_INFER_TYPES;
     body: string;
+    documentUri: string;
 }
 
 export type TypeInferenceResponse = WrapperDaemonResponse<typeof REQUEST_TYPE_INFER_TYPES, TypeInferenceResult>;
@@ -95,6 +96,7 @@ export async function getTypeInference(document: TextDocument): Promise<TypeInfe
     const inferencePromise = getWrapperClient().sendRequest<"inferTypes">({
         requestType: "inferTypes",
         body,
+        documentUri: document.uri,
     }).then((response) => {
         typeInferenceCache.set(document.uri, {
             version: document.version,
@@ -106,8 +108,10 @@ export async function getTypeInference(document: TextDocument): Promise<TypeInfe
         logger.debug(JSON.stringify(response, null, 2));
         return response;
     })
-        .catch(() => {
+        .catch((error) => {
             pendingInferenceByUri.delete(document.uri);
+            logger.warn(`Type inference failed for ${document.uri} (version ${document.version}). Returning fallback response.`);
+            logger.debug(`Error: ${error instanceof Error ? error.message : String(error)}`);
             return FALLBACK_TYPE_INFERENCE_RESPONSE;
         });
 

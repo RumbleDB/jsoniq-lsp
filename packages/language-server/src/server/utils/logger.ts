@@ -7,26 +7,30 @@ function isDebugEnabled(): boolean {
     return process.env[DEBUG_LOG_ENV] === "1" || process.env[DEBUG_ENV] === "1";
 }
 
+function stringifyArg(arg: unknown): string {
+    if (typeof arg === "string") {
+        return arg;
+    }
+
+    if (arg instanceof Error) {
+        return arg.stack ?? arg.message;
+    }
+
+    try {
+        return JSON.stringify(arg);
+    } catch {
+        return String(arg);
+    }
+}
+
 function writeLog(level: LogLevel, scope: string, args: unknown[]): void {
     if (level === "debug" && !isDebugEnabled()) {
         return;
     }
 
     const prefix = `[jsoniq-lsp:${scope}]`;
-    const payload = [prefix, ...args];
-
-    switch (level) {
-        case "debug":
-        case "info":
-            console.log(...payload);
-            return;
-        case "warn":
-            console.warn(...payload);
-            return;
-        case "error":
-            console.error(...payload);
-            return;
-    }
+    const payload = [prefix, ...args.map((arg) => stringifyArg(arg))].join(" ");
+    process.stderr.write(`${payload}\n`);
 }
 
 export interface Logger {

@@ -1,5 +1,5 @@
 {
-    "name": "@jsoniq-lsp/language-server",
+    "name": "@jimmycai/jsoniq-language-server",
     "version": "0.1.0",
     "private": false,
     "type": "module",
@@ -9,17 +9,19 @@
     "exports": {
         "./server": "./dist/server/main.js"
     },
+    "repository": {
+        "url": "https://github.com/CaiJimmy/jsoniq-lsp"
+    },
     "scripts": {
         "generate:grammar": "antlr-ng -Dlanguage=TypeScript --generate-visitor true --generate-listener false --output-directory src/grammar src/grammar/jsoniq.g4",
         "build": "tsc -p tsconfig.json",
-        "build:prod": "npm run sync-wrapper && npm run build",
-        "sync-wrapper": "node ./scripts/sync-wrapper.mjs",
+        "build:prod": "pnpm run build",
         "watch": "tsc -w -p tsconfig.json",
         "start": "node ./dist/server/main.js",
         "test": "vitest run tests",
         "test:samples": "pnpm test -- tests/test-samples.test.ts",
         "clean": "rm -rf dist",
-        "prepack": "npm run build:prod"
+        "prepack": "pnpm run build:prod"
     },
     "dependencies": {
         "antlr-ng": "^1.0.10",

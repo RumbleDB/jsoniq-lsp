@@ -24,6 +24,7 @@ import org.rumbledb.types.SequenceType;
 import com.fasterxml.jackson.annotation.JsonValue;
 
 import java.nio.charset.StandardCharsets;
+import java.net.URI;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Comparator;
@@ -134,6 +135,10 @@ public final class TypeInferencer implements RequestHandler {
     }
 
     public Result infer(String query) {
+        return infer(query, null);
+    }
+
+    public Result infer(String query, URI documentUri) {
         if (query == null || query.isEmpty()) {
             return EMPTY_RESULT;
         }
@@ -143,7 +148,7 @@ public final class TypeInferencer implements RequestHandler {
         List<TypeError> typeErrors = new ArrayList<>();
 
         try {
-            MainModule module = VisitorHelpers.parseMainModuleFromQuery(query, this.permissiveConfiguration);
+            MainModule module = parseMainModule(query, documentUri, this.permissiveConfiguration);
             visitNodeAndCollectTypes(module, variableTypes, functionTypes);
             variableTypes.sort((v1, v2) -> POSITION_COMPARATOR.compare(v1.position(), v2.position()));
             functionTypes.sort((f1, f2) -> POSITION_COMPARATOR.compare(f1.position(), f2.position()));
@@ -156,12 +161,23 @@ public final class TypeInferencer implements RequestHandler {
 
         /// Parse with strict configuration to collect type errors, if any.
         try {
-            VisitorHelpers.parseMainModuleFromQuery(query, this.strictConfiguration);
+            parseMainModule(query, documentUri, this.strictConfiguration);
         } catch (UnexpectedStaticTypeException exception) {
             typeErrors.add(toTypeError(exception));
         }
 
         return new Result(variableTypes, functionTypes, typeErrors);
+    }
+
+    private static MainModule parseMainModule(
+            String query,
+            URI documentUri,
+            RumbleRuntimeConfiguration configuration) {
+        if (documentUri == null) {
+            return VisitorHelpers.parseMainModuleFromQuery(query, configuration);
+        }
+
+        return VisitorHelpers.parseMainModule(query, documentUri, configuration);
     }
 
     private static TypeError toTypeError(UnexpectedStaticTypeException exception) {
@@ -406,7 +422,8 @@ public final class TypeInferencer implements RequestHandler {
 
         byte[] decodedBytes = Base64.getDecoder().decode(request.body());
         String query = new String(decodedBytes, StandardCharsets.UTF_8);
-        return infer(query);
+        URI documentUri = request.documentUri() == null ? null : URI.create(request.documentUri());
+        return infer(query, documentUri);
     }
 
     @Override

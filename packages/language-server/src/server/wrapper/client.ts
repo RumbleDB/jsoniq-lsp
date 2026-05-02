@@ -53,7 +53,7 @@ class RumbleWrapperClient {
 
     private async startAndHandshake(): Promise<void> {
         if (this.child === undefined) {
-            const launchConfig = resolveWrapperLaunchConfig();
+            const launchConfig = await resolveWrapperLaunchConfig();
             logger.info(`Launching wrapper with args: ${launchConfig.args.join(" ")}`);
 
             this.child = spawn("java", launchConfig.args, {
@@ -62,8 +62,12 @@ class RumbleWrapperClient {
 
             this.handshakeCompleted = false;
             this.child.stdout.setEncoding("utf8");
+            this.child.stderr.setEncoding("utf8");
             this.child.stdout.on("data", (chunk: string) => {
                 this.handleStdoutChunk(chunk);
+            });
+            this.child.stderr.on("data", (chunk: string) => {
+                this.handleStderrChunk(chunk);
             });
 
             this.child.on("error", (error) => {
@@ -83,12 +87,20 @@ class RumbleWrapperClient {
             });
         }
 
-        const handshakeResponse = await this.sendRequestInternal<typeof REQUEST_TYPE_HANDSHAKE>({
-            requestType: REQUEST_TYPE_HANDSHAKE,
-        });
+        try {
+            const handshakeResponse = await this.sendRequestInternal<typeof REQUEST_TYPE_HANDSHAKE>({
+                requestType: REQUEST_TYPE_HANDSHAKE,
+            });
 
-        this.rumbleVersion = handshakeResponse.body.rumbleVersion;
-        this.handshakeCompleted = true;
+            this.rumbleVersion = handshakeResponse.body.rumbleVersion;
+            this.handshakeCompleted = true;
+            logger.info(`Handshake with wrapper successful. Response: ${JSON.stringify(handshakeResponse)}`);
+        }
+        catch (error) {
+            logger.error("Handshake with wrapper failed:", error instanceof Error ? error : String(error));
+            this.dispose();
+            throw error instanceof Error ? error : new Error(String(error));
+        }
     }
 
     public dispose(): void {
@@ -126,6 +138,8 @@ class RumbleWrapperClient {
         const encodedRequest = JSON.stringify(request);
         const child = this.child;
 
+        logger.debug(`Sending request to wrapper: ${encodedRequest}`);
+
         if (child === undefined) {
             throw new Error("Wrapper process is not available.");
         }
@@ -150,6 +164,7 @@ class RumbleWrapperClient {
                     }
                 });
             } catch (error) {
+                logger.error("Failed to write to wrapper stdin:", error instanceof Error ? error : String(error));
                 this.rejectPending(id, error instanceof Error ? error : new Error("Wrapper write failed."));
             }
         });
@@ -166,6 +181,17 @@ class RumbleWrapperClient {
                 continue;
             }
             this.handleResponseLine(trimmed);
+        }
+    }
+
+    private handleStderrChunk(chunk: string): void {
+        const lines = chunk
+            .split("\n")
+            .map((line) => line.trim())
+            .filter((line) => line.length > 0);
+
+        for (const line of lines) {
+            logger.warn(`Wrapper stderr: ${line}`);
         }
     }
 

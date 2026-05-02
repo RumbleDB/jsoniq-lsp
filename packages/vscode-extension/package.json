@@ -1,16 +1,19 @@
 {
-    "name": "@jsoniq-lsp/vscode-extension",
+    "name": "jsoniq-vscode-extension",
     "displayName": "JSONiq Language Support",
     "description": "VS Code client for the JSONiq language server.",
     "version": "0.1.0",
     "private": true,
     "publisher": "local",
     "engines": {
-        "vscode": "^1.90.0"
+        "vscode": "^1.116.0"
     },
     "categories": [
         "Programming Languages"
     ],
+    "repository": {
+        "url": "https://github.com/CaiJimmy/jsoniq-lsp"
+    },
     "main": "./dist/extension.js",
     "contributes": {
         "languages": [
@@ -41,17 +44,19 @@
         }
     },
     "scripts": {
-        "build": "tsc -p tsconfig.json",
-        "watch": "tsc -w -p tsconfig.json",
+        "build": "pnpm run clean && pnpm run typecheck && rolldown -c",
+        "typecheck": "tsc -p tsconfig.json --noEmit",
+        "watch": "rolldown -c -w",
         "clean": "rm -rf dist"
     },
     "dependencies": {
-        "@jsoniq-lsp/language-server": "workspace:*",
+        "@jimmycai/jsoniq-language-server": "workspace:*",
         "vscode-languageclient": "^9.0.1"
     },
     "devDependencies": {
         "@types/node": "^25.6.0",
         "@types/vscode": "^1.116.0",
+        "rolldown": "1.0.0-rc.17",
         "typescript": "^6.0.3"
     }
 }
