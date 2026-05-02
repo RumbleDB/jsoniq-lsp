@@ -22,7 +22,7 @@ import {
 import {
     collectCompletionContext,
 } from "./parser/index.js";
-import type { SyntaxContext } from "./parser/types.js";
+import type { ParserSyntaxContext } from "./parser/types.js";
 
 export async function findCompletions(document: TextDocument, position: Position): Promise<CompletionItem[]> {
     const source = document.getText();
@@ -124,7 +124,7 @@ export async function findVariableCompletions(document: TextDocument, position: 
 /**
  * Determines whether we are in a context where a variable name is being declared, based on the syntax context.
  */
-function isInsideVariableBindingHeader(context: SyntaxContext): boolean {
+function isInsideVariableBindingHeader(context: ParserSyntaxContext): boolean {
     const declarationDepth = firstIndexOfRule(context.ruleStack, VARIABLE_DECLARATION_RULES);
 
     if (declarationDepth === -1) {
@@ -148,7 +148,7 @@ function isInsideVariableBindingHeader(context: SyntaxContext): boolean {
  * @param context current syntax context at the cursor position
  * @returns true if we are in an expression context, false otherwise
  */
-function isExpressionReferenceContext(context: SyntaxContext): boolean {
+function isExpressionReferenceContext(context: ParserSyntaxContext): boolean {
     if (context.ruleStack[0] === jsoniqParser.RULE_qname) {
         // we are expecting a name, not an expression
         return false;
@@ -231,7 +231,7 @@ function getBuiltinFunctionCompletionItems(): CompletionItem[] {
     });
 }
 
-function keywordCompletions(context: SyntaxContext, expressionReferenceContext: boolean): CompletionItem[] {
+function keywordCompletions(context: ParserSyntaxContext, expressionReferenceContext: boolean): CompletionItem[] {
     return KEYWORD_COMPLETIONS
         .filter((completion) => context.expectedTokenSet.contains(completion.tokenType))
         .filter((completion) => {
@@ -271,7 +271,7 @@ const DOLLAR_COMPLETION: CompletionItem = {
     detail: "JSONiq variable declaration",
 };
 
-function hasExpectedToken(context: SyntaxContext, tokenTypes: Set<number>): boolean {
+function hasExpectedToken(context: ParserSyntaxContext, tokenTypes: Set<number>): boolean {
     return [...tokenTypes.values()]
         .some((tokenType) => context.expectedTokenSet.contains(tokenType));
 }

@@ -1,7 +1,7 @@
 import type { DocumentUri } from "vscode-languageserver";
 import { TextDocument } from "vscode-languageserver-textdocument";
 
-import type { ParseResult, ParserAdapter, SyntaxContext } from "./types.js";
+import type { ParseResult, ParserAdapter, ParserSyntaxContext } from "./types.js";
 import { getParserAdapterForDocument } from "./registry.js";
 
 interface CachedParsedDocument {
@@ -39,7 +39,7 @@ export function parseDocument(document: TextDocument): ParseResult {
     return cached.parsed;
 }
 
-export function collectCompletionContext(document: TextDocument, cursorOffset: number): SyntaxContext | null {
+export function collectCompletionContext(document: TextDocument, cursorOffset: number): ParserSyntaxContext | null {
     const cached = getCachedParsedDocument(document);
     return cached.adapter.collectCompletionContext(cached.parsed, cursorOffset);
 }

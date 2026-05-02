@@ -3,7 +3,7 @@ import type { Diagnostic } from "vscode-languageserver";
 import type { TextDocument } from "vscode-languageserver-textdocument";
 import type { SemanticEvent } from "./semantic-events.js";
 
-export interface SyntaxContext {
+export interface ParserSyntaxContext {
     expectedTokenSet: IntervalSet;
     ruleStack: number[];
     offset: number;
@@ -11,7 +11,7 @@ export interface SyntaxContext {
 
 export interface ParseResult {
     diagnostics: Diagnostic[];
-    completionContexts: SyntaxContext[];
+    completionContexts: ParserSyntaxContext[];
     semanticEvents: readonly SemanticEvent[];
 }
 
@@ -22,5 +22,5 @@ export interface ParserAdapter {
 
     parse(document: TextDocument): ParseResult;
 
-    collectCompletionContext(parsed: ParseResult, cursorOffset: number): SyntaxContext | null;
+    collectCompletionContext(parsed: ParseResult, cursorOffset: number): ParserSyntaxContext | null;
 }

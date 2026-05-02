@@ -18,7 +18,7 @@ import { jsoniqLexer } from "grammar/jsoniqLexer.js";
 import { jsoniqParser } from "grammar/jsoniqParser.js";
 import type {
     ParseResult,
-    SyntaxContext,
+    ParserSyntaxContext,
 } from "server/parser/types.js";
 import { collectSemanticEvents } from "./semantic-events.js";
 
@@ -29,7 +29,7 @@ export interface JsoniqParsedDocument extends ParseResult {
 
 class JsoniqErrorListener extends BaseErrorListener {
     public readonly diagnostics: Diagnostic[] = [];
-    public readonly contexts: SyntaxContext[] = [];
+    public readonly contexts: ParserSyntaxContext[] = [];
 
     public constructor(private readonly document: TextDocument) {
         super();
