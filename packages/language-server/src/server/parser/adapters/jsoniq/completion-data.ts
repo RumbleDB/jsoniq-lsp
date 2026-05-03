@@ -37,6 +37,7 @@ export const PREFERRED_COMPLETION_RULES = new Set([
     jsoniqParser.RULE_declaredVarRef,
     jsoniqParser.RULE_declaredQName,
     jsoniqParser.RULE_varRef,
+    jsoniqParser.RULE_qname,
     jsoniqParser.RULE_functionCall,
 ]);
 

@@ -80,13 +80,13 @@ function getCompletionCandidates(parser: jsoniqParser, caretTokenIndex: number) 
 }
 
 function isFunctionReferenceContext(candidates: JSONiqCompletionCandidates): boolean {
-    return hasCandidateRule(candidates, jsoniqParser.RULE_functionCall);
+    return hasCandidateRule(candidates, jsoniqParser.RULE_functionCall) 
+        && !hasCandidateRule(candidates, jsoniqParser.RULE_declaredVarRef);
 }
 
 function isVariableReferenceContext(candidates: JSONiqCompletionCandidates): boolean {
     return hasCandidateRule(candidates, jsoniqParser.RULE_varRef)
-        && !hasCandidateRule(candidates, jsoniqParser.RULE_declaredVarRef)
-        && !hasCandidateToken(candidates, jsoniqParser.Kdollar);
+        && !hasCandidateRule(candidates, jsoniqParser.RULE_declaredVarRef);
 }
 
 function keywordCompletions(
