@@ -17,7 +17,7 @@ function stringifyArg(arg: unknown): string {
     }
 
     try {
-        return JSON.stringify(arg);
+        return JSON.stringify(arg, null, 2);
     } catch {
         return String(arg);
     }
