@@ -43,6 +43,7 @@ function collectCompletionCandidates(parsed: JsoniqParsedDocument, cursorOffset:
 function toCompletionIntent(candidates: JSONiqCompletionCandidates): CompletionIntent {
     const allowFunctions = isFunctionReferenceContext(candidates);
     const allowVariables = isVariableReferenceContext(candidates);
+    const allowVariableDeclarations = isVariableDeclarationContext(candidates);
     const keywords = keywordCompletions(candidates);
 
     const expectedTokens = [...candidates.tokenTypes].map((tokenType) => jsoniqParser.symbolicNames[tokenType] ?? tokenType);
@@ -51,13 +52,15 @@ function toCompletionIntent(candidates: JSONiqCompletionCandidates): CompletionI
     logger.debug("Completion candidates:", {
         allowFunctions,
         allowVariables,
+        allowVariableDeclarations,
         keywords,
         expectedTokens,
         expectedRules,
     });
 
     return {
-        allowVariables,
+        allowVariableReferences: allowVariables,
+        allowVariableDeclarations,
         allowFunctions,
         keywords,
     };
@@ -87,6 +90,10 @@ function isFunctionReferenceContext(candidates: JSONiqCompletionCandidates): boo
 function isVariableReferenceContext(candidates: JSONiqCompletionCandidates): boolean {
     return hasCandidateRule(candidates, jsoniqParser.RULE_varRef)
         && !hasCandidateRule(candidates, jsoniqParser.RULE_declaredVarRef);
+}
+
+function isVariableDeclarationContext(candidates: JSONiqCompletionCandidates): boolean {
+    return hasCandidateRule(candidates, jsoniqParser.RULE_declaredVarRef);
 }
 
 function keywordCompletions(

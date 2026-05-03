@@ -8,7 +8,8 @@ export interface ParserKeywordCompletion {
 }
 
 export interface CompletionIntent {
-    allowVariables: boolean;
+    allowVariableReferences: boolean;
+    allowVariableDeclarations: boolean;
     allowFunctions: boolean;
     keywords: ParserKeywordCompletion[];
 }
