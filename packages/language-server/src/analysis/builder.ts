@@ -1,4 +1,4 @@
-import { type Range } from "vscode-languageserver";
+import { Position, type Range } from "vscode-languageserver";
 import { TextDocument } from "vscode-languageserver-textdocument";
 
 import { parseDocument } from "server/parser/index.js";
@@ -30,9 +30,14 @@ class AnalysisBuilder {
     private readonly unresolvedReferences: Reference[] = [];
     private readonly occurrenceIndex: OccurrenceIndexEntry[] = [];
     private readonly pendingDeclarations = new PendingDeclarations();
-    private currentScope = Scope.module();
+    private readonly moduleScope: Scope;
 
-    public constructor(private readonly document: TextDocument) { }
+    private currentScope: Scope;
+
+    public constructor(private readonly document: TextDocument) {
+        this.moduleScope = Scope.module(document);
+        this.currentScope = this.moduleScope;
+    }
 
     public build(): JsoniqAnalysis {
         const events = parseDocument(this.document).semanticEvents;
@@ -49,7 +54,7 @@ class AnalysisBuilder {
                     this.recordReference(event.name, event.range);
                     break;
                 case "enterScope":
-                    this.pushScope(event.scopeKind);
+                    this.pushScope(event.scopeKind, event.range.start, event.range.end);
                     break;
                 case "exitScope":
                     this.popScope(event.range.end, event.scopeKind);
@@ -81,14 +86,14 @@ class AnalysisBuilder {
         };
     }
 
-    private pushScope(scopeKind: ScopeKind): void {
+    private pushScope(scopeKind: ScopeKind, start: Position, end: Position): void {
         let owner: SourceDefinition | undefined;
         if (scopeKind === "function") {
             const currentDefinition = this.pendingDeclarations.currentDefinition();
             owner = currentDefinition;
         }
 
-        this.currentScope = this.currentScope.enter(scopeKind, owner);
+        this.currentScope = this.currentScope.enter(scopeKind, start, end, owner);
     }
 
     private popScope(scopeEnd: Range["end"], scopeKind: ScopeKind): void {

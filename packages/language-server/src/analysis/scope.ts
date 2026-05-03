@@ -5,6 +5,7 @@ import type {
     SourceDefinition,
     SourceFunctionDefinition,
 } from "./model.js";
+import { TextDocument } from "vscode-languageserver-textdocument";
 
 export type AnalysisScopeKind = ScopeKind | "module";
 
@@ -15,14 +16,26 @@ export class Scope {
         public readonly kind: AnalysisScopeKind,
         public readonly parent: Scope | undefined,
         public readonly owner: SourceDefinition | undefined,
+        public readonly start: Position,
+        public readonly end: Position,
     ) { }
 
-    public static module(): Scope {
-        return new Scope("module", undefined, undefined);
+    public static module(document: TextDocument): Scope {
+        const start = document.positionAt(0);
+        const end = document.positionAt(document.getText().length);
+        return new Scope("module", undefined, undefined, start, end);
     }
 
-    public enter(kind: ScopeKind, owner?: SourceDefinition): Scope {
-        return new Scope(kind, this, owner);
+    /**
+     * Enters a new scope.
+     */
+    public enter(
+        kind: ScopeKind,
+        start: Position,
+        end: Position,
+        owner?: SourceDefinition
+    ): Scope {
+        return new Scope(kind, this, owner, start, end);
     }
 
     public declare(newDefinition: SourceDefinition): void {
