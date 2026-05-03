@@ -15,10 +15,13 @@ import {
     PREFERRED_COMPLETION_RULES,
 } from "./completion-data.js";
 import { findCaretToken } from "server/parser/utils.js";
+import { createLogger } from "server/utils/logger.js";
 
 export function getCompletionIntent(parsed: JsoniqParsedDocument, cursorOffset: number): CompletionIntent | null {
     return toCompletionIntent(collectCompletionCandidates(parsed, cursorOffset));
 }
+
+const logger = createLogger("completion-context");
 
 interface JSONiqCompletionCandidates {
     tokenTypes: Set<number>;
@@ -42,10 +45,15 @@ function toCompletionIntent(candidates: JSONiqCompletionCandidates): CompletionI
     const allowVariables = isVariableReferenceContext(candidates);
     const keywords = keywordCompletions(candidates);
 
-    console.log("Completion candidates:", {
+    const expectedTokens = [...candidates.tokenTypes].map((tokenType) => jsoniqParser.symbolicNames[tokenType] ?? tokenType);
+    const expectedRules = [...candidates.ruleIndices].map((ruleIndex) => jsoniqParser.ruleNames[ruleIndex] ?? ruleIndex);
+
+    logger.debug("Completion candidates:", {
         allowFunctions,
         allowVariables,
         keywords,
+        expectedTokens,
+        expectedRules,
     });
 
     return {
