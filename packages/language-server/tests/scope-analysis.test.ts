@@ -2,12 +2,12 @@ import { describe, expect, it } from "vitest";
 
 import {
     buildAnalysis,
-} from "../src/server/analysis/builder.js";
+} from "server/analysis/builder.js";
 import {
     findVariableOccurrenceAtPosition,
     getVisibleDeclarationsAtPosition,
-} from "../src/server/analysis/queries.js";
-import { isSourceDefinition } from "../src/server/analysis/model.js";
+} from "server/analysis/queries.js";
+import { isSourceDefinition } from "server/analysis/model.js";
 import { testDocument } from "./test-utils.js";
 
 describe("JSONiq variable scope analysis", () => {

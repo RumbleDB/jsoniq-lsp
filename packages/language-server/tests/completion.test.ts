@@ -2,7 +2,7 @@ import { type CompletionItem, type Position } from "vscode-languageserver";
 import { describe, expect, it } from "vitest";
 import { type TextDocument } from "vscode-languageserver-textdocument";
 
-import { findCompletions } from "../src/server/completion.js";
+import { findCompletions } from "server/completion.js";
 import { positionAtNth, testDocument } from "./test-utils.js";
 
 describe("JSONiq completion", () => {

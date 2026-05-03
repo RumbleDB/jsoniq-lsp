@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { findReferenceLocations } from "../src/server/references.js";
+import { findReferenceLocations } from "server/references.js";
 import { positionAt, positionAtNth, testDocument } from "./test-utils.js";
 
 describe("JSONiq references", () => {

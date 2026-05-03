@@ -4,5 +4,10 @@
             "vitest/globals",
             "node"
         ],
+        "paths": {
+            "server/*": [
+                "../src/*"
+            ]
+        }
     },
 }

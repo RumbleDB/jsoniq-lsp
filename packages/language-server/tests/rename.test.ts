@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { buildRenameWorkspaceEdit, prepareRename } from "../src/server/rename.js";
+import { buildRenameWorkspaceEdit, prepareRename } from "server/rename.js";
 import { positionAt, positionAtNth, testDocument } from "./test-utils.js";
 
 describe("JSONiq rename", () => {

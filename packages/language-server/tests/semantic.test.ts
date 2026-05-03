@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { collectSemanticDiagnostics } from "../src/server/semantic.js";
+import { collectSemanticDiagnostics } from "server/semantic.js";
 import { testDocument } from "./test-utils.js";
 
 describe("JSONiq semantic diagnostics", () => {

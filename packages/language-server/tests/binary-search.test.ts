@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { lowerBound, upperBound } from "../src/server/utils/binary-search.js";
+import { lowerBound, upperBound } from "server/utils/binary-search.js";
 
 describe("binary search utilities", () => {
     const compareNumber = (item: number, target: number): number => item - target;
