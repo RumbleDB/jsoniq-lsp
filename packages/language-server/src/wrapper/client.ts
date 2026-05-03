@@ -215,6 +215,8 @@ class RumbleWrapperClient {
         clearTimeout(pendingRequest.timeout);
         this.pending.delete(response.id);
 
+        logger.debug(`Received response from wrapper: ${JSON.stringify(response, null, 2)}`);
+
         if (response.responseType !== pendingRequest.expectedResponseType) {
             pendingRequest.reject(
                 new Error(
