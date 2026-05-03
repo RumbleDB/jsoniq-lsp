@@ -15,7 +15,7 @@
     "scripts": {
         "generate:grammar": "antlr-ng -Dlanguage=TypeScript --generate-visitor true --generate-listener false --output-directory src/server/parser/adapters/jsoniq/grammar src/server/parser/adapters/jsoniq/grammar/jsoniq.g4",
         "build": "tsc -p tsconfig.json && tsc-alias -p tsconfig.json",
-        "build:prod": "pnpm run build",
+        "build:prod": "tsc -p tsconfig.json --sourceMap false && tsc-alias -p tsconfig.json",
         "watch": "tsc -w -p tsconfig.json",
         "start": "node ./dist/main.js",
         "test": "vitest run tests",
