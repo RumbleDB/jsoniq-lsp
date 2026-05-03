@@ -1,9 +1,9 @@
 import { parseDocument } from "server/parser/index.js";
+import type { SemanticDeclarationKind } from "server/parser/types/declaration.js";
 import type { SemanticDeclaration } from "server/parser/types/semantic-events.js";
 import { DocumentSymbol, SymbolKind } from "vscode-languageserver";
 import { TextDocument } from "vscode-languageserver-textdocument";
 import { sameRange } from "server/utils/range.js";
-import type { SourceDefinitionKind } from "./model.js";
 
 interface SymbolOwner {
     declaration: SemanticDeclaration;
@@ -91,7 +91,7 @@ function toDocumentSymbol(declaration: SemanticDeclaration): DocumentSymbol | un
     };
 }
 
-function declarationCanContainChildSymbols(kind: SourceDefinitionKind): boolean {
+function declarationCanContainChildSymbols(kind: SemanticDeclarationKind): boolean {
     return kind === "function"
         || kind === "declare-variable"
         || kind === "let"
@@ -107,7 +107,7 @@ function sanitizeSymbolName(name: string): string | null {
     return trimmed !== "" && trimmed !== "$" ? trimmed : null;
 }
 
-function definitionKindToSymbolKind(kind: SourceDefinitionKind): SymbolKind {
+function definitionKindToSymbolKind(kind: SemanticDeclarationKind): SymbolKind {
     switch (kind) {
         case "namespace":
             return SymbolKind.Namespace;

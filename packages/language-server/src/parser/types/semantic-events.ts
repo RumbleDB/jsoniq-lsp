@@ -1,6 +1,6 @@
 import type { Range } from "vscode-languageserver";
 
-import type { SourceDefinitionKind } from "../../analysis/model.js";
+import type { SemanticDeclarationKind } from "./declaration.js";
 
 export type SemanticEvent =
     | SemanticScopeEvent
@@ -18,7 +18,7 @@ export interface SemanticScopeEvent {
 
 export interface SemanticDeclaration {
     name: string;
-    kind: SourceDefinitionKind;
+    kind: SemanticDeclarationKind;
     range: Range;
     selectionRange: Range;
 }

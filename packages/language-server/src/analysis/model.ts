@@ -4,24 +4,12 @@ import type {
 } from "vscode-languageserver";
 
 import type { BuiltinFunctionDefinition } from "../wrapper/builtin-functions.js";
+import type {
+    SemanticDeclarationKind,
+    VariableKind,
+} from "../parser/types/declaration.js";
 
-export type VariableKind =
-    | "declare-variable"
-    | "let"
-    | "for"
-    | "for-position"
-    | "group-by"
-    | "count";
-
-export type SourceDefinitionKind =
-    | VariableKind
-    | "namespace"
-    | "context-item"
-    | "type"
-    | "parameter"
-    | "function";
-
-export type DefinitionKind = SourceDefinitionKind | "builtin-function";
+export type DefinitionKind = SemanticDeclarationKind | "builtin-function";
 
 export interface BaseDefinition {
     name: string;

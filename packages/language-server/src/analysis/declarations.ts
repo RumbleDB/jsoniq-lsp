@@ -1,8 +1,8 @@
 import type { SemanticDeclaration } from "server/parser/types/semantic-events.js";
 import type {
     SourceDefinition,
-    SourceDefinitionKind,
 } from "./model.js";
+import type { SemanticDeclarationKind } from "server/parser/types/declaration.js";
 
 interface PendingDeclaration {
     declaration: SemanticDeclaration;
@@ -34,6 +34,6 @@ export class PendingDeclarations {
     }
 }
 
-export function isVisibleOnEnter(kind: SourceDefinitionKind): boolean {
+export function isVisibleOnEnter(kind: SemanticDeclarationKind): boolean {
     return kind === "function";
 }
