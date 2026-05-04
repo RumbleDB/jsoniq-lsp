@@ -1,5 +1,3 @@
-import type { Position } from "vscode-languageserver";
-
 import type { ScopeKind } from "server/parser/types/semantic-events.js";
 import type {
     SourceDefinition,
@@ -12,7 +10,6 @@ export type AnalysisScopeKind = ScopeKind | "module";
 export class Scope {
     private readonly definitionByName = new Map<string, SourceDefinition[]>();
     private readonly children: Scope[] = [];
-    private definitions: SourceDefinition[] = [];
 
     private constructor(
         public readonly kind: AnalysisScopeKind,
@@ -46,13 +43,7 @@ export class Scope {
         }
 
         const definitionsWithSameName = this.definitionByName.get(newDefinition.name)!;
-        const lastDefinition = definitionsWithSameName[definitionsWithSameName.length - 1];
-        if (lastDefinition !== undefined) {
-            lastDefinition.scopeEnd = newDefinition.range.end;
-        }
-
         definitionsWithSameName.push(newDefinition);
-        this.definitions.push(newDefinition);
     }
 
     public resolve(name: string): SourceDefinition | undefined {
@@ -63,15 +54,6 @@ export class Scope {
         }
 
         return this.parent?.resolve(name);
-    }
-
-    public close(scopeEnd: Position): void {
-        for (const scopedDefinitions of this.definitionByName.values()) {
-            const lastDefinition = scopedDefinitions[scopedDefinitions.length - 1];
-            if (lastDefinition !== undefined) {
-                lastDefinition.scopeEnd = scopeEnd;
-            }
-        }
     }
 
     public get owningFunction(): SourceFunctionDefinition | undefined {
@@ -86,7 +68,7 @@ export class Scope {
      * Checks if the given offset is within the range of this scope.
      */
     public contains(offset: number): boolean {
-        return offset >= this.startOffset && offset < this.endOffset;
+        return offset >= this.startOffset && offset <= this.endOffset;
     }
 
     public findInnermostScope(offset: number): Scope {
@@ -98,5 +80,40 @@ export class Scope {
         }
 
         return this;
+    }
+
+    /**
+     * Lists all definitions that are visible at the given offset, 
+     * i.e. all definitions declared in this scope or any parent scope that are visible at the given offset.
+     * 
+     * This method should be called on the innermost scope at the given offset
+     */
+    public listVisibleDefinitions(offset: number): Map<string, SourceDefinition> {
+        const visible = new Map<string, SourceDefinition>();
+
+        for (const [name, definitions] of this.definitionByName.entries()) {
+            const definition = definitions.findLast((def) => def.visibleFrom !== null && def.visibleFrom <= offset);
+            if (definition !== undefined) {
+                visible.set(name, definition);
+            }
+        }
+
+        let current = this.parent;
+        while (current !== undefined) {
+            for (const [name, definitions] of current.definitionByName.entries()) {
+                if (visible.has(name)) {
+                    continue;
+                }
+
+                const definition = definitions.findLast((def) => def.visibleFrom !== null && def.visibleFrom <= offset);
+                if (definition !== undefined) {
+                    visible.set(name, definition);
+                }
+            }
+
+            current = current.parent;
+        }
+
+        return visible;
     }
 }

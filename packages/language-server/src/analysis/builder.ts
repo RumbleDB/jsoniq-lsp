@@ -64,9 +64,6 @@ class AnalysisBuilder {
             }
         }
 
-        const documentEnd = this.document.positionAt(this.document.getText().length);
-        this.currentScope.close(documentEnd);
-
         this.symbolIndex.sort((left, right) => {
             const startComparison = comparePositions(left.range.start, right.range.start);
             if (startComparison !== 0) {
@@ -79,6 +76,7 @@ class AnalysisBuilder {
         this.definitions.sort((left, right) => comparePositions(left.range.start, right.range.start));
 
         return {
+            rootScope: this.moduleScope,
             definitions: this.definitions,
             references: this.references,
             unresolvedReferences: this.unresolvedReferences,
@@ -100,8 +98,6 @@ class AnalysisBuilder {
         if (this.currentScope.kind !== scopeKind) {
             throw new Error(`Tried to exit ${scopeKind} scope while inside ${this.currentScope.kind} scope.`);
         }
-
-        this.currentScope.close(scopeEnd);
 
         const parent = this.currentScope.parent;
         if (parent === undefined) {

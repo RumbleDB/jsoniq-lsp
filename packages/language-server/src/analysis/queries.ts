@@ -7,43 +7,14 @@ import {
     type BaseDefinition,
     type JsoniqAnalysis,
     type SymbolIndexEntry,
-    type SourceDefinition,
 } from "./model.js";
 import { getAnalysis } from "./service.js";
 
 export async function getVisibleDeclarationsAtPosition(document: TextDocument, position: Position): Promise<BaseDefinition[]> {
     const analysis = await getAnalysis(document);
-    const visibleByName = new Map<string, BaseDefinition>();
-    const source = document.getText();
     const positionOffset = document.offsetAt(position);
-
-    let index = upperBound(analysis.definitions, position, (left, right) => comparePositions(left.range.start, right)) - 1;
-
-    while (index >= 0) {
-        const declaration = analysis.definitions[index];
-
-        if (
-            declaration !== undefined
-            && isDeclarationVisibleAtOffset(source, declaration, positionOffset)
-            && comparePositions(position, declaration.scopeEnd) <= 0
-            && !visibleByName.has(declaration.name)
-        ) {
-            visibleByName.set(declaration.name, declaration);
-        }
-
-        index -= 1;
-    }
-
-    return [...visibleByName.values()];
-}
-
-function isDeclarationVisibleAtOffset(
-    source: string,
-    declaration: SourceDefinition,
-    queryOffset: number,
-): boolean {
-    return declaration.visibleFrom < queryOffset
-        && source.slice(declaration.visibleFrom, queryOffset).trim() !== "";
+    const scope = analysis.rootScope.findInnermostScope(positionOffset);
+    return [...scope.listVisibleDefinitions(positionOffset).values()];
 }
 
 export function findVariableOccurrenceAtPosition(

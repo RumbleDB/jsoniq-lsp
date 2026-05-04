@@ -1,13 +1,11 @@
-import type {
-    Position,
-    Range,
-} from "vscode-languageserver";
+import type { Range } from "vscode-languageserver";
 
 import type { BuiltinFunctionDefinition } from "../wrapper/builtin-functions.js";
 import type {
     SemanticDeclarationKind,
     VariableKind,
 } from "../parser/types/declaration.js";
+import type { Scope } from "./scope.js";
 
 export type DefinitionKind = SemanticDeclarationKind | "builtin-function";
 
@@ -30,9 +28,6 @@ export interface BaseSourceDefinition extends BaseDefinition {
 
     // Offset where this declaration becomes visible.
     visibleFrom: number | null;
-
-    // Position where this definition goes out of scope.
-    scopeEnd: Position;
 
     isBuiltin: false;
 
@@ -79,6 +74,8 @@ export interface SymbolIndexEntry {
 }
 
 export interface JsoniqAnalysis {
+    rootScope: Scope;
+
     // All declarations, sorted by declaration position.
     definitions: SourceDefinition[];
 
