@@ -12,19 +12,18 @@ export type AnalysisScopeKind = ScopeKind | "module";
 export class Scope {
     private readonly definitionByName = new Map<string, SourceDefinition[]>();
     private readonly children: Scope[] = [];
+    private definitions: SourceDefinition[] = [];
 
     private constructor(
         public readonly kind: AnalysisScopeKind,
         public readonly parent: Scope | undefined,
         public readonly owner: SourceDefinition | undefined,
-        public readonly start: Position,
-        public readonly end: Position,
+        public readonly startOffset: number,
+        public readonly endOffset: number,
     ) { }
 
     public static module(document: TextDocument): Scope {
-        const start = document.positionAt(0);
-        const end = document.positionAt(document.getText().length);
-        return new Scope("module", undefined, undefined, start, end);
+        return new Scope("module", undefined, undefined, 0, document.getText().length);
     }
 
     /**
@@ -32,11 +31,11 @@ export class Scope {
      */
     public enter(
         kind: ScopeKind,
-        start: Position,
-        end: Position,
+        startOffset: number,
+        endOffset: number,
         owner?: SourceDefinition
     ): Scope {
-        const child = new Scope(kind, this, owner, start, end);
+        const child = new Scope(kind, this, owner, startOffset, endOffset);
         this.children.push(child);
         return child;
     }
@@ -53,6 +52,7 @@ export class Scope {
         }
 
         definitionsWithSameName.push(newDefinition);
+        this.definitions.push(newDefinition);
     }
 
     public resolve(name: string): SourceDefinition | undefined {
@@ -80,5 +80,12 @@ export class Scope {
         }
 
         return this.parent?.owningFunction;
+    }
+
+    /**
+     * Checks if the given offset is within the range of this scope.
+     */
+    public contains(offset: number): boolean {
+        return offset >= this.startOffset && offset < this.endOffset;
     }
 }

@@ -93,7 +93,7 @@ class AnalysisBuilder {
             owner = currentDefinition;
         }
 
-        this.currentScope = this.currentScope.enter(scopeKind, start, end, owner);
+        this.currentScope = this.currentScope.enter(scopeKind, this.document.offsetAt(start), this.document.offsetAt(end), owner);
     }
 
     private popScope(scopeEnd: Range["end"], scopeKind: ScopeKind): void {
