@@ -88,4 +88,15 @@ export class Scope {
     public contains(offset: number): boolean {
         return offset >= this.startOffset && offset < this.endOffset;
     }
+
+    public findInnermostScope(offset: number): Scope {
+        for (const child of this.children) {
+            if (child.contains(offset)) {
+                /// We can return early because we know that scopes cannot overlap, only nest.
+                return child.findInnermostScope(offset);
+            }
+        }
+
+        return this;
+    }
 }
