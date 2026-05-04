@@ -67,7 +67,7 @@ export interface ResolvedReference extends Reference {
     declaration: Definition;
 }
 
-export interface OccurrenceIndexEntry {
+export interface SymbolIndexEntry {
     range: Range;
     declaration: Definition;
 
@@ -85,8 +85,7 @@ export interface JsoniqAnalysis {
     unresolvedReferences: Reference[];
 
     // Declarations and references, sorted by source position.
-    occurrenceIndex: OccurrenceIndexEntry[];
-
+    symbolIndex: SymbolIndexEntry[];
 }
 
 export function isSourceDefinition(declaration: BaseDefinition | undefined): declaration is SourceDefinition {

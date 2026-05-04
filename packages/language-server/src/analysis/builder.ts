@@ -17,7 +17,7 @@ import { Scope } from "./scope.js";
 import {
     type Definition,
     type JsoniqAnalysis,
-    type OccurrenceIndexEntry,
+    type SymbolIndexEntry,
     type Reference,
     type ResolvedReference,
     type SourceDefinition,
@@ -28,7 +28,7 @@ class AnalysisBuilder {
     private readonly definitions: SourceDefinition[] = [];
     private readonly references: ResolvedReference[] = [];
     private readonly unresolvedReferences: Reference[] = [];
-    private readonly occurrenceIndex: OccurrenceIndexEntry[] = [];
+    private readonly symbolIndex: SymbolIndexEntry[] = [];
     private readonly pendingDeclarations = new PendingDeclarations();
     private readonly moduleScope: Scope;
 
@@ -67,7 +67,7 @@ class AnalysisBuilder {
         const documentEnd = this.document.positionAt(this.document.getText().length);
         this.currentScope.close(documentEnd);
 
-        this.occurrenceIndex.sort((left, right) => {
+        this.symbolIndex.sort((left, right) => {
             const startComparison = comparePositions(left.range.start, right.range.start);
             if (startComparison !== 0) {
                 return startComparison;
@@ -82,7 +82,7 @@ class AnalysisBuilder {
             definitions: this.definitions,
             references: this.references,
             unresolvedReferences: this.unresolvedReferences,
-            occurrenceIndex: this.occurrenceIndex,
+            symbolIndex: this.symbolIndex,
         };
     }
 
@@ -112,7 +112,7 @@ class AnalysisBuilder {
 
     private registerDefinition(newDefinition: SourceDefinition): void {
         this.definitions.push(newDefinition);
-        this.occurrenceIndex.push({
+        this.symbolIndex.push({
             range: newDefinition.selectionRange,
             declaration: newDefinition,
             reference: undefined,
@@ -166,7 +166,7 @@ class AnalysisBuilder {
         } satisfies ResolvedReference;
 
         this.references.push(reference);
-        this.occurrenceIndex.push({
+        this.symbolIndex.push({
             range: reference.range,
             declaration,
             reference,

@@ -6,7 +6,7 @@ import { comparePositions } from "../utils/position.js";
 import {
     type BaseDefinition,
     type JsoniqAnalysis,
-    type OccurrenceIndexEntry,
+    type SymbolIndexEntry,
     type SourceDefinition,
     isSourceFunctionDefinition,
 } from "./model.js";
@@ -57,14 +57,14 @@ function isDeclarationVisibleAtOffset(
 export function findVariableOccurrenceAtPosition(
     analysis: JsoniqAnalysis,
     position: Position,
-): OccurrenceIndexEntry | undefined {
+): SymbolIndexEntry | undefined {
     const occurrenceIndex = upperBound(
-        analysis.occurrenceIndex,
+        analysis.symbolIndex,
         position,
         (occurrence, targetPosition) => comparePositions(occurrence.range.start, targetPosition),
     ) - 1;
 
-    const occurrence = analysis.occurrenceIndex[occurrenceIndex];
+    const occurrence = analysis.symbolIndex[occurrenceIndex];
 
     if (occurrence !== undefined && comparePositions(position, occurrence.range.end) < 0) {
         return occurrence;
@@ -76,7 +76,7 @@ export function findVariableOccurrenceAtPosition(
 export function findVariableOccurrenceNearPosition(
     analysis: JsoniqAnalysis,
     position: Position,
-): OccurrenceIndexEntry | undefined {
+): SymbolIndexEntry | undefined {
     const exact = findVariableOccurrenceAtPosition(analysis, position);
     if (exact !== undefined) {
         return exact;
