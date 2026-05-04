@@ -22,7 +22,7 @@ function toDiagnostic(document: TextDocument, error: WrapperTypeError): Diagnost
     const diagnosticRange = createRangeFromStartPosition(document, error, error.position)
 
     return {
-        severity: DiagnosticSeverity.Error,
+        severity: DiagnosticSeverity.Warning,
         range: diagnosticRange,
         code: error.code,
         source: "jsoniq-type",

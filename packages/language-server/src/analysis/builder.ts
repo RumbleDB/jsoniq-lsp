@@ -148,7 +148,7 @@ class AnalysisBuilder {
         const declaration = this.resolve(name);
         if (declaration === undefined) {
             this.diagnostics.push({
-                severity: DiagnosticSeverity.Warning,
+                severity: DiagnosticSeverity.Error,
                 message: `Reference to undefined variable '${name}'`,
                 range,
                 code: "unresolved-variable",
