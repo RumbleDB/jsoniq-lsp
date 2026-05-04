@@ -12,7 +12,7 @@ import { getAnalysis } from "./analysis/service.js";
 import { isSourceDefinition, type Definition } from "./analysis/model.js";
 
 export async function findHover(document: TextDocument, position: Position): Promise<Hover | null> {
-    const analysis = await getAnalysis(document);
+    const analysis = await getAnalysis(document, { typeInference: true });
     const occurrence = findSymbolAtPosition(analysis, position);
 
     if (occurrence === undefined || occurrence.declaration === undefined) {
