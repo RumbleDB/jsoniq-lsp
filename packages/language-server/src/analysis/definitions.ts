@@ -5,8 +5,10 @@ import type {
     SourceParameterDefinition,
     SourceVariableDefinition,
 } from "./model.js";
+import { TextDocument } from "vscode-languageserver-textdocument";
 
 export function createSourceDefinition(
+    document: TextDocument,
     declaration: SemanticDeclaration,
     containingFunction?: SourceFunctionDefinition,
 ): SourceDefinition {
@@ -26,7 +28,7 @@ export function createSourceDefinition(
             parameters: [],
 
             /// For function declarations, the declaration becomes visible after the symbol name
-            visibleFrom: declaration.selectionRange.end,
+            visibleFrom: document.offsetAt(declaration.selectionRange.end),
         } satisfies SourceFunctionDefinition;
     }
 
@@ -39,7 +41,7 @@ export function createSourceDefinition(
             ...base,
             kind: "parameter",
             function: containingFunction,
-            visibleFrom: declaration.range.end,
+            visibleFrom: document.offsetAt(declaration.range.end),
         } satisfies SourceParameterDefinition;
     }
 
@@ -48,13 +50,13 @@ export function createSourceDefinition(
         return {
             ...base,
             kind: declaration.kind,
-            visibleFrom: declaration.range.end,
+            visibleFrom: document.offsetAt(declaration.range.end),
         } satisfies SourceDefinition;
     }
 
     return {
         ...base,
         kind: declaration.kind,
-        visibleFrom: declaration.range.end,
+        visibleFrom: document.offsetAt(declaration.range.end),
     } satisfies SourceVariableDefinition;
 }

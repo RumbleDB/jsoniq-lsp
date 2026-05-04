@@ -24,7 +24,7 @@ export async function getVisibleDeclarationsAtPosition(document: TextDocument, p
 
         if (
             declaration !== undefined
-            && isDeclarationVisibleAtOffset(document, source, declaration, positionOffset)
+            && isDeclarationVisibleAtOffset(source, declaration, positionOffset)
             && comparePositions(position, declaration.scopeEnd) <= 0
             && !visibleByName.has(declaration.name)
         ) {
@@ -38,13 +38,12 @@ export async function getVisibleDeclarationsAtPosition(document: TextDocument, p
 }
 
 function isDeclarationVisibleAtOffset(
-    document: TextDocument,
     source: string,
     declaration: SourceDefinition,
     queryOffset: number,
 ): boolean {
-    return document.offsetAt(declaration.visibleFrom) < queryOffset
-        && source.slice(document.offsetAt(declaration.visibleFrom), queryOffset).trim() !== "";
+    return declaration.visibleFrom < queryOffset
+        && source.slice(declaration.visibleFrom, queryOffset).trim() !== "";
 }
 
 export function findVariableOccurrenceAtPosition(

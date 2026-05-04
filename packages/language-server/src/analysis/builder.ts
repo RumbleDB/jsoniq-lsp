@@ -120,7 +120,7 @@ class AnalysisBuilder {
     }
 
     private enterDeclaration(declaration: SemanticDeclaration): void {
-        const definition = createSourceDefinition(declaration, this.currentScope.owningFunction);
+        const definition = createSourceDefinition(this.document, declaration, this.currentScope.owningFunction);
         this.registerDefinition(definition);
         this.pendingDeclarations.enter(declaration, definition);
 
