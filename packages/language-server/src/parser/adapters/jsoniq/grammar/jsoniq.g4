@@ -10,8 +10,8 @@ mainModule              : prolog program;
 
 libraryModule           : 'module' 'namespace' NCName '=' uriLiteral ';' prolog;
 
-prolog                  : ((setter | namespaceDecl | moduleImport) ';')*
-                          (annotatedDecl ';')*;
+prolog                  : ((setter | namespaceDecl | moduleImport))*
+                          (annotatedDecl)*;
 
 ///////////////////////// Scripting addition - begin
 
@@ -90,24 +90,24 @@ setter                  : defaultCollationDecl
                         | emptyOrderDecl
                         | decimalFormatDecl;
 
-namespaceDecl           : Kdeclare 'namespace' NCName '=' uriLiteral;
+namespaceDecl           : Kdeclare 'namespace' NCName '=' uriLiteral ';';
 
 annotatedDecl           : functionDecl
                         | varDecl
                         | typeDecl
                         | contextItemDecl;
 
-defaultCollationDecl    : Kdeclare Kdefault Kcollation uriLiteral;
+defaultCollationDecl    : Kdeclare Kdefault Kcollation uriLiteral ';';
 
-baseURIDecl            : Kdeclare 'base-uri' uriLiteral;
+baseURIDecl            : Kdeclare 'base-uri' uriLiteral ';';
 
-orderingModeDecl        : Kdeclare 'ordering' ('ordered' | 'unordered');
+orderingModeDecl        : Kdeclare 'ordering' ('ordered' | 'unordered') ';';
 
-emptyOrderDecl          : Kdeclare Kdefault 'order' Kempty (emptySequenceOrder=(Kgreatest | Kleast));
+emptyOrderDecl          : Kdeclare Kdefault 'order' Kempty (emptySequenceOrder=(Kgreatest | Kleast)) ';';
 
 decimalFormatDecl       : Kdeclare
                           (('decimal-format' qname) | (Kdefault 'decimal-format'))
-                          (dfPropertyName '=' stringLiteral)*;
+                          (dfPropertyName '=' stringLiteral)* ';';
 
 qname                   : ((ns=NCName | nskw=keyWords)':')?
                           (local_name=NCName | local_namekw = keyWords);
@@ -123,18 +123,18 @@ dfPropertyName          : 'decimal-separator'
                         | 'digit'
                         | 'pattern-separator';
 
-moduleImport            : 'import' 'module' ('namespace' prefix=NCName '=')? targetNamespace=uriLiteral (Kat uriLiteral (',' uriLiteral)*)?;
+moduleImport            : 'import' 'module' ('namespace' prefix=NCName '=')? targetNamespace=uriLiteral (Kat uriLiteral (',' uriLiteral)*)? ';';
 
 // TODO: Assignable variable decl
-varDecl                 : Kdeclare annotations Kvariable declaredVarRef (Kas sequenceType)? ((':=' exprSingle) | (external='external' (':=' exprSingle)?));
+varDecl                 : Kdeclare annotations Kvariable declaredVarRef (Kas sequenceType)? ((':=' exprSingle) | (external='external' (':=' exprSingle)?)) ';';
 
-contextItemDecl         : Kdeclare Kcontext Kitem (Kas sequenceType)? ((':=' exprSingle) | (external='external' (':=' exprSingle)?));
+contextItemDecl         : Kdeclare Kcontext Kitem (Kas sequenceType)? ((':=' exprSingle) | (external='external' (':=' exprSingle)?)) ';';
 
 functionDecl            : Kdeclare annotations 'function' fn_name=declaredQName '(' paramList? ')'
                           (Kas return_type=sequenceType)?
-                          ('{' (fn_body=statementsAndOptionalExpr) '}' | is_external='external');
+                          ('{' (fn_body=statementsAndOptionalExpr) '}' | is_external='external') ';';
 
-typeDecl                : Kdeclare Ktype type_name=declaredQName 'as' (schema=schemaLanguage)? type_definition=exprSingle;
+typeDecl                : Kdeclare Ktype type_name=declaredQName 'as' (schema=schemaLanguage)? type_definition=exprSingle ';';
 
 schemaLanguage          : 'jsound' 'compact'
                         | 'jsound' 'verbose'
