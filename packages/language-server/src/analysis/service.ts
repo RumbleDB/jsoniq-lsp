@@ -31,7 +31,7 @@ export async function getAnalysis(document: TextDocument, options: {
         return cached.analysis;
     }
 
-    const analysis = buildAnalysis(document);
+    const analysis = await buildAnalysis(document);
 
     if (options.typeInference) {
         const inferenceResult = await getTypeInference(document);

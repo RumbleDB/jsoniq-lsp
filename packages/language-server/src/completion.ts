@@ -45,7 +45,7 @@ export async function findCompletions(document: TextDocument, position: Position
     const availableSourceDeclarations = await getVisibleDeclarationsAtPosition(document, position);
     const variables = intent.allowVariableReferences ? availableSourceDeclarations.filter(v => isSourceVariableDefinition(v) || isSourceParameterDefinition(v)) : [];
     const functions = intent.allowFunctions ? availableSourceDeclarations.filter(isSourceFunctionDefinition) : [];
-    const builtinFunctions = intent.allowFunctions ? getBuiltinFunctionCompletionItems() : [];
+    const builtinFunctions = intent.allowFunctions ? await getBuiltinFunctionCompletionItems() : [];
     const keywords = keywordCompletions(intent.keywords);
 
     if (intent.allowVariableDeclarations && !typingVariablePrefix) {
@@ -86,8 +86,8 @@ function toCompletionItem(declaration: BaseDefinition): CompletionItem {
     };
 }
 
-function getBuiltinFunctionCompletionItems(): CompletionItem[] {
-    return listBuiltinFunctionDefinitions().map((definition) => {
+async function getBuiltinFunctionCompletionItems(): Promise<CompletionItem[]> {
+    return (await listBuiltinFunctionDefinitions()).map((definition) => {
         const [name, arity] = definition.name.split("#", 2);
         const parameterTypes = definition.signature.parameterTypes.join(", ");
         const functionName = name ?? definition.name;

@@ -27,44 +27,50 @@ export interface BuiltinFunctionDefinition extends BaseDefinition {
     isBuiltin: true;
 }
 
-const builtinDefinitionsByName = new Map<string, BuiltinFunctionDefinition>();
-let initializationPromise: Promise<void> | null = null;
+const DEFAULT_FUNCTION_PREFIXES = ["fn", "jn", "math", "map", "array"] as const;
+const BUILTIN_FUNCTIONS_REQUEST: BuiltinFunctionsRequestPayload = {
+    requestType: REQUEST_TYPE_BUILTIN_FUNCTIONS,
+};
+
+let builtinDefinitionsPromise: Promise<Map<string, BuiltinFunctionDefinition>> | null = null;
 const logger = createLogger("wrapper:builtin-functions");
 
-export async function initializeBuiltinFunctionDefinitions(): Promise<void> {
-    if (initializationPromise !== null) {
-        return initializationPromise;
+async function getBuiltinFunctionMap(): Promise<Map<string, BuiltinFunctionDefinition>> {
+    if (builtinDefinitionsPromise !== null) {
+        return builtinDefinitionsPromise;
     }
 
-    initializationPromise = (async () => {
-        const response = await getWrapperClient().sendRequest<"builtinFunctions">({
-            requestType: "builtinFunctions",
-        }).catch((error) => {
+    builtinDefinitionsPromise = (async () => {
+        const response = await getWrapperClient().sendRequest<typeof REQUEST_TYPE_BUILTIN_FUNCTIONS>(
+            BUILTIN_FUNCTIONS_REQUEST,
+        ).catch((error) => {
             logger.warn(`Failed to fetch builtin function definitions from wrapper: ${String(error)}`);
-            return;
+            return undefined;
         });
 
-        if (response === undefined) {
-            return;
+        const builtinDefinitionsByName = new Map<string, BuiltinFunctionDefinition>();
+
+        if (response !== undefined) {
+            for (const [name, signature] of Object.entries(response.body.builtinFunctions)) {
+                builtinDefinitionsByName.set(name, {
+                    name,
+                    kind: "builtin-function",
+                    signature,
+                    references: [],
+                    isBuiltin: true,
+                });
+            }
         }
 
-        builtinDefinitionsByName.clear();
-        for (const [name, signature] of Object.entries(response.body.builtinFunctions)) {
-            builtinDefinitionsByName.set(name, {
-                name,
-                kind: "builtin-function",
-                signature,
-                references: [],
-                isBuiltin: true,
-            });
-        }
+        return builtinDefinitionsByName;
     })();
 
-    return initializationPromise;
+    return builtinDefinitionsPromise;
 }
 
-export function findBuiltinFunctionDefinition(nameWithArity: string): BuiltinFunctionDefinition | undefined {
-    const direct = builtinDefinitionsByName.get(nameWithArity);
+export async function findBuiltinFunctionDefinition(nameWithArity: string): Promise<BuiltinFunctionDefinition | undefined> {
+    const builtinFunctionMap = await getBuiltinFunctionMap();
+    const direct = builtinFunctionMap.get(nameWithArity);
     if (direct !== undefined) {
         return direct;
     }
@@ -80,8 +86,8 @@ export function findBuiltinFunctionDefinition(nameWithArity: string): BuiltinFun
         return undefined;
     }
 
-    for (const prefix of ["fn", "jn", "math", "map", "array"]) {
-        const candidate = builtinDefinitionsByName.get(`${prefix}:${name}#${arity}`);
+    for (const prefix of DEFAULT_FUNCTION_PREFIXES) {
+        const candidate = builtinFunctionMap.get(`${prefix}:${name}#${arity}`);
         if (candidate !== undefined) {
             return candidate;
         }
@@ -90,6 +96,6 @@ export function findBuiltinFunctionDefinition(nameWithArity: string): BuiltinFun
     return undefined;
 }
 
-export function listBuiltinFunctionDefinitions(): BuiltinFunctionDefinition[] {
-    return [...builtinDefinitionsByName.values()];
+export async function listBuiltinFunctionDefinitions(): Promise<BuiltinFunctionDefinition[]> {
+    return [...(await getBuiltinFunctionMap()).values()];
 }

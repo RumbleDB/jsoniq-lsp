@@ -40,7 +40,7 @@ class AnalysisBuilder {
         this.currentScope = this.analysis.moduleScope;
     }
 
-    public build(): JsoniqAnalysis {
+    public async build(): Promise<JsoniqAnalysis> {
         const events = parseDocument(this.document).semanticEvents;
 
         for (const event of events) {
@@ -52,7 +52,7 @@ class AnalysisBuilder {
                     this.exitDeclaration(event.declaration);
                     break;
                 case "reference":
-                    this.recordReference(event.name, event.range);
+                    await this.recordReference(event.name, event.range);
                     break;
                 case "enterScope":
                     this.pushScope(event.scopeKind, event.range.start, event.range.end);
@@ -131,8 +131,8 @@ class AnalysisBuilder {
         }
     }
 
-    private resolve(name: string): Definition | undefined {
-        const builtinDefinition = findBuiltinFunctionDefinition(name);
+    private async resolve(name: string): Promise<Definition | undefined> {
+        const builtinDefinition = await findBuiltinFunctionDefinition(name);
         if (builtinDefinition !== undefined) {
             return builtinDefinition;
         }
@@ -140,8 +140,8 @@ class AnalysisBuilder {
         return this.currentScope.resolve(name);
     }
 
-    private recordReference(name: string, range: Range): void {
-        const declaration = this.resolve(name);
+    private async recordReference(name: string, range: Range): Promise<void> {
+        const declaration = await this.resolve(name);
         if (declaration === undefined) {
             this.analysis.diagnostics.push({
                 severity: DiagnosticSeverity.Error,
@@ -171,6 +171,6 @@ class AnalysisBuilder {
     }
 }
 
-export function buildAnalysis(document: TextDocument): JsoniqAnalysis {
+export async function buildAnalysis(document: TextDocument): Promise<JsoniqAnalysis> {
     return new AnalysisBuilder(document).build();
 }

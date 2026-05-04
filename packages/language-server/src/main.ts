@@ -16,7 +16,6 @@ import { findReferenceLocations } from "./references.js";
 import { buildRenameWorkspaceEdit, prepareRename } from "./rename.js";
 import { findHover } from "./hover.js";
 import { findCompletions } from "./completion.js";
-import { initializeBuiltinFunctionDefinitions } from "./wrapper/builtin-functions.js";
 import { clearTypeInferenceCache } from "./wrapper/type-inference.js";
 import { collectTypeDiagnostics } from "./type-diagnostics.js";
 
@@ -49,8 +48,6 @@ async function refreshDiagnostics(uri: string): Promise<void> {
 }
 
 connection.onInitialize(async (_params: InitializeParams): Promise<InitializeResult> => {
-    await initializeBuiltinFunctionDefinitions();
-
     return {
         capabilities: {
             textDocumentSync: TextDocumentSyncKind.Incremental,

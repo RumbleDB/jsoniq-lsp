@@ -11,7 +11,7 @@ import { isSourceDefinition } from "server/analysis/model.js";
 import { testDocument } from "./test-utils.js";
 
 describe("JSONiq variable scope analysis", () => {
-    it("collects variable declarations from function params and FLWOR clauses", () => {
+    it("collects variable declarations from function params and FLWOR clauses", async () => {
         const document = testDocument("scope-declarations", [
             "declare function local:f($a, $b as integer) {",
             "  for $x at $pos in (1, 2, 3)",
@@ -22,7 +22,7 @@ describe("JSONiq variable scope analysis", () => {
             "};",
         ]);
 
-        const analysis = buildAnalysis(document);
+        const analysis = await buildAnalysis(document);
         const declarationNames = analysis.definitions.map((declaration) => declaration.name);
 
         expect(declarationNames).toEqual([
@@ -37,7 +37,7 @@ describe("JSONiq variable scope analysis", () => {
         ]);
     });
 
-    it("resolves references to the nearest declaration", () => {
+    it("resolves references to the nearest declaration", async () => {
         const document = testDocument("scope-resolution", [
             "declare variable $x := 10;",
             "declare function local:f($x) {",
@@ -47,7 +47,7 @@ describe("JSONiq variable scope analysis", () => {
             "local:f($x)",
         ]);
 
-        const analysis = buildAnalysis(document);
+        const analysis = await buildAnalysis(document);
         const references = analysis.references.filter((reference) => reference.name.startsWith("$")).map((reference) => ({
             name: reference.name,
             line: reference.range.start.line,
@@ -63,7 +63,7 @@ describe("JSONiq variable scope analysis", () => {
         ]);
     });
 
-    it("resolves function call references by name and arity", () => {
+    it("resolves function call references by name and arity", async () => {
         const document = testDocument("scope-function-references", [
             "declare function local:add($left, $right) {",
             "  $left + $right",
@@ -71,7 +71,7 @@ describe("JSONiq variable scope analysis", () => {
             "local:add(1, 2)",
         ]);
 
-        const analysis = buildAnalysis(document);
+        const analysis = await buildAnalysis(document);
         const functionReference = analysis.references.find((reference) => reference.name === "local:add#2");
 
         expect(functionReference).toMatchObject({
@@ -87,13 +87,13 @@ describe("JSONiq variable scope analysis", () => {
         });
     });
 
-    it("supports multiple for variables in the same clause", () => {
+    it("supports multiple for variables in the same clause", async () => {
         const document = testDocument("scope-multi-for", [
             "for $x in (1, 2, 3), $y in ($x, 4)",
             "return 10 * $x + $y",
         ]);
 
-        const analysis = buildAnalysis(document);
+        const analysis = await buildAnalysis(document);
 
         expect(analysis.definitions.map((declaration) => declaration.name)).toEqual([
             "$x",
@@ -110,13 +110,13 @@ describe("JSONiq variable scope analysis", () => {
         ]);
     });
 
-    it("supports multiple for bindings that each define an at-position variable", () => {
+    it("supports multiple for bindings that each define an at-position variable", async () => {
         const document = testDocument("scope-multi-for-at", [
             "for $x at $ix in (1, 2), $y at $iy in ($x, 3)",
             "return $x + $ix + $y + $iy",
         ]);
 
-        const analysis = buildAnalysis(document);
+        const analysis = await buildAnalysis(document);
 
         expect(analysis.definitions.map((declaration) => ({
             name: declaration.name,
@@ -142,7 +142,7 @@ describe("JSONiq variable scope analysis", () => {
         ]);
     });
 
-    it("stores references per declaration and supports binary-search occurrence lookup", () => {
+    it("stores references per declaration and supports binary-search occurrence lookup", async () => {
         const document = testDocument("scope-index", [
             "declare function local:f($x) {",
             "  let $y := $x + 1",
@@ -150,7 +150,7 @@ describe("JSONiq variable scope analysis", () => {
             "};",
         ]);
 
-        const analysis = buildAnalysis(document);
+        const analysis = await buildAnalysis(document);
         const parameter = analysis.definitions.find((declaration) => declaration.name === "$x" && declaration.kind === "parameter");
 
         expect(parameter).toBeDefined();
@@ -168,14 +168,14 @@ describe("JSONiq variable scope analysis", () => {
         expect(occurrence?.declaration.kind).toBe("parameter");
     });
 
-    it("returns correct declaration for reference on the same line as declaration", () => {
+    it("returns correct declaration for reference on the same line as declaration", async () => {
         const document = testDocument("scope-same-line", [
             "declare function local:f($x) {",
             "  let $y := $x + 1 return $y + $x",
             "};",
         ]);
 
-        const analysis = buildAnalysis(document);
+        const analysis = await buildAnalysis(document);
         const parameter = analysis.definitions.find((declaration) => declaration.name === "$x" && declaration.kind === "parameter");
 
         expect(parameter).toBeDefined();
@@ -193,14 +193,14 @@ describe("JSONiq variable scope analysis", () => {
         expect(occurrence?.declaration.kind).toBe("parameter");
     });
 
-    it("resolves shadowed variables with the same name to the nearest declaration", () => {
+    it("resolves shadowed variables with the same name to the nearest declaration", async () => {
         const document = testDocument("scope-shadowing-same-name", [
             "let $x := 1",
             "let $x := $x + 1",
             "return $x",
         ]);
 
-        const analysis = buildAnalysis(document);
+        const analysis = await buildAnalysis(document);
         const xDeclarations = analysis.definitions.filter((declaration) => declaration.name === "$x" && declaration.kind === "let");
 
         expect(xDeclarations).toHaveLength(2);
