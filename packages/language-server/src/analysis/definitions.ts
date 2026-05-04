@@ -16,10 +16,10 @@ export function createSourceDefinition(
         name: declaration.name,
         range: declaration.range,
         selectionRange: declaration.selectionRange,
-        scopeEnd: { line: 0, character: 0 },
         references: [],
+        visibleFrom: declaration.completed === false ? null : document.offsetAt(declaration.range.end),
         isBuiltin: false as const,
-    };
+    } satisfies Omit<SourceDefinition, "kind">;
 
     if (declaration.kind === "function") {
         return {
@@ -41,7 +41,6 @@ export function createSourceDefinition(
             ...base,
             kind: "parameter",
             function: containingFunction,
-            visibleFrom: document.offsetAt(declaration.range.end),
         } satisfies SourceParameterDefinition;
     }
 
@@ -50,13 +49,11 @@ export function createSourceDefinition(
         return {
             ...base,
             kind: declaration.kind,
-            visibleFrom: document.offsetAt(declaration.range.end),
         } satisfies SourceDefinition;
     }
 
     return {
         ...base,
         kind: declaration.kind,
-        visibleFrom: document.offsetAt(declaration.range.end),
     } satisfies SourceVariableDefinition;
 }

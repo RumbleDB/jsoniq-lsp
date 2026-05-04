@@ -29,7 +29,7 @@ export interface BaseSourceDefinition extends BaseDefinition {
     selectionRange: Range;
 
     // Offset where this declaration becomes visible.
-    visibleFrom: number;
+    visibleFrom: number | null;
 
     // Position where this definition goes out of scope.
     scopeEnd: Position;
