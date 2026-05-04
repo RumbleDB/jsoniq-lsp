@@ -1,4 +1,4 @@
-import { Diagnostic, DiagnosticSeverity, Position, type Range } from "vscode-languageserver";
+import { DiagnosticSeverity, Position, type Range } from "vscode-languageserver";
 import { TextDocument } from "vscode-languageserver-textdocument";
 
 import { parseDocument } from "server/parser/index.js";
@@ -17,25 +17,27 @@ import { Scope } from "./scope.js";
 import {
     type Definition,
     type JsoniqAnalysis,
-    type SymbolIndexEntry,
     type ResolvedReference,
     type SourceDefinition,
     isSourceDefinition,
 } from "./model.js";
 
 class AnalysisBuilder {
-    private readonly definitions: SourceDefinition[] = [];
-    private readonly references: ResolvedReference[] = [];
-    private readonly diagnostics: Diagnostic[] = [];
-    private readonly symbolIndex: SymbolIndexEntry[] = [];
+    private readonly analysis: JsoniqAnalysis;
     private readonly pendingDeclarations = new PendingDeclarations();
-    private readonly moduleScope: Scope;
 
     private currentScope: Scope;
 
     public constructor(private readonly document: TextDocument) {
-        this.moduleScope = Scope.module(document);
-        this.currentScope = this.moduleScope;
+        this.analysis = {
+            moduleScope: Scope.module(document),
+            definitions: [],
+            references: [],
+            diagnostics: [],
+            symbolIndex: [],
+        };
+
+        this.currentScope = this.analysis.moduleScope;
     }
 
     public build(): JsoniqAnalysis {
@@ -63,7 +65,7 @@ class AnalysisBuilder {
             }
         }
 
-        this.symbolIndex.sort((left, right) => {
+        this.analysis.symbolIndex.sort((left, right) => {
             const startComparison = comparePositions(left.range.start, right.range.start);
             if (startComparison !== 0) {
                 return startComparison;
@@ -72,15 +74,9 @@ class AnalysisBuilder {
             return comparePositions(left.range.end, right.range.end);
         });
 
-        this.definitions.sort((left, right) => comparePositions(left.range.start, right.range.start));
+        this.analysis.definitions.sort((left, right) => comparePositions(left.range.start, right.range.start));
 
-        return {
-            rootScope: this.moduleScope,
-            definitions: this.definitions,
-            references: this.references,
-            diagnostics: this.diagnostics,
-            symbolIndex: this.symbolIndex,
-        };
+        return this.analysis;
     }
 
     private pushScope(scopeKind: ScopeKind, start: Position, end: Position): void {
@@ -106,8 +102,8 @@ class AnalysisBuilder {
     }
 
     private registerDefinition(newDefinition: SourceDefinition): void {
-        this.definitions.push(newDefinition);
-        this.symbolIndex.push({
+        this.analysis.definitions.push(newDefinition);
+        this.analysis.symbolIndex.push({
             range: newDefinition.selectionRange,
             declaration: newDefinition,
             reference: undefined,
@@ -147,7 +143,7 @@ class AnalysisBuilder {
     private recordReference(name: string, range: Range): void {
         const declaration = this.resolve(name);
         if (declaration === undefined) {
-            this.diagnostics.push({
+            this.analysis.diagnostics.push({
                 severity: DiagnosticSeverity.Error,
                 message: `Reference to undefined variable '${name}'`,
                 range,
@@ -162,8 +158,8 @@ class AnalysisBuilder {
             declaration,
         } satisfies ResolvedReference;
 
-        this.references.push(reference);
-        this.symbolIndex.push({
+        this.analysis.references.push(reference);
+        this.analysis.symbolIndex.push({
             range: reference.range,
             declaration,
             reference,

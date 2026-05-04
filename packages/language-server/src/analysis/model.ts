@@ -74,7 +74,7 @@ export interface SymbolIndexEntry {
 }
 
 export interface JsoniqAnalysis {
-    rootScope: Scope;
+    moduleScope: Scope;
 
     // All declarations, sorted by declaration position.
     definitions: SourceDefinition[];
