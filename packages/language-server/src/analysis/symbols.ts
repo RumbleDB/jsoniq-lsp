@@ -5,14 +5,14 @@ import { DocumentSymbol, SymbolKind } from "vscode-languageserver";
 import { TextDocument } from "vscode-languageserver-textdocument";
 import { sameRange } from "server/utils/range.js";
 
-interface SymbolOwner {
+interface DocumentSymbolOwner {
     declaration: SemanticDeclaration;
     symbol: DocumentSymbol;
 }
 
-export class SymbolsBuilder {
+export class DocumentSymbolsBuilder {
     private readonly symbols: DocumentSymbol[] = [];
-    private readonly owners: SymbolOwner[] = [];
+    private readonly owners: DocumentSymbolOwner[] = [];
 
     public constructor(private readonly document: TextDocument) { }
 
@@ -65,7 +65,7 @@ export class SymbolsBuilder {
         }
     }
 
-    private currentOwner(): SymbolOwner | undefined {
+    private currentOwner(): DocumentSymbolOwner | undefined {
         return this.owners[this.owners.length - 1];
     }
 }
