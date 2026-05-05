@@ -17,3 +17,15 @@ export async function resolveWrapperLaunchConfig(): Promise<WrapperLaunchConfig>
     logger.debug("No development wrapper configuration found, falling back to production configuration.");
     return resolveProdLaunchConfig();
 }
+
+if (import.meta.main) {
+    /// For testing purposes, allow running this file directly to see the resolved launch config
+    resolveWrapperLaunchConfig()
+        .then((config) => {
+            console.log("Resolved wrapper launch config:", config);
+        })
+        .catch((error) => {
+            console.error("Error resolving wrapper launch config:", error);
+            process.exit(1);
+        });
+}
