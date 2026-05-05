@@ -4,9 +4,10 @@ import { createHash } from "node:crypto";
 const DOWNLOAD_PROGRESS_BAR_WIDTH = 24;
 
 export interface DownloadProgress {
-    stage: "download-started" | "download-progress" | "download-complete" | "verified";
+    stage: "download-started" | "download-progress" | "download-complete" | "verified" | "download-failed";
     downloadedBytes: number;
     totalBytes: number;
+    message?: string;
 }
 
 export type DownloadProgressReporter = (progress: DownloadProgress) => void;
@@ -23,12 +24,19 @@ export function createTerminalProgressReporter(): DownloadProgressReporter | und
             return;
         }
 
+        if (progress.stage === "download-failed") {
+            if (lastRenderedLine.length > 0) {
+                process.stderr.write("\n");
+            }
+            return;
+        }
+
         const boundedDownloadedBytes = Math.min(progress.downloadedBytes, progress.totalBytes);
         const fraction = progress.totalBytes <= 0 ? 0 : boundedDownloadedBytes / progress.totalBytes;
         const completedBars = Math.round(fraction * DOWNLOAD_PROGRESS_BAR_WIDTH);
         const bar = `${"=".repeat(completedBars)}${" ".repeat(DOWNLOAD_PROGRESS_BAR_WIDTH - completedBars)}`;
         const percentage = (fraction * 100).toFixed(1).padStart(5, " ");
-        
+
         const downloadedMB = (boundedDownloadedBytes / 1024 / 1024).toFixed(2);
         const totalMB = (progress.totalBytes / 1024 / 1024).toFixed(2);
 
@@ -54,6 +62,7 @@ interface DownloadMetadata {
 export async function downloadWithProgress(
     url: string,
     destinationPath: string,
+    totalBytes: number,
     reportProgress: DownloadProgressReporter | undefined,
 ): Promise<DownloadMetadata> {
     const response = await fetch(url);
@@ -66,7 +75,12 @@ export async function downloadWithProgress(
     }
 
     const totalBytesHeader = response.headers.get("content-length");
-    const headerSizeBytes = totalBytesHeader === null ? -1 : Number.parseInt(totalBytesHeader, 10);
+    const headerSizeBytes = totalBytesHeader === null ? undefined : Number.parseInt(totalBytesHeader, 10);
+    if (headerSizeBytes !== undefined && Number.isFinite(headerSizeBytes) && headerSizeBytes !== totalBytes) {
+        throw new Error(
+            `Wrapper jar size mismatch before download: expected ${totalBytes} bytes, got ${headerSizeBytes} bytes from HTTP headers.`
+        );
+    }
 
     const hash = createHash("sha256");
     const fileStream = fs.createWriteStream(destinationPath);
@@ -77,7 +91,7 @@ export async function downloadWithProgress(
     reportProgress?.({
         stage: "download-started",
         downloadedBytes: 0,
-        totalBytes: headerSizeBytes,
+        totalBytes,
     });
 
     try {
@@ -105,7 +119,7 @@ export async function downloadWithProgress(
             reportProgress?.({
                 stage: "download-progress",
                 downloadedBytes,
-                totalBytes: headerSizeBytes,
+                totalBytes,
             });
         }
 
@@ -126,7 +140,7 @@ export async function downloadWithProgress(
     reportProgress?.({
         stage: "download-complete",
         downloadedBytes: downloadedBytes,
-        totalBytes: headerSizeBytes,
+        totalBytes,
     });
 
     return {

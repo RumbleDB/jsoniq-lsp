@@ -59,6 +59,7 @@ export async function resolveProductionJarPath(options: WrapperResolutionOptions
         const downloadedJar = await downloadWithProgress(
             manifest.jarUrl,
             tempJarPath,
+            manifest.jarSizeBytes,
             progressReporter,
         );
         if (downloadedJar.sizeBytes !== manifest.jarSizeBytes) {
@@ -80,6 +81,12 @@ export async function resolveProductionJarPath(options: WrapperResolutionOptions
             totalBytes: manifest.jarSizeBytes,
         });
     } catch (error) {
+        progressReporter?.({
+            stage: "download-failed",
+            downloadedBytes: 0,
+            totalBytes: manifest.jarSizeBytes,
+            message: error instanceof Error ? error.message : String(error),
+        });
         fs.rmSync(tempJarPath, { force: true });
         throw error;
     }
