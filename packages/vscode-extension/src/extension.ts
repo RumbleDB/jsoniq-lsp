@@ -5,6 +5,7 @@ import {
     type ServerOptions,
     TransportKind,
 } from "vscode-languageclient/node.js";
+import { initializeCustomNotifications } from "./notifications/index.js";
 
 let client: LanguageClient | undefined;
 
@@ -44,6 +45,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
     context.subscriptions.push(client);
     await client.start();
+    initializeCustomNotifications(client, context);
 }
 
 export async function deactivate(): Promise<void> {
