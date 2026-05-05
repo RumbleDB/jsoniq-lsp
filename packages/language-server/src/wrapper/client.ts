@@ -1,4 +1,7 @@
-import { ChildProcessWithoutNullStreams, spawn } from "node:child_process";
+import { ChildProcessWithoutNullStreams, spawn, execFile } from "node:child_process";
+import { promisify } from 'node:util';
+
+const execFileAsync = promisify(execFile);
 
 import { createLogger } from "server/utils/logger.js";
 import { type WrapperResolutionOptions, resolveWrapperLaunchConfig } from "./executable/index.js";
@@ -257,10 +260,49 @@ class RumbleWrapperClient {
     public getRumbleVersion(): string | null {
         return this.rumbleVersion;
     }
+
+    public async getMemoryUsage(): Promise<{ pid: number; rssBytes: number } | null> {
+        const pid = this.child?.pid;
+        if (pid === undefined) {
+            return null;
+        }
+
+        const { stdout } = await execFileAsync("ps", ["-o", "rss=", "-p", String(pid)]);
+        const rssKb = Number.parseInt(stdout.trim(), 10);
+        if (!Number.isFinite(rssKb)) {
+            throw new Error(`Could not parse wrapper memory usage for pid ${pid}: '${stdout.trim()}'`);
+        }
+
+        return {
+            pid,
+            rssBytes: rssKb * 1024,
+        };
+    }
 }
 
 export function setWrapperResolutionOptions(options: WrapperResolutionOptions): void {
     wrapperResolutionOptions = options;
+
+    if (options.memoryUsageReporter !== undefined) {
+        const client = getWrapperClient();
+
+        const poll = async (): Promise<void> => {
+            try {
+                const usage = await client.getMemoryUsage();
+                if (usage !== null) {
+                    options.memoryUsageReporter?.(usage);
+                }
+            } catch (error) {
+                logger.error("Failed to get wrapper memory usage:", error instanceof Error ? error : String(error));
+            } finally {
+                setTimeout(() => {
+                    void poll();
+                }, 5000);
+            }
+        };
+
+        poll();
+    }
 }
 
 let instance: RumbleWrapperClient | null = null;
