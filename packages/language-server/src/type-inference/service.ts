@@ -10,7 +10,7 @@ import {
     type InferredSequenceType,
     type InferredType,
     type TypeInferenceResult,
-} from "../wrapper/type-inference.js";
+} from "server/wrapper/type-inference.js";
 import { DocumentUri, TextDocument } from "vscode-languageserver-textdocument";
 import { buildInferenceKey, buildInferenceKeyForDefinition, InferenceKey } from "./key.js";
 

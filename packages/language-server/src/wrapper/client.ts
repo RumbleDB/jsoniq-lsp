@@ -1,6 +1,6 @@
 import { ChildProcessWithoutNullStreams, spawn } from "node:child_process";
 
-import { createLogger } from "../utils/logger.js";
+import { createLogger } from "server/utils/logger.js";
 import { resolveWrapperLaunchConfig } from "./executable/index.js";
 import { REQUEST_TYPE_HANDSHAKE } from "./handshake.js";
 import type {

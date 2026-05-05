@@ -7,7 +7,7 @@ import type {
     ScopeKind,
 } from "server/parser/types/semantic-events.js";
 import { findBuiltinFunctionDefinition } from "server/wrapper/builtin-functions.js";
-import { comparePositions } from "../utils/position.js";
+import { comparePositions } from "server/utils/position.js";
 import {
     isVisibleOnEnter,
     PendingDeclarations,
