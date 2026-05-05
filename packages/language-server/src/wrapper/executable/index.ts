@@ -12,7 +12,6 @@ export interface WrapperLaunchConfig {
 
 export interface WrapperResolutionOptions {
     onProgress?: DownloadProgressReporter;
-    memoryUsageReporter?: (usage: WrapperMemoryUsage) => void;
 }
 
 export async function resolveWrapperLaunchConfig(options: WrapperResolutionOptions = {}): Promise<WrapperLaunchConfig> {

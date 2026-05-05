@@ -287,27 +287,6 @@ class RumbleWrapperClient {
 
 export function setWrapperResolutionOptions(options: WrapperResolutionOptions): void {
     wrapperResolutionOptions = options;
-
-    if (options.memoryUsageReporter !== undefined) {
-        const client = getWrapperClient();
-
-        const poll = async (): Promise<void> => {
-            try {
-                const usage = await client.getMemoryUsage();
-                if (usage !== null) {
-                    options.memoryUsageReporter?.(usage);
-                }
-            } catch (error) {
-                logger.error("Failed to get wrapper memory usage:", error instanceof Error ? error : String(error));
-            } finally {
-                setTimeout(() => {
-                    void poll();
-                }, 5000);
-            }
-        };
-
-        poll();
-    }
 }
 
 let instance: RumbleWrapperClient | null = null;
