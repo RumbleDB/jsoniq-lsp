@@ -109,6 +109,7 @@ jobs:
               assetName: asset.name,
               jarUrl: asset.browser_download_url,
               jarSha256: assetSha256,
+              jarSizeBytes: asset.size,
               createdAt: new Date().toISOString(),
               commitSha: process.env.GITHUB_SHA,
             };
