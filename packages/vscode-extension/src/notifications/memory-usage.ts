@@ -1,0 +1,30 @@
+import * as vscode from "vscode";
+import type { LanguageClient } from "vscode-languageclient/node.js";
+import { MEMORY_USAGE_NOTIFICATION, type MemoryUsage } from "./types.js";
+
+export function registerWrapperMemoryUsageNotification(client: LanguageClient): vscode.Disposable {
+    const statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 10);
+    statusBarItem.name = "JSONiq Wrapper Memory Usage";
+
+    const notificationDisposable = client.onNotification(
+        MEMORY_USAGE_NOTIFICATION,
+        (usage: MemoryUsage) => {
+            const totalMemory = usage.wrapper !== null ? usage.languageServer + usage.wrapper : usage.languageServer;
+            statusBarItem.text = `$(pulse) Memory usage: ${formatMemoryUsage(totalMemory)}`;
+            statusBarItem.tooltip = [
+                "JSONiq Language Server: " + formatMemoryUsage(usage.languageServer),
+                "Java Wrapper: " + (usage.wrapper !== null ? formatMemoryUsage(usage.wrapper) : "N/A"),
+            ].join("\n");
+            statusBarItem.show();
+        },
+    );
+
+    return new vscode.Disposable(() => {
+        notificationDisposable.dispose();
+        statusBarItem.dispose();
+    });
+}
+
+function formatMemoryUsage(bytes: number): string {
+    return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+}

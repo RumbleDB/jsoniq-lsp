@@ -1,8 +1,7 @@
-export const WRAPPER_DOWNLOAD_PROGRESS_NOTIFICATION = "jsoniq/wrapper-download-progress";
+export {
+    WRAPPER_DOWNLOAD_PROGRESS_NOTIFICATION,
+    type DownloadProgress,
 
-export interface WrapperDownloadProgress {
-    stage: "download-started" | "download-progress" | "download-complete" | "verified" | "download-failed";
-    downloadedBytes: number;
-    totalBytes: number;
-    message?: string;
-}
+    MEMORY_USAGE_NOTIFICATION,
+    type MemoryUsage,
+} from '@jimmycai/jsoniq-language-server/notifications'
