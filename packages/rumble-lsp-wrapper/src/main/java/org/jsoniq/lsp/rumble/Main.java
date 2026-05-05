@@ -12,6 +12,7 @@ import java.util.Map;
 import java.util.Objects;
 
 import org.jsoniq.lsp.rumble.handlers.BuiltinFunctions;
+import org.jsoniq.lsp.rumble.handlers.BuiltinTypes;
 import org.jsoniq.lsp.rumble.handlers.Handshake;
 import org.jsoniq.lsp.rumble.handlers.RequestHandler;
 import org.jsoniq.lsp.rumble.handlers.TypeInferencer;
@@ -23,11 +24,13 @@ public class Main {
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final TypeInferencer INFERENCER = new TypeInferencer();
     private static final BuiltinFunctions BUILTIN_FUNCTIONS = new BuiltinFunctions();
+    private static final BuiltinTypes BUILTIN_TYPES = new BuiltinTypes();
     private static final Handshake HANDSHAKE = new Handshake();
 
     private static final Map<String, RequestHandler> DAEMON_HANDLERS = Map.of(
             INFERENCER.getRequestType(), INFERENCER,
             BUILTIN_FUNCTIONS.getRequestType(), BUILTIN_FUNCTIONS,
+            BUILTIN_TYPES.getRequestType(), BUILTIN_TYPES,
             HANDSHAKE.getRequestType(), HANDSHAKE);
 
     private static long requestIdCounter = 0;

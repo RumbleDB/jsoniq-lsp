@@ -13,7 +13,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 
-public class BuiltinFunctions implements RequestHandler{
+public class BuiltinFunctions implements RequestHandler {
     public record Signature(
             List<String> parameterTypes,
             String returnType) {
