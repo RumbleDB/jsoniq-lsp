@@ -25,7 +25,9 @@
         "prepack": "pnpm run build:prod",
         "ensure-wrapper": "node ./dist/wrapper/executable/index.js",
         "lint": "oxlint",
-        "lint:fix": "oxlint --fix"
+        "lint:fix": "oxlint --fix",
+        "fmt": "oxfmt",
+        "fmt:check": "oxfmt --check"
     },
     "dependencies": {
         "antlr-ng": "^1.0.10",
@@ -36,6 +38,7 @@
     },
     "devDependencies": {
         "@types/node": "^25.6.0",
+        "oxfmt": "^0.48.0",
         "oxlint": "^1.63.0",
         "tsc-alias": "^1.8.17",
         "typescript": "^6.0.3",
