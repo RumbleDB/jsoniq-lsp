@@ -28,6 +28,7 @@ import type {
     SemanticReferenceEvent,
     ScopeKind,
 } from "server/parser/types/semantic-events.js";
+import type { SemanticDeclarationKind } from "server/parser/types/declaration.js";
 import { functionNameWithArityOrNull, varRefNameOrNull } from "./name.js";
 import { rangeFromNode } from "server/utils/range.js";
 
@@ -40,38 +41,16 @@ class SemanticEventCollector {
         return this.events;
     }
 
-    public enterDeclaration(declaration: SemanticDeclaration | undefined): void {
-        if (declaration !== undefined) {
-            this.events.push({ type: "enterDeclaration", declaration });
-        }
+    public enterDeclaration(declaration: SemanticDeclaration): void {
+        this.events.push({ type: "enterDeclaration", declaration });
     }
 
-    public exitDeclaration(declaration: SemanticDeclaration | undefined): void {
-        if (declaration !== undefined) {
-            this.events.push({ type: "exitDeclaration", declaration });
-        }
+    public exitDeclaration(declaration: SemanticDeclaration): void {
+        this.events.push({ type: "exitDeclaration", declaration });
     }
 
     public reference(name: string, kind: SemanticReferenceEvent["kind"], range: Range): void {
         this.events.push({ type: "reference", name, kind, range });
-    }
-
-    public variable(
-        kind: SemanticDeclaration["kind"],
-        declarationNode: ParseTree,
-        selectionNode: VarRefContext,
-    ): SemanticDeclaration | undefined {
-        const name = varRefNameOrNull(selectionNode);
-        if (name === null) {
-            return undefined;
-        }
-
-        return {
-            name,
-            kind,
-            range: rangeFromNode(declarationNode, this.document),
-            selectionRange: rangeFromNode(selectionNode, this.document),
-        };
     }
 
     public scope(node: ParseTree, enter: boolean, scopeKind: ScopeKind): void {
@@ -95,19 +74,7 @@ class JsoniqSemanticEventListener extends jsoniqListener {
 
     public override enterNamespaceDecl = (node: NamespaceDeclContext): void => {
         const nameNode = node.NCName();
-        const name = nameNode.getText().trim();
-        this.enter(
-            name === ""
-                ? []
-                : [
-                      {
-                          name,
-                          kind: "namespace",
-                          range: rangeFromNode(node, this.document),
-                          selectionRange: rangeFromNode(nameNode, this.document),
-                      },
-                  ],
-        );
+        this.enter(this.declaration("namespace", nameNode.getText(), node, nameNode));
     };
 
     public override exitNamespaceDecl = this.exit;
@@ -119,38 +86,20 @@ class JsoniqSemanticEventListener extends jsoniqListener {
     public override exitContextItemDecl = this.exit;
 
     public override enterTypeDecl = (node: TypeDeclContext): void => {
-        const nameNode = node._type_name ?? node.declaredQName();
-        const name = nameNode.getText().trim();
-        this.enter(
-            name === ""
-                ? []
-                : [
-                      {
-                          name,
-                          kind: "type",
-                          range: rangeFromNode(node, this.document),
-                          selectionRange: rangeFromNode(nameNode, this.document),
-                      },
-                  ],
-        );
+        const nameNode = node.declaredQName();
+        this.enter(this.declaration("type", nameNode.getText(), node, nameNode));
     };
 
     public override exitTypeDecl = this.exit;
 
     public override enterFunctionDecl = (node: FunctionDeclContext): void => {
-        const name = functionNameWithArityOrNull(node);
-        const selectionNode = node.declaredQName();
         this.enter(
-            name === null || selectionNode === null
-                ? []
-                : [
-                      {
-                          name,
-                          kind: "function",
-                          range: rangeFromNode(node, this.document),
-                          selectionRange: rangeFromNode(selectionNode, this.document),
-                      },
-                  ],
+            this.declaration(
+                "function",
+                functionNameWithArityOrNull(node),
+                node,
+                node.declaredQName(),
+            ),
         );
         this.events.scope(node, true, "function");
     };
@@ -161,68 +110,62 @@ class JsoniqSemanticEventListener extends jsoniqListener {
     };
 
     public override enterParam = (node: ParamContext): void => {
-        const declaration = this.parameterDeclaration(node);
-        this.enter(declaration === undefined ? [] : [declaration]);
+        this.enter(this.variableDeclaration("parameter", node, node.declaredVarRef()));
     };
 
     public override exitParam = this.exit;
 
     public override enterVarDecl = (node: VarDeclContext): void => {
-        const declaration = this.events.variable(
+        const declarations = this.variableDeclaration(
             "declare-variable",
             node,
-            node.declaredVarRef().varRef(),
+            node.declaredVarRef(),
         );
-        if (declaration !== undefined && node.Ksemicolon().symbol.start < 0) {
-            declaration.completed = false;
+        const semicolon = node.Ksemicolon();
+        if (semicolon === null || semicolon.symbol.start < 0) {
+            for (const declaration of declarations) {
+                declaration.completed = false;
+            }
         }
-        this.enter(declaration === undefined ? [] : [declaration]);
+        this.enter(declarations);
     };
 
     public override exitVarDecl = this.exit;
 
-    public override enterForVar = (node: ForVarContext): void => {
+    public override enterForVar = (node: ForVarContext): void =>
         this.enter(this.forVarDeclarations(node));
-    };
 
     public override exitForVar = this.exit;
 
     public override enterLetVar = (node: LetVarContext): void => {
-        const declaration = this.events.variable("let", node, node.declaredVarRef().varRef());
-        this.enter(declaration === undefined ? [] : [declaration]);
+        this.enter(this.variableDeclaration("let", node, node.declaredVarRef()));
     };
 
     public override exitLetVar = this.exit;
 
     public override enterGroupByVar = (node: GroupByVarContext): void => {
-        const declaration = this.events.variable("group-by", node, node.declaredVarRef().varRef());
-        this.enter(declaration === undefined ? [] : [declaration]);
+        this.enter(this.variableDeclaration("group-by", node, node.declaredVarRef()));
     };
 
     public override exitGroupByVar = this.exit;
 
     public override enterCountClause = (node: CountClauseContext): void => {
-        const declaration = this.events.variable("count", node, node.declaredVarRef().varRef());
-        this.enter(declaration === undefined ? [] : [declaration]);
+        this.enter(this.variableDeclaration("count", node, node.declaredVarRef()));
     };
 
     public override exitCountClause = this.exit;
 
-    public override enterFlowrExpr = (node: FlowrExprContext): void => {
+    public override enterFlowrExpr = (node: FlowrExprContext): void =>
         this.events.scope(node, true, "flowr");
-    };
 
-    public override exitFlowrExpr = (node: FlowrExprContext): void => {
+    public override exitFlowrExpr = (node: FlowrExprContext): void =>
         this.events.scope(node, false, "flowr");
-    };
 
-    public override enterFlowrStatement = (node: FlowrStatementContext): void => {
+    public override enterFlowrStatement = (node: FlowrStatementContext): void =>
         this.events.scope(node, true, "flowr");
-    };
 
-    public override exitFlowrStatement = (node: FlowrStatementContext): void => {
+    public override exitFlowrStatement = (node: FlowrStatementContext): void =>
         this.events.scope(node, false, "flowr");
-    };
 
     public override enterVarRef = (node: VarRefContext): void => {
         if (node.parent instanceof DeclaredVarRefContext) {
@@ -235,13 +178,11 @@ class JsoniqSemanticEventListener extends jsoniqListener {
         }
     };
 
-    public override enterFunctionCall = (node: FunctionCallContext): void => {
+    public override enterFunctionCall = (node: FunctionCallContext): void =>
         this.functionReference(node);
-    };
 
-    public override enterNamedFunctionRef = (node: NamedFunctionRefContext): void => {
+    public override enterNamedFunctionRef = (node: NamedFunctionRefContext): void =>
         this.functionReference(node);
-    };
 
     private enter(declarations: SemanticDeclaration[]): void {
         this.declarationStack.push(declarations);
@@ -252,8 +193,10 @@ class JsoniqSemanticEventListener extends jsoniqListener {
 
     private exit(): void {
         const declarations = this.declarationStack.pop() ?? [];
-        for (let index = declarations.length - 1; index >= 0; index -= 1) {
-            this.events.exitDeclaration(declarations[index]);
+        let declaration = declarations.pop();
+        while (declaration !== undefined) {
+            this.events.exitDeclaration(declaration);
+            declaration = declarations.pop();
         }
     }
 
@@ -269,32 +212,50 @@ class JsoniqSemanticEventListener extends jsoniqListener {
         };
     }
 
-    private parameterDeclaration(node: ParamContext): SemanticDeclaration | undefined {
-        const declaredVarRef = node.declaredVarRef();
-        const name = varRefNameOrNull(declaredVarRef.varRef());
-        if (name === null) {
-            return undefined;
+    private declaration(
+        kind: SemanticDeclarationKind,
+        name: string | null,
+        declarationNode: ParseTree,
+        selectionNode: ParseTree | null,
+    ): SemanticDeclaration[] {
+        const trimmedName = name?.trim();
+        if (trimmedName === undefined || trimmedName === "" || selectionNode === null) {
+            return [];
         }
 
-        return {
-            name,
-            kind: "parameter",
-            range: rangeFromNode(node, this.document),
-            selectionRange: rangeFromNode(declaredVarRef, this.document),
-        };
+        return [
+            {
+                name: trimmedName,
+                kind,
+                range: rangeFromNode(declarationNode, this.document),
+                selectionRange: rangeFromNode(selectionNode, this.document),
+            },
+        ];
+    }
+
+    private variableDeclaration(
+        kind: SemanticDeclarationKind,
+        declarationNode: ParseTree,
+        declaredVarRef: DeclaredVarRefContext,
+    ): SemanticDeclaration[] {
+        return this.declaration(
+            kind,
+            varRefNameOrNull(declaredVarRef.varRef()),
+            declarationNode,
+            declaredVarRef,
+        );
     }
 
     private forVarDeclarations(node: ForVarContext): SemanticDeclaration[] {
         return node
             .declaredVarRef()
-            .map((declaredVarRef, index) =>
-                this.events.variable(
+            .flatMap((declaredVarRef, index) =>
+                this.variableDeclaration(
                     index === 0 ? "for" : "for-position",
                     node,
-                    declaredVarRef.varRef(),
+                    declaredVarRef,
                 ),
-            )
-            .filter((declaration): declaration is SemanticDeclaration => declaration !== undefined);
+            );
     }
 
     private functionReference(node: FunctionCallContext | NamedFunctionRefContext): void {
