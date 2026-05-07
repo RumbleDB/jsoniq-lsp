@@ -1,15 +1,15 @@
 import { defineConfig } from "tsdown";
 
 export default defineConfig({
-    entry: ["src/**/*.ts"],
+    entry: ["src/main.ts", "src/notifications/index.ts"],
     root: "src",
     outDir: "dist",
 
     format: "esm",
     platform: "node",
-    unbundle: true,
 
     dts: true,
     sourcemap: false,
     clean: true,
+    minify: true,
 });
