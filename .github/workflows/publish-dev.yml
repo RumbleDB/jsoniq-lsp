@@ -78,7 +78,7 @@ jobs:
           RELEASE_TAG: ${{ steps.wrapper_release_meta.outputs.tag_name }}
           RELEASE_ASSET_NAME: ${{ steps.wrapper_release_meta.outputs.asset_name }}
           RELEASE_ASSET_SHA256: ${{ steps.wrapper_release_meta.outputs.asset_sha256 }}
-          OUTPUT_PATH: packages/language-server/dist/wrapper/executable/release-manifest.json
+          OUTPUT_PATH: packages/language-server/assets/wrapper/release-manifest.json
         with:
           script: |
             const fs = require("fs");

@@ -1,14 +1,13 @@
 import fs from "node:fs";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 import { createLogger } from "server/utils/logger.js";
 import { type WrapperLaunchConfig, type WrapperResolutionOptions } from "./index.js";
-import { computeFileSha256 } from "./utils.js";
+import { computeFileSha256, findPackageRoot } from "./utils.js";
 import { createTerminalProgressReporter, downloadWithProgress } from "./download.js";
 
-/// Production environment: use the release-manifest.json (which should be placed in the same directory as this file)
-const CURRENT_MODULE_DIR = path.dirname(fileURLToPath(import.meta.url));
-const WRAPPER_JAR_PRODUCTION_FOLDER = CURRENT_MODULE_DIR;
+/// Production environment: use package assets instead of compiled output.
+const PACKAGE_ROOT = findPackageRoot();
+const WRAPPER_JAR_PRODUCTION_FOLDER = path.join(PACKAGE_ROOT, "assets/wrapper");
 const WRAPPER_RELEASE_MANIFEST_FILE = "release-manifest.json";
 const WRAPPER_REMOTE_JAR_FILE = "rumble-lsp-wrapper.remote.jar";
 const WRAPPER_REMOTE_JAR_TEMP_FILE = `${WRAPPER_REMOTE_JAR_FILE}.download`;

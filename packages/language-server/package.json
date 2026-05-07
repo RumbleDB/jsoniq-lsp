@@ -6,7 +6,8 @@
         "url": "https://github.com/CaiJimmy/jsoniq-lsp"
     },
     "files": [
-        "dist"
+        "dist",
+        "assets"
     ],
     "type": "module",
     "exports": {
