@@ -16,8 +16,12 @@
         "start": "pnpm --filter @jimmycai/jsoniq-language-server run start",
         "test": "pnpm --filter @jimmycai/jsoniq-language-server run test",
         "clean": "pnpm --filter @jimmycai/jsoniq-language-server run clean && mvn -f packages/rumble-lsp-wrapper/pom.xml -q clean && pnpm --filter jsoniq-vscode-extension run clean",
-        "lint": "pnpm --filter @jimmycai/jsoniq-language-server run lint",
-        "fmt:check": "pnpm --filter @jimmycai/jsoniq-language-server run fmt:check"
+        "lint:server": "pnpm --filter @jimmycai/jsoniq-language-server run lint",
+        "lint:client": "pnpm --filter jsoniq-vscode-extension run lint",
+        "lint": "run-p lint:server lint:client",
+        "fmt:check:server": "pnpm --filter @jimmycai/jsoniq-language-server run fmt:check",
+        "fmt:check:client": "pnpm --filter jsoniq-vscode-extension run fmt:check",
+        "fmt:check": "run-p fmt:check:server fmt:check:client"
     },
     "devDependencies": {
         "npm-run-all2": "^8.0.4"
