@@ -48,7 +48,11 @@
         "build:prod": "pnpm run clean && pnpm run typecheck && rolldown -c  --environment BUILD:production",
         "typecheck": "tsc -p tsconfig.json --noEmit",
         "watch": "rolldown -c -w",
-        "clean": "rm -rf dist"
+        "clean": "rm -rf dist",
+        "lint": "oxlint",
+        "lint:fix": "oxlint --fix",
+        "fmt": "oxfmt",
+        "fmt:check": "oxfmt --check"
     },
     "dependencies": {
         "@jimmycai/jsoniq-language-server": "workspace:*",
@@ -57,6 +61,8 @@
     "devDependencies": {
         "@types/node": "^25.6.0",
         "@types/vscode": "^1.118.0",
+        "oxfmt": "^0.48.0",
+        "oxlint": "^1.63.0",
         "rolldown": "1.0.0-rc.18",
         "typescript": "^6.0.3"
     }
