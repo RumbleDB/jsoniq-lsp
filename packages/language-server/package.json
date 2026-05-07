@@ -25,7 +25,7 @@
         "test:samples": "pnpm test -- tests/test-samples.test.ts",
         "clean": "rm -rf dist",
         "prepack": "pnpm run build:prod",
-        "ensure-wrapper": "node ./dist/wrapper/executable/index.mjs",
+        "ensure-wrapper": "node ./dist/wrapper/executable/ensure-wrapper.mjs",
         "lint": "oxlint",
         "lint:fix": "oxlint --fix",
         "fmt": "oxfmt",
