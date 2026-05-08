@@ -12,13 +12,15 @@
     "type": "module",
     "exports": {
         ".": "./dist/main.mjs",
-        "./notifications": "./dist/notifications/index.mjs"
+        "./notifications": "./dist/notifications/index.mjs",
+        "./bundled": "./dist/bundled/main.mjs"
     },
     "scripts": {
         "generate:grammar": "antlr-ng -Dlanguage=TypeScript --generate-listener true --output-directory src/parser/adapters/jsoniq/grammar src/parser/adapters/jsoniq/grammar/jsoniq.g4",
         "typecheck": "tsc --noEmit -p tsconfig.json",
         "build": "pnpm run typecheck && tsdown",
         "build:prod": "pnpm run build",
+        "build:bundled": "pnpm run typecheck && tsdown --config tsdown.config.bundled.ts",
         "watch": "tsc -w -p tsconfig.json",
         "start": "node ./dist/main.mjs",
         "test": "vitest run tests",
