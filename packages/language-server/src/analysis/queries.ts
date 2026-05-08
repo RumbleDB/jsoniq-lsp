@@ -27,7 +27,7 @@ export function findSymbolAtPosition(
 
     const occurrence = analysis.symbolIndex[occurrenceIndex];
 
-    if (occurrence !== undefined && comparePositions(position, occurrence.range.end) < 0) {
+    if (occurrence !== undefined && comparePositions(position, occurrence.range.end) <= 0) {
         return occurrence;
     }
 
