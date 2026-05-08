@@ -4,8 +4,9 @@ import {
     type SemanticTokens,
     SemanticTokensLegend,
 } from "vscode-languageserver";
-import { TextDocument } from "vscode-languageserver-textdocument";
 import { Range } from "vscode-languageserver";
+import { TextDocument } from "vscode-languageserver-textdocument";
+
 import type { DefinitionKind } from "./analysis/model.js";
 import { getAnalysis } from "./analysis/service.js";
 

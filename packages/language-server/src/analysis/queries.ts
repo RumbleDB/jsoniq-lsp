@@ -1,8 +1,8 @@
+import { upperBound } from "server/utils/binary-search.js";
+import { comparePositions } from "server/utils/position.js";
 import type { Position } from "vscode-languageserver";
 import { TextDocument } from "vscode-languageserver-textdocument";
 
-import { upperBound } from "server/utils/binary-search.js";
-import { comparePositions } from "server/utils/position.js";
 import { type BaseDefinition, type JsoniqAnalysis, type SymbolIndexEntry } from "./model.js";
 import { getAnalysis } from "./service.js";
 

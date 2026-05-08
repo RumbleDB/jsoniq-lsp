@@ -1,16 +1,16 @@
 import { CodeCompletionCore } from "antlr4-c3";
 import { Token } from "antlr4ng";
-
-import { jsoniqParser } from "./grammar/jsoniqParser.js";
-import type { JsoniqParsedDocument } from "./parse.js";
 import type { CompletionIntent, ParserKeywordCompletion } from "server/parser/types/completion.js";
+import { findCaretToken } from "server/parser/utils.js";
+import { createLogger } from "server/utils/logger.js";
+
 import {
     IGNORED_COMPLETION_TOKENS,
     KEYWORD_COMPLETIONS,
     PREFERRED_COMPLETION_RULES,
 } from "./completion-data.js";
-import { findCaretToken } from "server/parser/utils.js";
-import { createLogger } from "server/utils/logger.js";
+import { jsoniqParser } from "./grammar/jsoniqParser.js";
+import type { JsoniqParsedDocument } from "./parse.js";
 
 export function getCompletionIntent(
     parsed: JsoniqParsedDocument,

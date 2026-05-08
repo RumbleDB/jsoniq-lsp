@@ -1,7 +1,7 @@
+import { collectDocumentSymbols } from "server/symbols.js";
 import { describe, expect, it } from "vitest";
 import { DocumentSymbol, SymbolKind } from "vscode-languageserver";
 
-import { collectDocumentSymbols } from "server/symbols.js";
 import { testDocument } from "./test-utils.js";
 
 describe("JSONiq document symbols", () => {

@@ -1,11 +1,12 @@
 import type { SemanticDeclaration } from "server/parser/types/semantic-events.js";
+import { TextDocument } from "vscode-languageserver-textdocument";
+
 import type {
     SourceDefinition,
     SourceFunctionDefinition,
     SourceParameterDefinition,
     SourceVariableDefinition,
 } from "./model.js";
-import { TextDocument } from "vscode-languageserver-textdocument";
 
 export function createSourceDefinition(
     document: TextDocument,

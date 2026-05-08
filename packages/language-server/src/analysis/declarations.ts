@@ -1,6 +1,7 @@
-import type { SemanticDeclaration } from "server/parser/types/semantic-events.js";
-import type { SourceDefinition } from "./model.js";
 import type { SemanticDeclarationKind } from "server/parser/types/declaration.js";
+import type { SemanticDeclaration } from "server/parser/types/semantic-events.js";
+
+import type { SourceDefinition } from "./model.js";
 
 interface PendingDeclaration {
     declaration: SemanticDeclaration;

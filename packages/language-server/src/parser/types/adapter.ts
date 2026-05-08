@@ -1,6 +1,7 @@
 import type { TextDocument } from "vscode-languageserver-textdocument";
-import { ParseResult } from "./result.js";
+
 import { CompletionIntent } from "./completion.js";
+import { ParseResult } from "./result.js";
 
 export interface ParserAdapter {
     readonly id: string;

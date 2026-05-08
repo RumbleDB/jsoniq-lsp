@@ -1,9 +1,9 @@
+import { createLogger } from "server/utils/logger.js";
 import type { DocumentUri, Position } from "vscode-languageserver";
 import { TextDocument } from "vscode-languageserver-textdocument";
 
-import type { WrapperDaemonResponse } from "./protocol.js";
 import { getWrapperClient } from "./client.js";
-import { createLogger } from "server/utils/logger.js";
+import type { WrapperDaemonResponse } from "./protocol.js";
 
 export type WrapperVariableKind =
     | "declare-variable"

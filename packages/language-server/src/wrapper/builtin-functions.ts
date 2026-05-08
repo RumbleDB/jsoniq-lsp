@@ -1,7 +1,8 @@
 import type { BaseDefinition } from "server/analysis/model.js";
 import { createLogger } from "server/utils/logger.js";
-import type { WrapperDaemonResponse } from "./protocol.js";
+
 import { getWrapperClient } from "./client.js";
+import type { WrapperDaemonResponse } from "./protocol.js";
 
 export interface WrapperBuiltinFunctionSignature {
     parameterTypes: string[];

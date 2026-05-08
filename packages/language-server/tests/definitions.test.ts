@@ -1,6 +1,6 @@
+import { findDefinitionLocation } from "server/definitions.js";
 import { describe, expect, it } from "vitest";
 
-import { findDefinitionLocation } from "server/definitions.js";
 import { testDocument } from "./test-utils.js";
 
 describe("JSONiq go-to-definition", () => {

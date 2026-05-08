@@ -1,3 +1,4 @@
+import { TextDocument } from "vscode-languageserver-textdocument";
 import {
     TextDocumentSyncKind,
     createConnection,
@@ -6,23 +7,22 @@ import {
     type InitializeParams,
     type InitializeResult,
 } from "vscode-languageserver/node.js";
-import { TextDocument } from "vscode-languageserver-textdocument";
 
+import { findCompletions } from "./completion.js";
+import { findDefinitionLocation } from "./definitions.js";
+import { findHover } from "./hover.js";
+import { initializeCustomNotifications } from "./notifications/index.js";
 import { parseDocument } from "./parser/index.js";
+import { findReferenceLocations } from "./references.js";
+import { buildRenameWorkspaceEdit, prepareRename } from "./rename.js";
 import {
     collectSemanticDiagnostics,
     collectSemanticTokens,
     legend as semanticLegend,
 } from "./semantic.js";
 import { collectDocumentSymbols } from "./symbols.js";
-import { findDefinitionLocation } from "./definitions.js";
-import { findReferenceLocations } from "./references.js";
-import { buildRenameWorkspaceEdit, prepareRename } from "./rename.js";
-import { findHover } from "./hover.js";
-import { findCompletions } from "./completion.js";
-import { clearTypeInferenceCache } from "./wrapper/type-inference.js";
 import { collectTypeDiagnostics } from "./type-diagnostics.js";
-import { initializeCustomNotifications } from "./notifications/index.js";
+import { clearTypeInferenceCache } from "./wrapper/type-inference.js";
 
 const connection = createConnection(ProposedFeatures.all);
 const documents = new TextDocuments(TextDocument);

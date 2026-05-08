@@ -1,6 +1,5 @@
-import { describe, expect, it } from "vitest";
-
 import { getWrapperClient } from "server/wrapper/client";
+import { describe, expect, it } from "vitest";
 
 describe("wrapper client surface", () => {
     it("exports a singleton wrapper client", () => {

@@ -1,9 +1,9 @@
 import { readFile, readdir } from "node:fs/promises";
 import path from "node:path";
 
+import { parseDocument } from "server/parser/index.js";
 import { describe, expect, it } from "vitest";
 
-import { parseDocument } from "server/parser/index.js";
 import { testDocumentFromUri } from "./test-utils.js";
 
 type SampleExpectation = "valid" | "invalid";

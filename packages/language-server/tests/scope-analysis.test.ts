@@ -1,8 +1,8 @@
+import { buildAnalysis } from "server/analysis/builder.js";
+import { isSourceDefinition } from "server/analysis/model.js";
+import { findSymbolAtPosition, getVisibleDeclarationsAtPosition } from "server/analysis/queries.js";
 import { describe, expect, it } from "vitest";
 
-import { buildAnalysis } from "server/analysis/builder.js";
-import { findSymbolAtPosition, getVisibleDeclarationsAtPosition } from "server/analysis/queries.js";
-import { isSourceDefinition } from "server/analysis/model.js";
 import { testDocument } from "./test-utils.js";
 
 describe("JSONiq variable scope analysis", () => {

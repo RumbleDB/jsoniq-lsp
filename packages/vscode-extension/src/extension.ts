@@ -5,6 +5,7 @@ import {
     type ServerOptions,
     TransportKind,
 } from "vscode-languageclient/node.js";
+
 import { initializeCustomNotifications } from "./notifications/index.js";
 
 let client: LanguageClient | undefined;

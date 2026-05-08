@@ -1,9 +1,9 @@
 import { parseDocument } from "server/parser/index.js";
 import type { SemanticDeclarationKind } from "server/parser/types/declaration.js";
 import type { SemanticDeclaration } from "server/parser/types/semantic-events.js";
+import { sameRange } from "server/utils/range.js";
 import { DocumentSymbol, SymbolKind } from "vscode-languageserver";
 import { TextDocument } from "vscode-languageserver-textdocument";
-import { sameRange } from "server/utils/range.js";
 
 interface DocumentSymbolOwner {
     declaration: SemanticDeclaration;

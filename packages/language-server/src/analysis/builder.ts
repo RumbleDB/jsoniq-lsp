@@ -1,13 +1,12 @@
+import { parseDocument } from "server/parser/index.js";
+import type { SemanticDeclaration, ScopeKind } from "server/parser/types/semantic-events.js";
+import { comparePositions } from "server/utils/position.js";
+import { findBuiltinFunctionDefinition } from "server/wrapper/builtin-functions.js";
 import { DiagnosticSeverity, Position, type Range } from "vscode-languageserver";
 import { TextDocument } from "vscode-languageserver-textdocument";
 
-import { parseDocument } from "server/parser/index.js";
-import type { SemanticDeclaration, ScopeKind } from "server/parser/types/semantic-events.js";
-import { findBuiltinFunctionDefinition } from "server/wrapper/builtin-functions.js";
-import { comparePositions } from "server/utils/position.js";
 import { isVisibleOnEnter, PendingDeclarations } from "./declarations.js";
 import { createSourceDefinition } from "./definitions.js";
-import { Scope } from "./scope.js";
 import {
     type Definition,
     type JsoniqAnalysis,
@@ -15,6 +14,7 @@ import {
     type SourceDefinition,
     isSourceDefinition,
 } from "./model.js";
+import { Scope } from "./scope.js";
 
 class AnalysisBuilder {
     private readonly analysis: JsoniqAnalysis;

@@ -1,9 +1,11 @@
 import fs from "node:fs";
 import path from "node:path";
+
 import { createLogger } from "server/utils/logger.js";
+
+import { createTerminalProgressReporter, downloadWithProgress } from "./download.js";
 import { type WrapperLaunchConfig, type WrapperResolutionOptions } from "./index.js";
 import { computeFileSha256, findPackageRoot } from "./utils.js";
-import { createTerminalProgressReporter, downloadWithProgress } from "./download.js";
 
 /// Production environment: use package assets instead of compiled output.
 const PACKAGE_ROOT = findPackageRoot();

@@ -1,7 +1,8 @@
 import { createLogger } from "server/utils/logger.js";
+
 import { resolveDevLaunchConfig } from "./dev.js";
-import { resolveProdLaunchConfig } from "./prod.js";
 import { DownloadProgressReporter } from "./download.js";
+import { resolveProdLaunchConfig } from "./prod.js";
 
 const logger = createLogger("wrapper:jar-resolution");
 

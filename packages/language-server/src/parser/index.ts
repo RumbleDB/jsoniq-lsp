@@ -1,10 +1,10 @@
 import type { DocumentUri } from "vscode-languageserver";
 import { TextDocument } from "vscode-languageserver-textdocument";
 
-import type { ParserAdapter } from "./types/adapter.js";
 import { getParserAdapterForDocument } from "./registry.js";
-import { ParseResult } from "./types/result.js";
+import type { ParserAdapter } from "./types/adapter.js";
 import { CompletionIntent } from "./types/completion.js";
+import { ParseResult } from "./types/result.js";
 
 interface CachedParsedDocument {
     version: number;

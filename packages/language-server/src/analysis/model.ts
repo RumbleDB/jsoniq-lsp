@@ -1,7 +1,7 @@
+import type { SemanticDeclarationKind, VariableKind } from "server/parser/types/declaration.js";
+import type { BuiltinFunctionDefinition } from "server/wrapper/builtin-functions.js";
 import type { Diagnostic, Range } from "vscode-languageserver";
 
-import type { BuiltinFunctionDefinition } from "server/wrapper/builtin-functions.js";
-import type { SemanticDeclarationKind, VariableKind } from "server/parser/types/declaration.js";
 import type { Scope } from "./scope.js";
 
 export type DefinitionKind = SemanticDeclarationKind | "builtin-function";

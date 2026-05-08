@@ -1,4 +1,12 @@
 import { ParseTreeWalker, type ParseTree } from "antlr4ng";
+import type { SemanticDeclarationKind } from "server/parser/types/declaration.js";
+import type {
+    SemanticDeclaration,
+    SemanticEvent,
+    SemanticReferenceEvent,
+    ScopeKind,
+} from "server/parser/types/semantic-events.js";
+import { rangeFromNode } from "server/utils/range.js";
 import { TextDocument } from "vscode-languageserver-textdocument";
 
 import { jsoniqListener } from "./grammar/jsoniqListener.js";
@@ -21,15 +29,7 @@ import {
     VarRefContext,
     type ModuleAndThisIsItContext,
 } from "./grammar/jsoniqParser.js";
-import type {
-    SemanticDeclaration,
-    SemanticEvent,
-    SemanticReferenceEvent,
-    ScopeKind,
-} from "server/parser/types/semantic-events.js";
-import type { SemanticDeclarationKind } from "server/parser/types/declaration.js";
 import { functionNameWithArityOrNull, varRefNameOrNull } from "./name.js";
-import { rangeFromNode } from "server/utils/range.js";
 
 class SemanticEventCollector {
     private events: SemanticEvent[] = [];

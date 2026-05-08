@@ -1,11 +1,11 @@
 import { MarkupKind, type Hover, type Position } from "vscode-languageserver";
 import { TextDocument } from "vscode-languageserver-textdocument";
 
+import { isSourceDefinition, type Definition, type SourceDefinition } from "./analysis/model.js";
 import { findSymbolAtPosition } from "./analysis/queries.js";
 import { getAnalysis } from "./analysis/service.js";
-import { isSourceDefinition, type Definition, type SourceDefinition } from "./analysis/model.js";
-import { getTypeInferenceIndex, TypeInferenceIndex } from "./type-inference/service.js";
 import { formatInferredType } from "./type-inference/format.js";
+import { getTypeInferenceIndex, TypeInferenceIndex } from "./type-inference/service.js";
 
 export async function findHover(document: TextDocument, position: Position): Promise<Hover | null> {
     const analysis = await getAnalysis(document);

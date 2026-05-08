@@ -1,5 +1,5 @@
-import fs from "node:fs";
 import { createHash } from "node:crypto";
+import fs from "node:fs";
 
 const DOWNLOAD_PROGRESS_BAR_WIDTH = 24;
 

@@ -12,6 +12,7 @@ import {
     type TypeInferenceResult,
 } from "server/wrapper/type-inference.js";
 import { DocumentUri, TextDocument } from "vscode-languageserver-textdocument";
+
 import { buildInferenceKey, buildInferenceKeyForDefinition, InferenceKey } from "./key.js";
 
 export interface TypeInferenceIndex {
