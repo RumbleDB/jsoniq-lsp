@@ -20,7 +20,6 @@
         "typecheck": "tsc --noEmit -p tsconfig.json",
         "build": "pnpm run typecheck && tsdown",
         "build:prod": "pnpm run build",
-        "build:bundled": "pnpm run typecheck && tsdown --config tsdown.config.bundled.ts",
         "watch": "tsc -w -p tsconfig.json",
         "start": "node ./dist/main.mjs",
         "test": "vitest run tests",
