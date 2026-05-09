@@ -1,3 +1,4 @@
+import { getDocumentText } from "server/document.js";
 import { createLogger } from "server/utils/logger.js";
 import type { DocumentUri, Position } from "vscode-languageserver";
 import { TextDocument } from "vscode-languageserver-textdocument";
@@ -105,7 +106,7 @@ export async function getTypeInference(document: TextDocument): Promise<TypeInfe
         return pending;
     }
 
-    const body = Buffer.from(document.getText(), "utf8").toString("base64");
+    const body = Buffer.from(getDocumentText(document), "utf8").toString("base64");
 
     const inferencePromise = getWrapperClient()
         .sendRequest<"inferTypes">({

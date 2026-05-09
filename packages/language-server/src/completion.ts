@@ -13,6 +13,7 @@ import {
     type BaseDefinition,
 } from "./analysis/model.js";
 import { getVisibleDeclarationsAtPosition } from "./analysis/queries.js";
+import { getDocumentText } from "./document.js";
 import { collectCompletionIntent } from "./parser/index.js";
 import { listBuiltinFunctionDefinitions } from "./wrapper/builtin-functions.js";
 
@@ -22,7 +23,7 @@ export async function findCompletions(
     document: TextDocument,
     position: Position,
 ): Promise<CompletionItem[]> {
-    const source = document.getText();
+    const source = getDocumentText(document);
     const cursorOffset = document.offsetAt(position);
     const intent = collectCompletionIntent(document, cursorOffset);
 

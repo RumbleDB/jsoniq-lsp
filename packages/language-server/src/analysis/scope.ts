@@ -1,3 +1,4 @@
+import { getDocumentText } from "server/document.js";
 import type { ScopeKind } from "server/parser/types/semantic-events.js";
 import { TextDocument } from "vscode-languageserver-textdocument";
 
@@ -18,7 +19,7 @@ export class Scope {
     ) {}
 
     public static module(document: TextDocument): Scope {
-        return new Scope("module", undefined, undefined, 0, document.getText().length);
+        return new Scope("module", undefined, undefined, 0, getDocumentText(document).length);
     }
 
     /**

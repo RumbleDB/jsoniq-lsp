@@ -7,6 +7,7 @@ import {
     type Recognizer,
     Token,
 } from "antlr4ng";
+import { getDocumentText } from "server/document.js";
 import type { ParseResult } from "server/parser/types/result.js";
 import { Diagnostic, DiagnosticSeverity, type Range } from "vscode-languageserver";
 import { TextDocument } from "vscode-languageserver-textdocument";
@@ -61,7 +62,7 @@ class JsoniqErrorListener extends BaseErrorListener {
             line: Math.max(line - 1, 0),
             character: Math.max(column, 0),
         });
-        const endOffset = Math.min(startOffset + 1, this.document.getText().length);
+        const endOffset = Math.min(startOffset + 1, getDocumentText(this.document).length);
 
         return {
             start: this.document.positionAt(startOffset),
@@ -71,7 +72,7 @@ class JsoniqErrorListener extends BaseErrorListener {
 }
 
 export function parseJsoniq(document: TextDocument): JsoniqParsedDocument {
-    const { lexer, parser, tokenStream } = createParser(document.getText());
+    const { lexer, parser, tokenStream } = createParser(getDocumentText(document));
     const errorListener = new JsoniqErrorListener(document);
 
     lexer.removeErrorListeners();
