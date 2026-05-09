@@ -6,6 +6,8 @@ import {
     TransportKind,
 } from "vscode-languageclient/node.js";
 
+import { JSONIQ_LANGUAGE_ID } from "./const.js";
+import { JUPYTER_NOTEBOOK_SELECTOR, registerJupyterNotebookSupport } from "./notebook/index.js";
 import { initializeCustomNotifications } from "./notifications/index.js";
 
 let client: LanguageClient | undefined;
@@ -32,7 +34,10 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     };
 
     const clientOptions: LanguageClientOptions = {
-        documentSelector: [{ scheme: "file", language: "jsoniq" }],
+        documentSelector: [
+            { scheme: "file", language: JSONIQ_LANGUAGE_ID },
+            JUPYTER_NOTEBOOK_SELECTOR,
+        ],
     };
 
     client = new LanguageClient(
@@ -41,6 +46,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         serverOptions,
         clientOptions,
     );
+
+    registerJupyterNotebookSupport(context);
 
     context.subscriptions.push(client);
     await client.start();
