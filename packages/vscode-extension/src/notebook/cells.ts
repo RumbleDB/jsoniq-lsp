@@ -1,5 +1,5 @@
 import * as vscode from "vscode";
-import { DocumentUri } from "vscode-languageserver-protocol";
+import { DocumentUri } from "vscode-languageclient";
 
 import { JSONIQ_LANGUAGE_ID } from "../const";
 import { JSONIQ_MAGIC_PATTERN, JUPYTER_NOTEBOOK_TYPE } from "./const";
