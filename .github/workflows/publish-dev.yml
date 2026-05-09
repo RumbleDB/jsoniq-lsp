@@ -176,7 +176,7 @@ jobs:
             - name: Pack VS Code extension
               working-directory: packages/vscode-extension
               run: |
-                  pnpm dlx --allow-build=@vscode/vsce-sign --allow-build=keytar @vscode/vsce package --skip-license
+                  pnpm dlx --allow-build=@vscode/vsce-sign --allow-build=keytar @vscode/vsce package --skip-license --pre-release
 
             - name: Upload VS Code extension package to release
               uses: softprops/action-gh-release@v3
