@@ -1,5 +1,5 @@
 import * as vscode from "vscode";
-import { NotebookCellTextDocumentFilter } from "vscode-languageserver-protocol";
+import { NotebookCellTextDocumentFilter } from "vscode-languageclient";
 
 import { JSONIQ_LANGUAGE_ID } from "../const";
 import { clearNotebookCellTracking, updateNotebookCells } from "./cells";
