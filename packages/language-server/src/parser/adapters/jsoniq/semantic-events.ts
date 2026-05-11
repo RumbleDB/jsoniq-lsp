@@ -16,6 +16,7 @@ import {
     CatchCaseStatementContext,
     CatchClauseContext,
     ContextItemDeclContext,
+    ContextItemExprContext,
     CountClauseContext,
     DeclaredVarRefContext,
     FlowrExprContext,
@@ -144,6 +145,10 @@ class JsoniqSemanticEventListener extends jsoniqListener {
                 end: rangeFromNode(node.Kitem(), this.document).end,
             },
         });
+    };
+
+    public override enterContextItemExpr = (node: ContextItemExprContext): void => {
+        this.events.reference({ qname: { localName: "$" } }, "variable", node);
     };
 
     public override enterTypeDecl = (node: TypeDeclContext): void => {
