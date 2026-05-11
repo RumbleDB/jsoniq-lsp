@@ -72,7 +72,6 @@ export type SourceDefinition =
     | SourceParameterDefinition
     | SourceFunctionDefinition
     | SourceNamespaceDefinition
-    | BaseSourceDefinition<"context-item">
     | BaseSourceDefinition<"type">;
 
 export type Definition = SourceDefinition | BuiltinFunctionDefinition;
@@ -149,8 +148,6 @@ export function isSourceFunctionDefinition(
 
 export function definitionNameToString(definition: BaseDefinition): string {
     switch (definition.kind) {
-        case "context-item":
-            return definition.name.label;
         case "namespace":
             return definition.name.prefix;
         case "function":

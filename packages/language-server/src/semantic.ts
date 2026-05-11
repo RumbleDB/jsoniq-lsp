@@ -65,7 +65,6 @@ function getTokenTypeForDefinition(kind: DefinitionKind): number {
         case "parameter":
             return 1;
         case "namespace":
-        case "context-item":
         case "type":
         case "declare-variable":
         case "let":

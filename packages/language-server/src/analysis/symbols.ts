@@ -111,8 +111,6 @@ function declarationCanContainChildSymbols(kind: SemanticDeclarationKind): boole
 
 function toSymbolName(declaration: AnySemanticDeclaration): string {
     switch (declaration.kind) {
-        case "context-item":
-            return declaration.name.label;
         case "count":
         case "declare-variable":
         case "let":
@@ -137,8 +135,6 @@ function definitionKindToSymbolKind(kind: SemanticDeclarationKind): SymbolKind {
     switch (kind) {
         case "namespace":
             return SymbolKind.Namespace;
-        case "context-item":
-            return SymbolKind.Variable;
         case "declare-variable":
         case "let":
         case "for":

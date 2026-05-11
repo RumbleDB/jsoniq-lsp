@@ -50,15 +50,6 @@ export function createSourceDefinition(
         } satisfies SourceNamespaceDefinition;
     }
 
-    if (declaration.kind === "context-item") {
-        /// TODO: Add more support for these kinds of definitions
-        return {
-            ...base,
-            name: declaration.name,
-            kind: declaration.kind,
-        } satisfies SourceDefinition;
-    }
-
     if (declaration.kind === "type") {
         /// TODO: Add more support for these kinds of definitions
         return {

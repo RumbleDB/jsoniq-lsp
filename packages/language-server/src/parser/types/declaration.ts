@@ -10,7 +10,6 @@ export type VariableKind =
 export type SemanticDeclarationKind =
     | VariableKind
     | "namespace"
-    | "context-item"
     | "type"
     | "parameter"
     | "function";

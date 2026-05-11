@@ -31,7 +31,6 @@ export type DeclarationNameByKind = {
     count: VarName;
     "catch-variable": VarName;
     type: { qname: QName };
-    "context-item": { label: "context item" };
 };
 
 export type ReferenceNameByKind = {

@@ -132,8 +132,12 @@ class JsoniqSemanticEventListener extends jsoniqListener {
 
     public override enterContextItemDecl = (node: ContextItemDeclContext): void => {
         this.declare({
-            name: { label: "context item" },
-            kind: "context-item",
+            name: {
+                qname: {
+                    localName: "$",
+                },
+            },
+            kind: "declare-variable",
             range: rangeFromNode(node, this.document),
             selectionRange: {
                 start: rangeFromNode(node.Kcontext(), this.document).start,
