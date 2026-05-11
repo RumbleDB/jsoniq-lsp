@@ -5,8 +5,7 @@ import type { DeclarationNameByKind, ReferenceNameByKind } from "./name.js";
 
 export type SemanticEvent =
     | SemanticScopeEvent
-    | SemanticEnterDeclarationEvent
-    | SemanticExitDeclarationEvent
+    | SemanticDeclarationEvent
     | AnySemanticReferenceEvent;
 
 export type ScopeKind = "function" | "flowr";
@@ -17,13 +16,8 @@ export type SemanticScopeEvent = {
     scopeKind: ScopeKind;
 };
 
-export type SemanticEnterDeclarationEvent = {
-    type: "enterDeclaration";
-    declaration: AnySemanticDeclaration;
-};
-
-export type SemanticExitDeclarationEvent = {
-    type: "exitDeclaration";
+export type SemanticDeclarationEvent = {
+    type: "declaration";
     declaration: AnySemanticDeclaration;
 };
 
@@ -47,8 +41,13 @@ type SemanticDeclarationBase<K extends SemanticDeclarationKind> = {
     completed?: boolean;
 };
 
+export type SemanticParameterDeclaration = SemanticDeclarationBase<"parameter"> & {
+    extra?: never;
+};
+
 type SemanticDeclarationExtra = {
     namespace: { namespaceUri: string };
+    function: { parameters: SemanticParameterDeclaration[] };
 };
 
 export type SemanticDeclaration<K extends SemanticDeclarationKind> =

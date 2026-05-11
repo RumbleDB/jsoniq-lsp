@@ -2,7 +2,7 @@ import { parseDocument } from "server/parser/index.js";
 import type { SemanticDeclarationKind } from "server/parser/types/declaration.js";
 import { qnameToString, varNameToString } from "server/parser/types/name.js";
 import type { AnySemanticDeclaration } from "server/parser/types/semantic-events.js";
-import { sameRange } from "server/utils/range.js";
+import { comparePositions } from "server/utils/position.js";
 import { DocumentSymbol, SymbolKind } from "vscode-languageserver";
 import { TextDocument } from "vscode-languageserver-textdocument";
 
@@ -22,11 +22,8 @@ export class DocumentSymbolsBuilder {
 
         for (const event of events) {
             switch (event.type) {
-                case "enterDeclaration":
-                    this.enterDeclaration(event.declaration);
-                    break;
-                case "exitDeclaration":
-                    this.exitDeclaration(event.declaration);
+                case "declaration":
+                    this.addDeclaration(event.declaration);
                     break;
                 case "enterScope":
                 case "exitScope":
@@ -40,11 +37,13 @@ export class DocumentSymbolsBuilder {
         return this.symbols;
     }
 
-    private enterDeclaration(declaration: AnySemanticDeclaration): void {
+    private addDeclaration(declaration: AnySemanticDeclaration): void {
         const symbol = toDocumentSymbol(declaration);
         if (symbol === undefined) {
             return;
         }
+
+        this.leaveCompletedOwners(declaration);
 
         const parent = this.currentOwner()?.symbol;
         if (parent === undefined) {
@@ -57,11 +56,16 @@ export class DocumentSymbolsBuilder {
         if (declarationCanContainChildSymbols(declaration.kind)) {
             this.owners.push({ declaration, symbol });
         }
+
+        if (declaration.kind === "function") {
+            for (const parameter of declaration.extra.parameters) {
+                this.addDeclaration(parameter);
+            }
+        }
     }
 
-    private exitDeclaration(declaration: AnySemanticDeclaration): void {
-        const currentOwner = this.owners[this.owners.length - 1];
-        if (currentOwner !== undefined && sameDeclaration(currentOwner.declaration, declaration)) {
+    private leaveCompletedOwners(declaration: AnySemanticDeclaration): void {
+        while (!this.currentOwnerContains(declaration)) {
             this.owners.pop();
         }
     }
@@ -69,12 +73,18 @@ export class DocumentSymbolsBuilder {
     private currentOwner(): DocumentSymbolOwner | undefined {
         return this.owners[this.owners.length - 1];
     }
-}
 
-function sameDeclaration(left: AnySemanticDeclaration, right: AnySemanticDeclaration): boolean {
-    return (
-        left.name === right.name && left.kind === right.kind && sameRange(left.range, right.range)
-    );
+    private currentOwnerContains(declaration: AnySemanticDeclaration): boolean {
+        const owner = this.currentOwner();
+        if (owner === undefined) {
+            return true;
+        }
+
+        return (
+            comparePositions(owner.declaration.range.start, declaration.range.start) <= 0 &&
+            comparePositions(declaration.range.end, owner.declaration.range.end) <= 0
+        );
+    }
 }
 
 function toDocumentSymbol(declaration: AnySemanticDeclaration): DocumentSymbol | undefined {

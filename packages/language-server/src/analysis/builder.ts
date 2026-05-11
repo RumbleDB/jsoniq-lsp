@@ -1,19 +1,23 @@
 import { parseDocument } from "server/parser/index.js";
 import { referenceNameToString } from "server/parser/types/name.js";
-import type { AnySemanticDeclaration, ScopeKind } from "server/parser/types/semantic-events.js";
+import type {
+    AnySemanticDeclaration,
+    SemanticParameterDeclaration,
+    ScopeKind,
+} from "server/parser/types/semantic-events.js";
 import { comparePositions } from "server/utils/position.js";
 import { findBuiltinFunctionDefinition } from "server/wrapper/builtin-functions.js";
 import { DiagnosticSeverity, Position, type Range } from "vscode-languageserver";
 import { TextDocument } from "vscode-languageserver-textdocument";
 
-import { isVisibleOnEnter, PendingDeclarations } from "./declarations.js";
-import { createSourceDefinition } from "./definitions.js";
+import { createSourceDefinition, createSourceParameterDefinition } from "./definitions.js";
 import {
     type AnyReference,
     type Definition,
     type JsoniqAnalysis,
     type ResolvedReference,
     type SourceDefinition,
+    type SourceFunctionDefinition,
     type SourceNamespaceDefinition,
     isSourceDefinition,
 } from "./model.js";
@@ -21,9 +25,14 @@ import { Scope } from "./scope.js";
 
 class AnalysisBuilder {
     private readonly analysis: JsoniqAnalysis;
-    private readonly pendingDeclarations = new PendingDeclarations();
 
     private currentScope: Scope;
+    private pendingFunction:
+        | {
+              definition: SourceFunctionDefinition;
+              parameters: SemanticParameterDeclaration[];
+          }
+        | undefined;
 
     public constructor(private readonly document: TextDocument) {
         const namespaces = new Map<string, SourceNamespaceDefinition>();
@@ -44,11 +53,8 @@ class AnalysisBuilder {
 
         for (const event of events) {
             switch (event.type) {
-                case "enterDeclaration":
-                    this.enterDeclaration(event.declaration);
-                    break;
-                case "exitDeclaration":
-                    this.exitDeclaration(event.declaration);
+                case "declaration":
+                    this.registerDeclaration(event.declaration);
                     break;
                 case "reference":
                     await this.recordReference(event);
@@ -81,18 +87,20 @@ class AnalysisBuilder {
     }
 
     private pushScope(scopeKind: ScopeKind, start: Position, end: Position): void {
-        let owner: SourceDefinition | undefined;
-        if (scopeKind === "function") {
-            const currentDefinition = this.pendingDeclarations.currentDefinition();
-            owner = currentDefinition;
-        }
+        const pendingFunction = scopeKind === "function" ? this.pendingFunction : undefined;
 
         this.currentScope = this.currentScope.enter(
             scopeKind,
             this.document.offsetAt(start),
             this.document.offsetAt(end),
-            owner,
         );
+
+        if (pendingFunction !== undefined) {
+            for (const parameter of pendingFunction.parameters) {
+                this.registerParameterDeclaration(parameter, pendingFunction.definition);
+            }
+            this.pendingFunction = undefined;
+        }
     }
 
     private popScope(scopeEnd: Range["end"], scopeKind: ScopeKind): void {
@@ -118,17 +126,15 @@ class AnalysisBuilder {
         });
     }
 
-    private enterDeclaration(declaration: AnySemanticDeclaration): void {
-        const definition = createSourceDefinition(
-            this.document,
-            declaration,
-            this.currentScope.owningFunction,
-        );
+    private registerDeclaration(declaration: AnySemanticDeclaration): void {
+        const definition = createSourceDefinition(this.document, declaration);
         this.registerDefinition(definition);
-        this.pendingDeclarations.enter(declaration, definition);
 
-        if (definition.kind === "parameter") {
-            definition.function.parameters.push(definition);
+        if (declaration.kind === "function" && definition.kind === "function") {
+            this.pendingFunction = {
+                definition,
+                parameters: declaration.extra.parameters,
+            };
         }
 
         if (definition.kind === "namespace") {
@@ -145,17 +151,22 @@ class AnalysisBuilder {
             return;
         }
 
-        if (isVisibleOnEnter(definition.kind)) {
-            this.currentScope.declare(definition);
-        }
+        this.currentScope.declare(definition);
     }
 
-    private exitDeclaration(declaration: AnySemanticDeclaration): void {
-        const definition = this.pendingDeclarations.exit(declaration);
+    private registerParameterDeclaration(
+        declaration: SemanticParameterDeclaration,
+        functionDefinition: SourceFunctionDefinition,
+    ): void {
+        const definition = createSourceParameterDefinition(
+            this.document,
+            declaration,
+            functionDefinition,
+        );
 
-        if (!isVisibleOnEnter(definition.kind)) {
-            this.currentScope.declare(definition);
-        }
+        this.registerDefinition(definition);
+        functionDefinition.parameters.push(definition);
+        this.currentScope.declare(definition);
     }
 
     private async resolve(reference: AnyReference): Promise<Definition | undefined> {

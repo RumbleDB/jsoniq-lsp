@@ -1,4 +1,7 @@
-import type { AnySemanticDeclaration } from "server/parser/types/semantic-events.js";
+import type {
+    AnySemanticDeclaration,
+    SemanticParameterDeclaration,
+} from "server/parser/types/semantic-events.js";
 import { TextDocument } from "vscode-languageserver-textdocument";
 
 import type {
@@ -12,7 +15,6 @@ import type {
 export function createSourceDefinition(
     document: TextDocument,
     declaration: AnySemanticDeclaration,
-    containingFunction?: SourceFunctionDefinition,
 ): SourceDefinition {
     const base = {
         range: declaration.range,
@@ -36,16 +38,7 @@ export function createSourceDefinition(
     }
 
     if (declaration.kind === "parameter") {
-        if (containingFunction === undefined) {
-            throw new Error("Parameter declaration must belong to a function.");
-        }
-
-        return {
-            ...base,
-            name: declaration.name,
-            kind: "parameter",
-            function: containingFunction,
-        } satisfies SourceParameterDefinition;
+        throw new Error("Parameter declarations must be created with their owning function.");
     }
 
     if (declaration.kind === "namespace") {
@@ -80,4 +73,22 @@ export function createSourceDefinition(
         name: declaration.name,
         kind: declaration.kind,
     } satisfies SourceVariableDefinition;
+}
+
+export function createSourceParameterDefinition(
+    document: TextDocument,
+    declaration: SemanticParameterDeclaration,
+    containingFunction: SourceFunctionDefinition,
+): SourceParameterDefinition {
+    return {
+        range: declaration.range,
+        selectionRange: declaration.selectionRange,
+        references: [],
+        visibleFrom:
+            declaration.completed === false ? null : document.offsetAt(declaration.range.end),
+        isBuiltin: false,
+        name: declaration.name,
+        kind: "parameter",
+        function: containingFunction,
+    };
 }

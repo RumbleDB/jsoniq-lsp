@@ -12,7 +12,6 @@ import { TextDocument } from "vscode-languageserver-textdocument";
 import {
     type BaseDefinition,
     type SourceDefinition,
-    type SourceFunctionDefinition,
     type SourceNamespaceDefinition,
 } from "./model.js";
 
@@ -25,7 +24,6 @@ export class Scope {
     private constructor(
         public readonly kind: AnalysisScopeKind,
         public readonly parent: Scope | undefined,
-        public readonly owner: SourceDefinition | undefined,
         public readonly startOffset: number,
         public readonly endOffset: number,
         private readonly namespaces: ReadonlyMap<Prefix, SourceNamespaceDefinition>,
@@ -35,26 +33,14 @@ export class Scope {
         document: TextDocument,
         namespaces: ReadonlyMap<Prefix, SourceNamespaceDefinition>,
     ): Scope {
-        return new Scope(
-            "module",
-            undefined,
-            undefined,
-            0,
-            getDocumentText(document).length,
-            namespaces,
-        );
+        return new Scope("module", undefined, 0, getDocumentText(document).length, namespaces);
     }
 
     /**
      * Enters a new scope.
      */
-    public enter(
-        kind: ScopeKind,
-        startOffset: number,
-        endOffset: number,
-        owner?: SourceDefinition,
-    ): Scope {
-        const child = new Scope(kind, this, owner, startOffset, endOffset, this.namespaces);
+    public enter(kind: ScopeKind, startOffset: number, endOffset: number): Scope {
+        const child = new Scope(kind, this, startOffset, endOffset, this.namespaces);
         this.children.push(child);
         return child;
     }
@@ -80,14 +66,6 @@ export class Scope {
         }
 
         return this.parent?.resolve(kind, name);
-    }
-
-    public get owningFunction(): SourceFunctionDefinition | undefined {
-        if (this.owner?.kind === "function") {
-            return this.owner;
-        }
-
-        return this.parent?.owningFunction;
     }
 
     /**

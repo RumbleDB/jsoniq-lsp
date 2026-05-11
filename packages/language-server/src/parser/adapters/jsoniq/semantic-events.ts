@@ -5,6 +5,7 @@ import type {
     AnySemanticDeclaration,
     SemanticDeclaration,
     SemanticEvent,
+    SemanticParameterDeclaration,
     ScopeKind,
 } from "server/parser/types/semantic-events.js";
 import { rangeFromNode } from "server/utils/range.js";
@@ -26,7 +27,6 @@ import {
     LetVarContext,
     NamedFunctionRefContext,
     NamespaceDeclContext,
-    ParamContext,
     TypeDeclContext,
     VarDeclContext,
     VarRefContext,
@@ -53,12 +53,8 @@ class SemanticEventCollector {
         return this.events;
     }
 
-    public enterDeclaration(declaration: AnySemanticDeclaration): void {
-        this.events.push({ type: "enterDeclaration", declaration });
-    }
-
-    public exitDeclaration(declaration: AnySemanticDeclaration): void {
-        this.events.push({ type: "exitDeclaration", declaration });
+    public declaration(declaration: AnySemanticDeclaration): void {
+        this.events.push({ type: "declaration", declaration });
     }
 
     public reference<K extends keyof ReferenceNameByKind>(
@@ -84,8 +80,6 @@ class SemanticEventCollector {
 }
 
 class JsoniqSemanticEventListener extends jsoniqListener {
-    private readonly declarationStack: AnySemanticDeclaration[][] = [];
-
     constructor(
         private readonly document: TextDocument,
         private readonly events: SemanticEventCollector,
@@ -133,13 +127,11 @@ class JsoniqSemanticEventListener extends jsoniqListener {
             selectionRange: rangeFromNode(nameNode, this.document),
         } satisfies SemanticDeclaration<"namespace">;
 
-        this.enter(declaration);
+        this.declare(declaration);
     };
 
-    public override exitNamespaceDecl = this.exit;
-
     public override enterContextItemDecl = (node: ContextItemDeclContext): void => {
-        this.enter({
+        this.declare({
             name: { label: "context item" },
             kind: "context-item",
             range: rangeFromNode(node, this.document),
@@ -150,33 +142,31 @@ class JsoniqSemanticEventListener extends jsoniqListener {
         });
     };
 
-    public override exitContextItemDecl = this.exit;
-
     public override enterTypeDecl = (node: TypeDeclContext): void => {
         const nameNode = node.declaredQName().qname();
         const name = { qname: parseQname(nameNode) };
-        this.enter(this.createDeclaration(name, "type", node, nameNode));
+        this.declare(this.createDeclaration(name, "type", node, nameNode));
     };
 
-    public override exitTypeDecl = this.exit;
-
     public override enterFunctionDecl = (node: FunctionDeclContext): void => {
-        this.enter(
-            this.createDeclaration(parseFunctionName(node), "function", node, node.declaredQName()),
+        const parameters = this.parameterDeclarations(node);
+        this.declare(
+            this.createDeclaration(
+                parseFunctionName(node),
+                "function",
+                node,
+                node.declaredQName(),
+                {
+                    extra: { parameters },
+                },
+            ),
         );
         this.events.scope(node, true, "function");
     };
 
     public override exitFunctionDecl = (node: FunctionDeclContext): void => {
         this.events.scope(node, false, "function");
-        this.exit();
     };
-
-    public override enterParam = (node: ParamContext): void => {
-        this.enter(this.variableDeclaration("parameter", node, node.declaredVarRef()));
-    };
-
-    public override exitParam = this.exit;
 
     public override enterVarDecl = (node: VarDeclContext): void => {
         const semicolon = node.Ksemicolon();
@@ -190,10 +180,8 @@ class JsoniqSemanticEventListener extends jsoniqListener {
             declaration.completed = semicolon !== null && semicolon.symbol.start >= 0;
         }
 
-        this.enter(declaration);
+        this.declare(declaration);
     };
-
-    public override exitVarDecl = this.exit;
 
     public override enterForVar = (node: ForVarContext): void => {
         const declarations: AnySemanticDeclaration[] = [];
@@ -209,28 +197,20 @@ class JsoniqSemanticEventListener extends jsoniqListener {
             }
         }
 
-        this.enterAll(declarations);
+        this.declareAll(declarations);
     };
-
-    public override exitForVar = this.exit;
 
     public override enterLetVar = (node: LetVarContext): void => {
-        this.enter(this.variableDeclaration("let", node, node.declaredVarRef()));
+        this.declare(this.variableDeclaration("let", node, node.declaredVarRef()));
     };
-
-    public override exitLetVar = this.exit;
 
     public override enterGroupByVar = (node: GroupByVarContext): void => {
-        this.enter(this.variableDeclaration("group-by", node, node.declaredVarRef()));
+        this.declare(this.variableDeclaration("group-by", node, node.declaredVarRef()));
     };
-
-    public override exitGroupByVar = this.exit;
 
     public override enterCountClause = (node: CountClauseContext): void => {
-        this.enter(this.variableDeclaration("count", node, node.declaredVarRef()));
+        this.declare(this.variableDeclaration("count", node, node.declaredVarRef()));
     };
-
-    public override exitCountClause = this.exit;
 
     public override enterFlowrExpr = (node: FlowrExprContext): void =>
         this.events.scope(node, true, "flowr");
@@ -262,46 +242,49 @@ class JsoniqSemanticEventListener extends jsoniqListener {
         this.functionReference(node);
 
     public override enterCatchCaseStatement = (node: CatchCaseStatementContext): void => {
-        this.enterAll(this.catchDeclarations(node));
+        this.declareAll(this.catchDeclarations(node));
     };
-
-    public override exitCatchCaseStatement = this.exit;
 
     public override enterCatchClause = (node: CatchClauseContext): void => {
-        this.enterAll(this.catchDeclarations(node));
+        this.declareAll(this.catchDeclarations(node));
     };
 
-    public override exitCatchClause = this.exit;
-
-    private enter(declaration: AnySemanticDeclaration | null): void {
-        this.enterAll(declaration === null ? [] : [declaration]);
+    private declare(declaration: AnySemanticDeclaration | null): void {
+        this.declareAll(declaration === null ? [] : [declaration]);
     }
 
-    private enterAll(declarations: AnySemanticDeclaration[]): void {
-        this.declarationStack.push(declarations);
+    private declareAll(declarations: AnySemanticDeclaration[]): void {
         for (const declaration of declarations) {
-            this.events.enterDeclaration(declaration);
-        }
-    }
-
-    private exit(): void {
-        const declarations = this.declarationStack.pop() ?? [];
-        let declaration = declarations.pop();
-        while (declaration !== undefined) {
-            this.events.exitDeclaration(declaration);
-            declaration = declarations.pop();
+            this.events.declaration(declaration);
         }
     }
 
     private variableDeclaration(
-        kind: VariableKind | "parameter",
+        kind: VariableKind,
         declarationNode: ParseTree,
         declaredVarRef: DeclaredVarRefContext,
-    ): SemanticDeclaration<VariableKind | "parameter"> | null {
+    ): SemanticDeclaration<VariableKind> | null {
         const name = parseVarName(declaredVarRef.varRef());
         return name === null
             ? null
             : this.createDeclaration(name, kind, declarationNode, declaredVarRef.varRef());
+    }
+
+    private parameterDeclarations(node: FunctionDeclContext): SemanticParameterDeclaration[] {
+        const declarations: SemanticParameterDeclaration[] = [];
+
+        for (const param of node.paramList()?.param() ?? []) {
+            const paramName = parseVarName(param.declaredVarRef().varRef());
+            if (paramName === null) {
+                continue;
+            }
+
+            declarations.push(
+                this.createDeclaration(paramName, "parameter", param, param.declaredVarRef()),
+            );
+        }
+
+        return declarations;
     }
 
     private functionReference(node: FunctionCallContext | NamedFunctionRefContext): void {
