@@ -99,15 +99,24 @@ class JsoniqSemanticEventListener extends jsoniqListener {
 
     public override enterNamespaceDecl = (node: NamespaceDeclContext): void => {
         const nameNode = node.NCName();
+        if (nameNode === null) {
+            return;
+        }
+
         const prefix = nameNode.getText().trim();
         if (prefix === "") {
+            return;
+        }
+
+        const namespaceUriNode = node.uriLiteral();
+        if (namespaceUriNode === null) {
             return;
         }
 
         const declaration = {
             name: { prefix },
             kind: "namespace",
-            extra: { namespaceUri: node.uriLiteral().getText() },
+            extra: { namespaceUri: namespaceUriNode.getText() },
             range: rangeFromNode(node, this.document),
             selectionRange: rangeFromNode(nameNode, this.document),
         } satisfies SemanticDeclaration<"namespace">;
