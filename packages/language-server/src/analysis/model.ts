@@ -43,11 +43,18 @@ export interface SourceFunctionDefinition extends BaseSourceDefinition {
     parameters: SourceParameterDefinition[];
 }
 
+export interface SourceNamespaceDefinition extends BaseSourceDefinition {
+    kind: "namespace";
+    prefix: string;
+    namespaceUri: string;
+}
+
 export type SourceDefinition =
     | SourceVariableDefinition
     | SourceParameterDefinition
     | SourceFunctionDefinition
-    | (BaseSourceDefinition & { kind: "namespace" | "context-item" | "type" });
+    | SourceNamespaceDefinition
+    | (BaseSourceDefinition & { kind: "context-item" | "type" });
 
 export type Definition = SourceDefinition | BuiltinFunctionDefinition;
 

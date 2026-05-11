@@ -1,9 +1,13 @@
-import type { SemanticDeclaration } from "server/parser/types/semantic-events.js";
+import type {
+    SemanticDeclaration,
+    SemanticNamespaceDeclaration,
+} from "server/parser/types/semantic-events.js";
 import { TextDocument } from "vscode-languageserver-textdocument";
 
 import type {
     SourceDefinition,
     SourceFunctionDefinition,
+    SourceNamespaceDefinition,
     SourceParameterDefinition,
     SourceVariableDefinition,
 } from "./model.js";
@@ -46,11 +50,18 @@ export function createSourceDefinition(
         } satisfies SourceParameterDefinition;
     }
 
-    if (
-        declaration.kind === "namespace" ||
-        declaration.kind === "context-item" ||
-        declaration.kind === "type"
-    ) {
+    if (declaration.kind === "namespace") {
+        /// TODO: Make TypeScript understand that declaration is a SemanticNamespaceDeclaration without this assertion
+        const nsDecl = declaration as SemanticNamespaceDeclaration;
+        return {
+            ...base,
+            kind: "namespace",
+            prefix: nsDecl.prefix,
+            namespaceUri: nsDecl.namespaceUri,
+        } satisfies SourceNamespaceDefinition;
+    }
+
+    if (declaration.kind === "context-item" || declaration.kind === "type") {
         /// TODO: Add more support for these kinds of definitions
         return {
             ...base,
