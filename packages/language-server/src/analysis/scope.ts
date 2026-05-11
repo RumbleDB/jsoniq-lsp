@@ -1,3 +1,4 @@
+import { type ReferenceNameByKind, referenceNameToString } from "server/parser/types/name.js";
 import type { ScopeKind } from "server/parser/types/semantic-events.js";
 import { getDocumentText } from "server/parser/utils.js";
 import { TextDocument } from "vscode-languageserver-textdocument";
@@ -50,14 +51,17 @@ export class Scope {
         definitionsWithSameName.push(newDefinition);
     }
 
-    public resolve(name: string): SourceDefinition | undefined {
-        const declarations = this.definitionByName.get(name);
+    public resolve<K extends keyof ReferenceNameByKind>(
+        kind: K,
+        name: ReferenceNameByKind[K],
+    ): SourceDefinition | undefined {
+        const declarations = this.definitionByName.get(referenceNameToString(name, kind));
         const declaration = declarations?.[declarations.length - 1];
         if (declaration !== undefined) {
             return declaration;
         }
 
-        return this.parent?.resolve(name);
+        return this.parent?.resolve(kind, name);
     }
 
     public get owningFunction(): SourceFunctionDefinition | undefined {

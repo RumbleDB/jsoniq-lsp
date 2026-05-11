@@ -140,18 +140,19 @@ class AnalysisBuilder {
         }
     }
 
-    private async resolve(name: string): Promise<Definition | undefined> {
-        const builtinDefinition = await findBuiltinFunctionDefinition(name);
+    private async resolve(reference: AnyReference): Promise<Definition | undefined> {
+        const lookupName = referenceNameToString(reference.name, reference.kind);
+        const builtinDefinition = await findBuiltinFunctionDefinition(lookupName);
         if (builtinDefinition !== undefined) {
             return builtinDefinition;
         }
 
-        return this.currentScope.resolve(name);
+        return this.currentScope.resolve(reference.kind, reference.name);
     }
 
     private async recordReference(reference: AnyReference): Promise<void> {
         const lookupName = referenceNameToString(reference.name, reference.kind);
-        const declaration = await this.resolve(lookupName);
+        const declaration = await this.resolve(reference);
         if (declaration === undefined) {
             this.analysis.diagnostics.push({
                 severity: DiagnosticSeverity.Error,
