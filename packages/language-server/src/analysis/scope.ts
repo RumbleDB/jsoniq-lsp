@@ -58,14 +58,17 @@ export class Scope {
     public resolve<K extends keyof ReferenceNameByKind>(
         kind: K,
         name: ReferenceNameByKind[K],
+        offset: number,
     ): SourceDefinition | undefined {
         const declarations = this.definitionByName.get(this.referenceLookupKey(name, kind));
-        const declaration = declarations?.[declarations.length - 1];
+        const declaration = declarations?.findLast(
+            (decl) => decl.visibleFrom !== null && decl.visibleFrom < offset,
+        );
         if (declaration !== undefined) {
             return declaration;
         }
 
-        return this.parent?.resolve(kind, name);
+        return this.parent?.resolve(kind, name, offset);
     }
 
     /**

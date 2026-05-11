@@ -176,7 +176,11 @@ class AnalysisBuilder {
             return builtinDefinition;
         }
 
-        return this.currentScope.resolve(reference.kind, reference.name);
+        return this.currentScope.resolve(
+            reference.kind,
+            reference.name,
+            this.document.offsetAt(reference.range.start),
+        );
     }
 
     private async recordReference(reference: AnyReference): Promise<void> {
