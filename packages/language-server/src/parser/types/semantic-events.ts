@@ -33,20 +33,19 @@ export type SemanticReferenceEvent = {
     range: Range;
 };
 
-interface SemanticDeclarationBase<K extends SemanticDeclarationKind> {
+type SemanticDeclarationBase<K extends SemanticDeclarationKind> = {
     name: string;
     kind: K;
     range: Range;
     selectionRange: Range;
     completed?: boolean;
-}
+};
 
 export type SemanticSimpleDeclarationKind = Exclude<SemanticDeclarationKind, "namespace">;
-
-export type SemanticDeclaration = SemanticSimpleDeclaration | SemanticNamespaceDeclaration;
-
 export type SemanticSimpleDeclaration = SemanticDeclarationBase<SemanticSimpleDeclarationKind>;
 
-export interface SemanticNamespaceDeclaration extends SemanticDeclarationBase<"namespace"> {
+export type SemanticNamespaceDeclaration = SemanticDeclarationBase<"namespace"> & {
     namespaceUri: string;
-}
+};
+
+export type SemanticDeclaration = SemanticSimpleDeclaration | SemanticNamespaceDeclaration;
