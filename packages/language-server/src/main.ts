@@ -13,6 +13,7 @@ import { findDefinitionLocation } from "./definitions.js";
 import { findHover } from "./hover.js";
 import { initializeCustomNotifications } from "./notifications/index.js";
 import { parseDocument } from "./parser/index.js";
+import { supportsDocument } from "./parser/registry.js";
 import { findReferenceLocations } from "./references.js";
 import { buildRenameWorkspaceEdit, prepareRename } from "./rename.js";
 import {
@@ -32,7 +33,7 @@ initializeCustomNotifications(connection);
 async function refreshDiagnostics(uri: string): Promise<void> {
     const document = documents.get(uri);
 
-    if (document === undefined) {
+    if (document === undefined || !supportsDocument(document)) {
         return;
     }
 
@@ -77,7 +78,7 @@ connection.onInitialize(async (_params: InitializeParams): Promise<InitializeRes
 connection.onDocumentSymbol((params) => {
     const document = documents.get(params.textDocument.uri);
 
-    if (document === undefined) {
+    if (document === undefined || !supportsDocument(document)) {
         return [];
     }
 
@@ -87,7 +88,7 @@ connection.onDocumentSymbol((params) => {
 connection.onDefinition((params) => {
     const document = documents.get(params.textDocument.uri);
 
-    if (document === undefined) {
+    if (document === undefined || !supportsDocument(document)) {
         return null;
     }
 
@@ -97,7 +98,7 @@ connection.onDefinition((params) => {
 connection.onReferences((params) => {
     const document = documents.get(params.textDocument.uri);
 
-    if (document === undefined) {
+    if (document === undefined || !supportsDocument(document)) {
         return [];
     }
 
@@ -107,7 +108,7 @@ connection.onReferences((params) => {
 connection.onPrepareRename((params) => {
     const document = documents.get(params.textDocument.uri);
 
-    if (document === undefined) {
+    if (document === undefined || !supportsDocument(document)) {
         return null;
     }
 
@@ -117,7 +118,7 @@ connection.onPrepareRename((params) => {
 connection.onRenameRequest((params) => {
     const document = documents.get(params.textDocument.uri);
 
-    if (document === undefined) {
+    if (document === undefined || !supportsDocument(document)) {
         return null;
     }
 
@@ -127,7 +128,7 @@ connection.onRenameRequest((params) => {
 connection.onHover((params) => {
     const document = documents.get(params.textDocument.uri);
 
-    if (document === undefined) {
+    if (document === undefined || !supportsDocument(document)) {
         return null;
     }
 
@@ -137,7 +138,7 @@ connection.onHover((params) => {
 connection.onCompletion((params) => {
     const document = documents.get(params.textDocument.uri);
 
-    if (document === undefined) {
+    if (document === undefined || !supportsDocument(document)) {
         return [];
     }
 
@@ -147,7 +148,7 @@ connection.onCompletion((params) => {
 connection.languages.semanticTokens.on((params) => {
     const document = documents.get(params.textDocument.uri);
 
-    if (document === undefined) {
+    if (document === undefined || !supportsDocument(document)) {
         return { data: [] };
     }
 

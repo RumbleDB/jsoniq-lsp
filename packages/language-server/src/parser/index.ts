@@ -17,6 +17,11 @@ const parseCache = new Map<DocumentUri, CachedParsedDocument>();
 
 function getCachedParsedDocument(document: TextDocument): CachedParsedDocument {
     const adapter = getParserAdapterForDocument(document);
+
+    if (adapter === undefined) {
+        throw new Error(`No parser adapter found for document '${document.uri}'.`);
+    }
+
     const cached = parseCache.get(document.uri);
 
     if (
@@ -49,6 +54,10 @@ export function collectCompletionIntent(
     document: TextDocument,
     cursorOffset: number,
 ): CompletionIntent | null {
+    if (getParserAdapterForDocument(document) === undefined) {
+        return null;
+    }
+
     const cached = getCachedParsedDocument(document);
     return cached.adapter.getCompletionIntent(cached.parsed, cursorOffset);
 }

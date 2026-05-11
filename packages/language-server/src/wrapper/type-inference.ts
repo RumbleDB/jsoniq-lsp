@@ -1,4 +1,4 @@
-import { getDocumentText } from "server/document.js";
+import { getDocumentText } from "server/parser/utils.js";
 import { createLogger } from "server/utils/logger.js";
 import type { DocumentUri, Position } from "vscode-languageserver";
 import { TextDocument } from "vscode-languageserver-textdocument";

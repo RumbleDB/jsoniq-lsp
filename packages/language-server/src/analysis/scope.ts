@@ -1,5 +1,5 @@
-import { getDocumentText } from "server/document.js";
 import type { ScopeKind } from "server/parser/types/semantic-events.js";
+import { getDocumentText } from "server/parser/utils.js";
 import { TextDocument } from "vscode-languageserver-textdocument";
 
 import type { SourceDefinition, SourceFunctionDefinition } from "./model.js";

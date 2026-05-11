@@ -1,5 +1,6 @@
 import { Token } from "antlr4ng";
 import { lowerBound } from "server/utils/binary-search.js";
+import { TextDocument } from "vscode-languageserver-textdocument";
 
 export function findCaretToken(
     tokens: Token[],
@@ -41,4 +42,34 @@ export function findCaretToken(
     }
 
     return { tokenIndex, offset: cursorOffset };
+}
+
+const JSONIQ_MAGIC_PATTERN = /^%%jsoniq\b.*(?:\r?\n|$)/;
+const NOTEBOOK_CELL_URI_PREFIX = "vscode-notebook-cell:";
+
+export function isNotebookCellDocument(document: TextDocument): boolean {
+    return document.uri.startsWith(NOTEBOOK_CELL_URI_PREFIX);
+}
+
+export function hasJsoniqCellMagic(document: TextDocument): boolean {
+    return isNotebookCellDocument(document) && JSONIQ_MAGIC_PATTERN.test(document.getText());
+}
+
+export function getDocumentText(document: TextDocument): string {
+    const source = document.getText();
+
+    if (!isNotebookCellDocument(document)) {
+        /// For regular documents, return the text as-is
+        return source;
+    }
+
+    const magicLine = source.match(JSONIQ_MAGIC_PATTERN)?.[0];
+    if (magicLine === undefined) {
+        return source;
+    }
+
+    /// In case of notebook cells with magic string, replace it with whitespace to prevent the parser from producing errors
+    /// We don't remove it directly because then line offset will be different
+    const maskedMagicLine = magicLine.replace(/[^\r\n]/g, " ");
+    return `${maskedMagicLine}${source.slice(magicLine.length)}`;
 }

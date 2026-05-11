@@ -5,12 +5,10 @@ import type { ParserAdapter } from "./types/adapter.js";
 
 const adapters: ParserAdapter[] = [jsoniqParserAdapter];
 
-export function getParserAdapterForDocument(document: TextDocument): ParserAdapter {
-    const adapter = adapters.find((candidate) => candidate.supports(document));
+export function getParserAdapterForDocument(document: TextDocument): ParserAdapter | undefined {
+    return adapters.find((candidate) => candidate.supports(document));
+}
 
-    if (adapter === undefined) {
-        throw new Error(`No parser adapter found for document '${document.uri}'.`);
-    }
-
-    return adapter;
+export function supportsDocument(document: TextDocument): boolean {
+    return getParserAdapterForDocument(document) !== undefined;
 }

@@ -13,8 +13,8 @@ import {
     type BaseDefinition,
 } from "./analysis/model.js";
 import { getVisibleDeclarationsAtPosition } from "./analysis/queries.js";
-import { getDocumentText } from "./document.js";
 import { collectCompletionIntent } from "./parser/index.js";
+import { getDocumentText } from "./parser/utils.js";
 import { listBuiltinFunctionDefinitions } from "./wrapper/builtin-functions.js";
 
 const VARIABLE_PREFIX_PATTERN = /\$[A-Za-z0-9_.:-]*$/;

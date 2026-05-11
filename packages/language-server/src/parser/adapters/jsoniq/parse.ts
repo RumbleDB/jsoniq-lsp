@@ -7,8 +7,8 @@ import {
     type Recognizer,
     Token,
 } from "antlr4ng";
-import { getDocumentText } from "server/document.js";
 import type { ParseResult } from "server/parser/types/result.js";
+import { getDocumentText } from "server/parser/utils.js";
 import { Diagnostic, DiagnosticSeverity, type Range } from "vscode-languageserver";
 import { TextDocument } from "vscode-languageserver-textdocument";
 
