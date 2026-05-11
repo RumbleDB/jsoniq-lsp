@@ -14,9 +14,9 @@ export default defineConfig([
         platform: "node",
 
         dts: true,
-        sourcemap: false,
+        sourcemap: true,
         clean: true,
-        minify: true,
+        minify: false,
     },
     {
         /// Create a bundled build of the language server, which inlines all dependencies.
@@ -29,9 +29,9 @@ export default defineConfig([
         platform: "node",
 
         dts: true,
-        sourcemap: false,
+        sourcemap: true,
         clean: true,
-        minify: true,
+        minify: false,
 
         deps: {
             alwaysBundle: [
