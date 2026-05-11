@@ -45,7 +45,6 @@ export interface SourceFunctionDefinition extends BaseSourceDefinition {
 
 export interface SourceNamespaceDefinition extends BaseSourceDefinition {
     kind: "namespace";
-    prefix: string;
     namespaceUri: string;
 }
 

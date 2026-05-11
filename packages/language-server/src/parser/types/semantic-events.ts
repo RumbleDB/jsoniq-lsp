@@ -16,17 +16,21 @@ export interface SemanticScopeEvent {
     scopeKind: ScopeKind;
 }
 
-export interface SemanticDeclaration {
+interface SemanticDeclarationBase<K extends SemanticDeclarationKind> {
     name: string;
-    kind: SemanticDeclarationKind;
+    kind: K;
     range: Range;
     selectionRange: Range;
     completed?: boolean;
 }
 
-export interface SemanticNamespaceDeclaration extends SemanticDeclaration {
-    kind: "namespace";
-    prefix: string;
+export type SemanticSimpleDeclarationKind = Exclude<SemanticDeclarationKind, "namespace">;
+
+export type SemanticDeclaration = SemanticSimpleDeclaration | SemanticNamespaceDeclaration;
+
+export type SemanticSimpleDeclaration = SemanticDeclarationBase<SemanticSimpleDeclarationKind>;
+
+export interface SemanticNamespaceDeclaration extends SemanticDeclarationBase<"namespace"> {
     namespaceUri: string;
 }
 

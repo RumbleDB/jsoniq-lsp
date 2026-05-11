@@ -1,10 +1,10 @@
 import { ParseTreeWalker, type ParseTree } from "antlr4ng";
-import type { SemanticDeclarationKind } from "server/parser/types/declaration.js";
 import type {
     SemanticDeclaration,
     SemanticEvent,
     SemanticNamespaceDeclaration,
     SemanticReferenceEvent,
+    SemanticSimpleDeclarationKind,
     ScopeKind,
 } from "server/parser/types/semantic-events.js";
 import { rangeFromNode } from "server/utils/range.js";
@@ -88,7 +88,6 @@ class JsoniqSemanticEventListener extends jsoniqListener {
         const declaration = {
             name: prefix,
             kind: "namespace",
-            prefix: prefix,
             namespaceUri: node.uriLiteral().getText(),
             range: rangeFromNode(node, this.document),
             selectionRange: rangeFromNode(nameNode, this.document),
@@ -233,7 +232,7 @@ class JsoniqSemanticEventListener extends jsoniqListener {
     }
 
     private declaration(
-        kind: SemanticDeclarationKind,
+        kind: SemanticSimpleDeclarationKind,
         name: string | null,
         declarationNode: ParseTree,
         selectionNode: ParseTree | null,
@@ -254,7 +253,7 @@ class JsoniqSemanticEventListener extends jsoniqListener {
     }
 
     private variableDeclaration(
-        kind: SemanticDeclarationKind,
+        kind: SemanticSimpleDeclarationKind,
         declarationNode: ParseTree,
         declaredVarRef: DeclaredVarRefContext,
     ): SemanticDeclaration[] {

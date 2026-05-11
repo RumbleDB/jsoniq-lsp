@@ -1,7 +1,4 @@
-import type {
-    SemanticDeclaration,
-    SemanticNamespaceDeclaration,
-} from "server/parser/types/semantic-events.js";
+import type { SemanticDeclaration } from "server/parser/types/semantic-events.js";
 import { TextDocument } from "vscode-languageserver-textdocument";
 
 import type {
@@ -51,13 +48,10 @@ export function createSourceDefinition(
     }
 
     if (declaration.kind === "namespace") {
-        /// TODO: Make TypeScript understand that declaration is a SemanticNamespaceDeclaration without this assertion
-        const nsDecl = declaration as SemanticNamespaceDeclaration;
         return {
             ...base,
             kind: "namespace",
-            prefix: nsDecl.prefix,
-            namespaceUri: nsDecl.namespaceUri,
+            namespaceUri: declaration.namespaceUri,
         } satisfies SourceNamespaceDefinition;
     }
 
