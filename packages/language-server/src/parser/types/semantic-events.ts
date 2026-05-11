@@ -24,6 +24,12 @@ export interface SemanticDeclaration {
     completed?: boolean;
 }
 
+export interface SemanticNamespaceDeclaration extends SemanticDeclaration {
+    kind: "namespace";
+    prefix: string;
+    namespaceUri: string;
+}
+
 export interface SemanticEnterDeclarationEvent {
     type: "enterDeclaration";
     declaration: SemanticDeclaration;

@@ -3,6 +3,7 @@ import type { SemanticDeclarationKind } from "server/parser/types/declaration.js
 import type {
     SemanticDeclaration,
     SemanticEvent,
+    SemanticNamespaceDeclaration,
     SemanticReferenceEvent,
     ScopeKind,
 } from "server/parser/types/semantic-events.js";
@@ -78,7 +79,22 @@ class JsoniqSemanticEventListener extends jsoniqListener {
 
     public override enterNamespaceDecl = (node: NamespaceDeclContext): void => {
         const nameNode = node.NCName();
-        this.enter(this.declaration("namespace", nameNode.getText(), node, nameNode));
+        const prefix = nameNode.getText().trim();
+        if (prefix === "") {
+            this.enter([]);
+            return;
+        }
+
+        const declaration = {
+            name: prefix,
+            kind: "namespace",
+            prefix: prefix,
+            namespaceUri: node.uriLiteral().getText(),
+            range: rangeFromNode(node, this.document),
+            selectionRange: rangeFromNode(nameNode, this.document),
+        } satisfies SemanticNamespaceDeclaration;
+
+        this.enter([declaration]);
     };
 
     public override exitNamespaceDecl = this.exit;
