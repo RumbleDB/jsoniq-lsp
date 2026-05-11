@@ -1,10 +1,6 @@
 import { parseDocument } from "server/parser/index.js";
 import { referenceNameToString } from "server/parser/types/name.js";
-import type {
-    AnySemanticDeclaration,
-    SemanticParameterDeclaration,
-    ScopeKind,
-} from "server/parser/types/semantic-events.js";
+import type { AnySemanticDeclaration, ScopeKind } from "server/parser/types/semantic-events.js";
 import { comparePositions } from "server/utils/position.js";
 import { findBuiltinFunctionDefinition } from "server/wrapper/builtin-functions.js";
 import { DiagnosticSeverity, Position, type Range } from "vscode-languageserver";
@@ -17,7 +13,6 @@ import {
     type JsoniqAnalysis,
     type ResolvedReference,
     type SourceDefinition,
-    type SourceFunctionDefinition,
     type SourceNamespaceDefinition,
     isSourceDefinition,
 } from "./model.js";
@@ -27,12 +22,7 @@ class AnalysisBuilder {
     private readonly analysis: JsoniqAnalysis;
 
     private currentScope: Scope;
-    private pendingFunction:
-        | {
-              definition: SourceFunctionDefinition;
-              parameters: SemanticParameterDeclaration[];
-          }
-        | undefined;
+    private readonly deferredScopeDefinitions: SourceDefinition[] = [];
 
     public constructor(private readonly document: TextDocument) {
         const namespaces = new Map<string, SourceNamespaceDefinition>();
@@ -87,19 +77,14 @@ class AnalysisBuilder {
     }
 
     private pushScope(scopeKind: ScopeKind, start: Position, end: Position): void {
-        const pendingFunction = scopeKind === "function" ? this.pendingFunction : undefined;
-
         this.currentScope = this.currentScope.enter(
             scopeKind,
             this.document.offsetAt(start),
             this.document.offsetAt(end),
         );
 
-        if (pendingFunction !== undefined) {
-            for (const parameter of pendingFunction.parameters) {
-                this.registerParameterDeclaration(parameter, pendingFunction.definition);
-            }
-            this.pendingFunction = undefined;
+        for (const definition of this.deferredScopeDefinitions.splice(0)) {
+            this.currentScope.declare(definition);
         }
     }
 
@@ -131,10 +116,17 @@ class AnalysisBuilder {
         this.registerDefinition(definition);
 
         if (declaration.kind === "function" && definition.kind === "function") {
-            this.pendingFunction = {
-                definition,
-                parameters: declaration.extra.parameters,
-            };
+            for (const parameter of declaration.extra.parameters) {
+                const parameterDefinition = createSourceParameterDefinition(
+                    this.document,
+                    parameter,
+                    definition,
+                );
+
+                this.registerDefinition(parameterDefinition);
+                definition.parameters.push(parameterDefinition);
+                this.deferredScopeDefinitions.push(parameterDefinition);
+            }
         }
 
         if (definition.kind === "namespace") {
@@ -151,21 +143,6 @@ class AnalysisBuilder {
             return;
         }
 
-        this.currentScope.declare(definition);
-    }
-
-    private registerParameterDeclaration(
-        declaration: SemanticParameterDeclaration,
-        functionDefinition: SourceFunctionDefinition,
-    ): void {
-        const definition = createSourceParameterDefinition(
-            this.document,
-            declaration,
-            functionDefinition,
-        );
-
-        this.registerDefinition(definition);
-        functionDefinition.parameters.push(definition);
         this.currentScope.declare(definition);
     }
 
