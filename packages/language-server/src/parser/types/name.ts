@@ -1,6 +1,9 @@
+export type Prefix = string;
+export type LocalName = string;
+
 export type QName = {
-    prefix?: string;
-    localName: string;
+    prefix?: Prefix;
+    localName: LocalName;
 };
 
 export type VarName = {
@@ -13,7 +16,7 @@ export type FunctionName = {
 };
 
 export type NamespaceName = {
-    prefix: string;
+    prefix: Prefix;
 };
 
 export type DeclarationNameByKind = {

@@ -27,6 +27,7 @@ class AnalysisBuilder {
     public constructor(private readonly document: TextDocument) {
         this.analysis = {
             moduleScope: Scope.module(document),
+            namespaces: new Map(),
             definitions: [],
             references: [],
             diagnostics: [],
@@ -128,6 +129,20 @@ class AnalysisBuilder {
             definition.function.parameters.push(definition);
         }
 
+        if (definition.kind === "namespace") {
+            if (this.analysis.namespaces.has(definition.name.prefix)) {
+                this.analysis.diagnostics.push({
+                    severity: DiagnosticSeverity.Error,
+                    message: `Duplicate namespace declaration for prefix '${definition.name.prefix}'.`,
+                    range: definition.range,
+                    code: "duplicate-namespace",
+                });
+            } else {
+                this.analysis.namespaces.set(definition.name.prefix, definition);
+            }
+            return;
+        }
+
         if (isVisibleOnEnter(definition.kind)) {
             this.currentScope.declare(definition);
         }
@@ -135,6 +150,7 @@ class AnalysisBuilder {
 
     private exitDeclaration(declaration: AnySemanticDeclaration): void {
         const definition = this.pendingDeclarations.exit(declaration);
+
         if (!isVisibleOnEnter(definition.kind)) {
             this.currentScope.declare(definition);
         }

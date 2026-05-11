@@ -2,6 +2,7 @@ import type { SemanticDeclarationKind, VariableKind } from "server/parser/types/
 import {
     type DeclarationNameByKind,
     type FunctionName,
+    Prefix,
     type ReferenceNameByKind,
     functionNameToString,
     qnameToString,
@@ -98,6 +99,9 @@ export interface SymbolIndexEntry {
 
 export interface JsoniqAnalysis {
     moduleScope: Scope;
+
+    // Namespace declarations are module-level only and do not participate in lexical scope.
+    namespaces: Map<Prefix, SourceNamespaceDefinition>;
 
     // All declarations, sorted by declaration position.
     definitions: SourceDefinition[];
