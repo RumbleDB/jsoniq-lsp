@@ -498,7 +498,33 @@ uriLiteral              : stringLiteral;
 stringLiteral           : STRING;
 
 keyWords                : Kjsoniq
+                        | Kmodule
+                        | Kbase_uri
+                        | Kordering
+                        | Kordered
+                        | Kdecimal_format
+                        | Kdecimal_separator
+                        | Kgrouping_separator
+                        | Kinfinity
+                        | Kminus_sign
+                        | Knan
+                        | Kpercent
+                        | Kper_mille
+                        | Kzero_digit
+                        | Kdigit
+                        | Kpattern_separator
+                        | Kexternal
+                        | Kfunction
+                        | Kjsound
+                        | Kcompact
+                        | Kverbose
                         | Kand
+                        | Keq
+                        | Kne
+                        | Klt
+                        | Kle
+                        | Kgt
+                        | Kge
                         | Kcast
                         | Kcastable
                         | Kcollation
@@ -510,8 +536,11 @@ keyWords                : Kjsoniq
                         | Kinstance
                         | Kstatically
                         | Kis
+                        | Kdiv
+                        | Kidiv
                         | Kitem
                         | Kleast
+                        | Kmod
                         | Knot
                         | NullLiteral
                         | Kof
