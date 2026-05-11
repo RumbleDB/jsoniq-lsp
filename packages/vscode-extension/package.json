@@ -54,6 +54,16 @@
                 "language": "jsoniq",
                 "scopeName": "source.jsoniq",
                 "path": "./syntaxes/jsoniq.tmLanguage.json"
+            },
+            {
+                "scopeName": "source.jsoniq-notebook-injection",
+                "path": "./syntaxes/jsoniq-notebook-injection.tmLanguage.json",
+                "injectTo": [
+                    "source.python"
+                ],
+                "embeddedLanguages": {
+                    "meta.embedded.block.jsoniq": "jsoniq"
+                }
             }
         ],
         "configurationDefaults": {

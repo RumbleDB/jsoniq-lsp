@@ -1,0 +1,24 @@
+{
+    "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+    "name": "JSONiq Notebook Injection",
+    "scopeName": "source.jsoniq-notebook-injection",
+    "injectionSelector": "L:source.python",
+    "patterns": [
+        {
+            "name": "meta.cellmagic.jsoniq",
+            "begin": "\\A(\\s*)(%%jsoniq\\b.*)$",
+            "beginCaptures": {
+                "2": {
+                    "name": "keyword.control.cellmagic.jsoniq"
+                }
+            },
+            "end": "\\z",
+            "contentName": "meta.embedded.block.jsoniq",
+            "patterns": [
+                {
+                    "include": "source.jsoniq"
+                }
+            ]
+        }
+    ]
+}
