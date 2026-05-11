@@ -23,7 +23,7 @@ describe("JSONiq document symbols", () => {
             expect.arrayContaining([
                 ["app", SymbolKind.Namespace],
                 ["$app:value", SymbolKind.Variable],
-                ["context item", SymbolKind.Variable],
+                ["$$", SymbolKind.Variable],
                 ["app:Item", SymbolKind.Struct],
                 ["app:double", SymbolKind.Function],
                 ["$x", SymbolKind.Variable],
