@@ -338,6 +338,45 @@ describe("JSONiq variable scope analysis", () => {
         ]);
     });
 
+    it("provides implicit error variables inside catch expressions", async () => {
+        const document = testDocument("scope-catch-expression-variables", [
+            "try { 1 div 0 }",
+            "catch * { $err:code, $err:description }",
+        ]);
+
+        const analysis = await buildAnalysis(document);
+
+        expect(
+            analysis.definitions
+                .filter((definition) => definition.kind === "catch-variable")
+                .map((definition) => definition.name),
+        ).toEqual([
+            { qname: { prefix: "err", localName: "code" } },
+            { qname: { prefix: "err", localName: "description" } },
+        ]);
+
+        expect(
+            analysis.references
+                .filter((reference) => reference.kind === "variable")
+                .map((reference) => ({
+                    name: reference.name,
+                    resolvedTo: reference.declaration.name,
+                    resolvedKind: reference.declaration.kind,
+                })),
+        ).toEqual([
+            {
+                name: { qname: { prefix: "err", localName: "code" } },
+                resolvedTo: { qname: { prefix: "err", localName: "code" } },
+                resolvedKind: "catch-variable",
+            },
+            {
+                name: { qname: { prefix: "err", localName: "description" } },
+                resolvedTo: { qname: { prefix: "err", localName: "description" } },
+                resolvedKind: "catch-variable",
+            },
+        ]);
+    });
+
     it("supports multiple for bindings that each define an at-position variable", async () => {
         const document = testDocument("scope-multi-for-at", [
             "for $x at $ix in (1, 2), $y at $iy in ($x, 3)",
