@@ -92,7 +92,7 @@ export class Scope {
 
         for (const [name, definitions] of this.definitionByName.entries()) {
             const definition = definitions.findLast(
-                (def) => def.visibleFrom !== null && def.visibleFrom <= offset,
+                (def) => def.visibleFrom !== null && def.visibleFrom < offset,
             );
             if (definition !== undefined) {
                 visible.set(name, definition);
@@ -107,8 +107,9 @@ export class Scope {
                 }
 
                 const definition = definitions.findLast(
-                    (def) => def.visibleFrom !== null && def.visibleFrom <= offset,
+                    (def) => def.visibleFrom !== null && def.visibleFrom < offset,
                 );
+
                 if (definition !== undefined) {
                     visible.set(name, definition);
                 }
