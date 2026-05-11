@@ -2,7 +2,11 @@ import type { ScopeKind } from "server/parser/types/semantic-events.js";
 import { getDocumentText } from "server/parser/utils.js";
 import { TextDocument } from "vscode-languageserver-textdocument";
 
-import type { SourceDefinition, SourceFunctionDefinition } from "./model.js";
+import {
+    definitionNameToString,
+    type SourceDefinition,
+    type SourceFunctionDefinition,
+} from "./model.js";
 
 export type AnalysisScopeKind = ScopeKind | "module";
 
@@ -37,11 +41,12 @@ export class Scope {
     }
 
     public declare(newDefinition: SourceDefinition): void {
-        if (!this.definitionByName.has(newDefinition.name)) {
-            this.definitionByName.set(newDefinition.name, []);
+        const name = definitionNameToString(newDefinition);
+        if (!this.definitionByName.has(name)) {
+            this.definitionByName.set(name, []);
         }
 
-        const definitionsWithSameName = this.definitionByName.get(newDefinition.name)!;
+        const definitionsWithSameName = this.definitionByName.get(name)!;
         definitionsWithSameName.push(newDefinition);
     }
 

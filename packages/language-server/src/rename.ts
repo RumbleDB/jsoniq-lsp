@@ -7,6 +7,7 @@ import {
 import { TextDocument } from "vscode-languageserver-textdocument";
 
 import {
+    definitionNameToString,
     type JsoniqAnalysis,
     type SourceDefinition,
     isSourceDefinition,
@@ -45,7 +46,7 @@ export async function prepareRename(
 
     return {
         range: target.range,
-        placeholder: target.declaration.name,
+        placeholder: definitionNameToString(target.declaration),
     };
 }
 

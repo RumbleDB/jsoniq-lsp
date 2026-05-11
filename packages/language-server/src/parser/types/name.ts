@@ -40,7 +40,7 @@ export function qnameToString(qname: QName): string {
 }
 
 export function varNameToString(name: VarName): string {
-    return qnameToString(name.qname);
+    return `$${qnameToString(name.qname)}`;
 }
 
 export function functionNameToString(name: FunctionName): string {

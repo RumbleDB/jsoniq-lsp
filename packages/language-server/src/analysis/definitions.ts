@@ -1,4 +1,3 @@
-import { functionNameToString, qnameToString, varNameToString } from "server/parser/types/name.js";
 import type { AnySemanticDeclaration } from "server/parser/types/semantic-events.js";
 import { TextDocument } from "vscode-languageserver-textdocument";
 
@@ -16,18 +15,18 @@ export function createSourceDefinition(
     containingFunction?: SourceFunctionDefinition,
 ): SourceDefinition {
     const base = {
-        name: declarationNameToString(declaration),
         range: declaration.range,
         selectionRange: declaration.selectionRange,
         references: [],
         visibleFrom:
             declaration.completed === false ? null : document.offsetAt(declaration.range.end),
         isBuiltin: false as const,
-    } satisfies Omit<SourceDefinition, "kind">;
+    };
 
     if (declaration.kind === "function") {
         return {
             ...base,
+            name: declaration.name,
             kind: "function",
             parameters: [],
 
@@ -43,6 +42,7 @@ export function createSourceDefinition(
 
         return {
             ...base,
+            name: declaration.name,
             kind: "parameter",
             function: containingFunction,
         } satisfies SourceParameterDefinition;
@@ -51,44 +51,33 @@ export function createSourceDefinition(
     if (declaration.kind === "namespace") {
         return {
             ...base,
+            name: declaration.name,
             kind: "namespace",
             namespaceUri: declaration.extra.namespaceUri,
         } satisfies SourceNamespaceDefinition;
     }
 
-    if (declaration.kind === "context-item" || declaration.kind === "type") {
+    if (declaration.kind === "context-item") {
         /// TODO: Add more support for these kinds of definitions
         return {
             ...base,
+            name: declaration.name,
+            kind: declaration.kind,
+        } satisfies SourceDefinition;
+    }
+
+    if (declaration.kind === "type") {
+        /// TODO: Add more support for these kinds of definitions
+        return {
+            ...base,
+            name: declaration.name,
             kind: declaration.kind,
         } satisfies SourceDefinition;
     }
 
     return {
         ...base,
+        name: declaration.name,
         kind: declaration.kind,
     } satisfies SourceVariableDefinition;
-}
-
-function declarationNameToString(declaration: AnySemanticDeclaration): string {
-    switch (declaration.kind) {
-        case "context-item":
-            return declaration.name.label;
-        case "namespace":
-            return declaration.name.prefix;
-        case "function":
-            return functionNameToString(declaration.name);
-        case "type":
-            return qnameToString(declaration.name.qname);
-        case "parameter":
-        case "declare-variable":
-        case "let":
-        case "for":
-        case "for-position":
-        case "group-by":
-        case "count":
-            return varNameToString(declaration.name);
-        default:
-            throw declaration satisfies never;
-    }
 }

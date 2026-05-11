@@ -7,6 +7,7 @@ import {
 import { TextDocument } from "vscode-languageserver-textdocument";
 
 import {
+    definitionNameToString,
     isSourceFunctionDefinition,
     isSourceParameterDefinition,
     isSourceVariableDefinition,
@@ -14,6 +15,7 @@ import {
 } from "./analysis/model.js";
 import { getVisibleDeclarationsAtPosition } from "./analysis/queries.js";
 import { collectCompletionIntent } from "./parser/index.js";
+import { qnameToString } from "./parser/types/name.js";
 import { getDocumentText } from "./parser/utils.js";
 import { listBuiltinFunctionDefinitions } from "./wrapper/builtin-functions.js";
 
@@ -71,10 +73,11 @@ export async function findCompletions(
 
     return withSortText([
         ...variables.map((v) => {
+            const name = definitionNameToString(v);
             return {
                 ...toCompletionItem(v),
                 ...(variableReplaceRange !== null
-                    ? { textEdit: TextEdit.replace(variableReplaceRange, v.name) }
+                    ? { textEdit: TextEdit.replace(variableReplaceRange, name) }
                     : {}),
             };
         }),
@@ -85,17 +88,18 @@ export async function findCompletions(
 }
 
 function toCompletionItem(declaration: BaseDefinition): CompletionItem {
+    const name = definitionNameToString(declaration);
     if (declaration.kind === "function") {
-        const [name, arity] = declaration.name.split("#", 2);
+        const { qname, arity } = declaration.name;
         return {
-            label: name ?? declaration.name,
+            label: qnameToString(qname),
             kind: CompletionItemKind.Function,
             detail: arity === undefined ? "JSONiq function" : `JSONiq function/${arity}`,
         };
     }
 
     return {
-        label: declaration.name,
+        label: name,
         kind: CompletionItemKind.Variable,
         detail: `JSONiq ${declaration.kind}`,
     };
@@ -103,9 +107,9 @@ function toCompletionItem(declaration: BaseDefinition): CompletionItem {
 
 async function getBuiltinFunctionCompletionItems(): Promise<CompletionItem[]> {
     return (await listBuiltinFunctionDefinitions()).map((definition) => {
-        const [name, arity] = definition.name.split("#", 2);
+        const { qname, arity } = definition.name;
         const parameterTypes = definition.signature.parameterTypes.join(", ");
-        const functionName = name ?? definition.name;
+        const functionName = qnameToString(qname);
         const detailArity =
             arity === undefined ? "JSONiq builtin function" : `JSONiq builtin function/${arity}`;
         const signature = `${functionName}(${parameterTypes}) as ${definition.signature.returnType}`;

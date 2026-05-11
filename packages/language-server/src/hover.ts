@@ -1,7 +1,12 @@
 import { MarkupKind, type Hover, type Position } from "vscode-languageserver";
 import { TextDocument } from "vscode-languageserver-textdocument";
 
-import { isSourceDefinition, type Definition, type SourceDefinition } from "./analysis/model.js";
+import {
+    definitionNameToString,
+    isSourceDefinition,
+    type Definition,
+    type SourceDefinition,
+} from "./analysis/model.js";
 import { findSymbolAtPosition } from "./analysis/queries.js";
 import { getAnalysis } from "./analysis/service.js";
 import { formatInferredType } from "./type-inference/format.js";
@@ -28,12 +33,13 @@ export async function findHover(document: TextDocument, position: Position): Pro
 }
 
 function createHoverContent(typeInference: TypeInferenceIndex, declaration: Definition): string {
+    const name = definitionNameToString(declaration);
     if (isSourceDefinition(declaration)) {
         const declarationLine = declaration.selectionRange.start.line + 1;
 
         return [
             "```jsoniq",
-            declaration.name,
+            name,
             "```",
             `kind: \`${declaration.kind}\``,
             `declared at line ${declarationLine}`,
@@ -42,7 +48,7 @@ function createHoverContent(typeInference: TypeInferenceIndex, declaration: Defi
     } else {
         return [
             "```jsoniq",
-            declaration.name,
+            name,
             "```",
             `kind: \`${declaration.kind}\``,
             `(builtin function)`,

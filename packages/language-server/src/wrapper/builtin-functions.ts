@@ -1,4 +1,5 @@
 import type { BaseDefinition } from "server/analysis/model.js";
+import type { FunctionName } from "server/parser/types/name.js";
 import { createLogger } from "server/utils/logger.js";
 
 import { getWrapperClient } from "./client.js";
@@ -24,8 +25,8 @@ export type BuiltinFunctionListResponse = WrapperDaemonResponse<
     BuiltInFunctionListResponseBody
 >;
 
-export interface BuiltinFunctionDefinition extends BaseDefinition {
-    name: string;
+export interface BuiltinFunctionDefinition extends BaseDefinition<"builtin-function"> {
+    name: FunctionName;
     kind: "builtin-function";
     signature: WrapperBuiltinFunctionSignature;
     isBuiltin: true;
@@ -59,7 +60,7 @@ async function getBuiltinFunctionMap(): Promise<Map<string, BuiltinFunctionDefin
         if (response !== undefined) {
             for (const [name, signature] of Object.entries(response.body.builtinFunctions)) {
                 builtinDefinitionsByName.set(name, {
-                    name,
+                    name: parseBuiltinFunctionName(name),
                     kind: "builtin-function",
                     signature,
                     references: [],
@@ -106,4 +107,23 @@ export async function findBuiltinFunctionDefinition(
 
 export async function listBuiltinFunctionDefinitions(): Promise<BuiltinFunctionDefinition[]> {
     return [...(await getBuiltinFunctionMap()).values()];
+}
+
+function parseBuiltinFunctionName(nameWithArity: string): FunctionName {
+    const hashIndex = nameWithArity.lastIndexOf("#");
+    const name = hashIndex === -1 ? nameWithArity : nameWithArity.slice(0, hashIndex);
+    const arity =
+        hashIndex === -1 ? undefined : Number.parseInt(nameWithArity.slice(hashIndex + 1), 10);
+    const colonIndex = name.indexOf(":");
+
+    return {
+        qname:
+            colonIndex === -1
+                ? { localName: name }
+                : {
+                      prefix: name.slice(0, colonIndex),
+                      localName: name.slice(colonIndex + 1),
+                  },
+        ...(arity === undefined || Number.isNaN(arity) ? {} : { arity }),
+    };
 }

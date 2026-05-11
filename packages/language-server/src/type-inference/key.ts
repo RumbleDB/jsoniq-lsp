@@ -1,4 +1,4 @@
-import { SourceDefinition } from "server/analysis/model.js";
+import { definitionNameToString, SourceDefinition } from "server/analysis/model.js";
 
 const INFERENCE_KEY_SEPARATOR = "\u001F";
 
@@ -18,20 +18,20 @@ export function buildInferenceKeyForDefinition(definition: SourceDefinition): In
             return buildInferenceKey(
                 "function",
                 definition.range.start,
-                functionNameWithoutArity(definition.name),
+                definitionNameToString(definition),
             );
         case "parameter":
             return buildInferenceKey(
                 "parameter",
                 definition.function.range.start,
-                functionNameWithoutArity(definition.function.name),
-                definition.name,
+                definitionNameToString(definition.function),
+                definitionNameToString(definition),
             );
         default:
-            return buildInferenceKey(definition.kind, definition.range.start, definition.name);
+            return buildInferenceKey(
+                definition.kind,
+                definition.range.start,
+                definitionNameToString(definition),
+            );
     }
-}
-
-function functionNameWithoutArity(name: string): string {
-    return name.replace(/#\d+$/, "");
 }
