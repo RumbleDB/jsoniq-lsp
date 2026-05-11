@@ -1,12 +1,19 @@
-import { type ReferenceNameByKind, referenceNameToString } from "server/parser/types/name.js";
+import {
+    type FunctionName,
+    type Prefix,
+    type QName,
+    type ReferenceNameByKind,
+    type VarName,
+} from "server/parser/types/name.js";
 import type { ScopeKind } from "server/parser/types/semantic-events.js";
 import { getDocumentText } from "server/parser/utils.js";
 import { TextDocument } from "vscode-languageserver-textdocument";
 
 import {
-    definitionNameToString,
+    type BaseDefinition,
     type SourceDefinition,
     type SourceFunctionDefinition,
+    type SourceNamespaceDefinition,
 } from "./model.js";
 
 export type AnalysisScopeKind = ScopeKind | "module";
@@ -21,10 +28,21 @@ export class Scope {
         public readonly owner: SourceDefinition | undefined,
         public readonly startOffset: number,
         public readonly endOffset: number,
+        private readonly namespaces: ReadonlyMap<Prefix, SourceNamespaceDefinition>,
     ) {}
 
-    public static module(document: TextDocument): Scope {
-        return new Scope("module", undefined, undefined, 0, getDocumentText(document).length);
+    public static module(
+        document: TextDocument,
+        namespaces: ReadonlyMap<Prefix, SourceNamespaceDefinition>,
+    ): Scope {
+        return new Scope(
+            "module",
+            undefined,
+            undefined,
+            0,
+            getDocumentText(document).length,
+            namespaces,
+        );
     }
 
     /**
@@ -36,13 +54,13 @@ export class Scope {
         endOffset: number,
         owner?: SourceDefinition,
     ): Scope {
-        const child = new Scope(kind, this, owner, startOffset, endOffset);
+        const child = new Scope(kind, this, owner, startOffset, endOffset, this.namespaces);
         this.children.push(child);
         return child;
     }
 
     public declare(newDefinition: SourceDefinition): void {
-        const name = definitionNameToString(newDefinition);
+        const name = this.definitionLookupKey(newDefinition);
         if (!this.definitionByName.has(name)) {
             this.definitionByName.set(name, []);
         }
@@ -55,7 +73,7 @@ export class Scope {
         kind: K,
         name: ReferenceNameByKind[K],
     ): SourceDefinition | undefined {
-        const declarations = this.definitionByName.get(referenceNameToString(name, kind));
+        const declarations = this.definitionByName.get(this.referenceLookupKey(name, kind));
         const declaration = declarations?.[declarations.length - 1];
         if (declaration !== undefined) {
             return declaration;
@@ -128,5 +146,62 @@ export class Scope {
         }
 
         return visible;
+    }
+
+    private qnameLookupKey(qname: QName): string {
+        if (qname.prefix === undefined) {
+            return qname.localName;
+        }
+
+        const namespaceUri = this.namespaces.get(qname.prefix)?.namespaceUri;
+        return namespaceUri === undefined
+            ? `${qname.prefix}:${qname.localName}`
+            : `Q{${namespaceUri}}${qname.localName}`;
+    }
+
+    private variableLookupKey(name: VarName): string {
+        return `$${this.qnameLookupKey(name.qname)}`;
+    }
+
+    private functionLookupKey(name: FunctionName): string {
+        return `${this.qnameLookupKey(name.qname)}#${name.arity ?? "?"}`;
+    }
+
+    private definitionLookupKey(definition: BaseDefinition): string {
+        switch (definition.kind) {
+            case "context-item":
+                return definition.name.label;
+            case "namespace":
+                return definition.name.prefix;
+            case "function":
+            case "builtin-function":
+                return this.functionLookupKey(definition.name);
+            case "type":
+                return this.qnameLookupKey(definition.name.qname);
+            case "parameter":
+            case "declare-variable":
+            case "let":
+            case "for":
+            case "for-position":
+            case "group-by":
+            case "count":
+                return this.variableLookupKey(definition.name);
+            default:
+                throw definition satisfies never;
+        }
+    }
+
+    private referenceLookupKey<K extends keyof ReferenceNameByKind>(
+        name: ReferenceNameByKind[K],
+        kind: K,
+    ): string {
+        switch (kind) {
+            case "function":
+                return this.functionLookupKey(name as FunctionName);
+            case "variable":
+                return this.variableLookupKey(name as VarName);
+            default:
+                throw kind satisfies never;
+        }
     }
 }

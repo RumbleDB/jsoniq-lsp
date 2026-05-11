@@ -14,6 +14,7 @@ import {
     type JsoniqAnalysis,
     type ResolvedReference,
     type SourceDefinition,
+    type SourceNamespaceDefinition,
     isSourceDefinition,
 } from "./model.js";
 import { Scope } from "./scope.js";
@@ -25,9 +26,10 @@ class AnalysisBuilder {
     private currentScope: Scope;
 
     public constructor(private readonly document: TextDocument) {
+        const namespaces = new Map<string, SourceNamespaceDefinition>();
         this.analysis = {
-            moduleScope: Scope.module(document),
-            namespaces: new Map(),
+            moduleScope: Scope.module(document, namespaces),
+            namespaces,
             definitions: [],
             references: [],
             diagnostics: [],
