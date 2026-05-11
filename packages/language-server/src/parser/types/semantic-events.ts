@@ -8,7 +8,7 @@ export type SemanticEvent =
     | SemanticDeclarationEvent
     | AnySemanticReferenceEvent;
 
-export type ScopeKind = "function" | "flowr";
+export type ScopeKind = "function" | "flowr" | "catch";
 
 export type SemanticScopeEvent = {
     type: "enterScope" | "exitScope";

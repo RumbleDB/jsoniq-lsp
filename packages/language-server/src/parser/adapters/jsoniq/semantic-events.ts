@@ -242,11 +242,21 @@ class JsoniqSemanticEventListener extends jsoniqListener {
         this.functionReference(node);
 
     public override enterCatchCaseStatement = (node: CatchCaseStatementContext): void => {
+        this.events.scope(node, true, "catch");
         this.declareAll(this.catchDeclarations(node));
     };
 
+    public override exitCatchCaseStatement = (node: CatchCaseStatementContext): void => {
+        this.events.scope(node, false, "catch");
+    };
+
     public override enterCatchClause = (node: CatchClauseContext): void => {
+        this.events.scope(node, true, "catch");
         this.declareAll(this.catchDeclarations(node));
+    };
+
+    public override exitCatchClause = (node: CatchClauseContext): void => {
+        this.events.scope(node, false, "catch");
     };
 
     private declare(declaration: AnySemanticDeclaration | null): void {
