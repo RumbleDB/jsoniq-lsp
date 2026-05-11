@@ -29,6 +29,7 @@ export type DeclarationNameByKind = {
     "for-position": VarName;
     "group-by": VarName;
     count: VarName;
+    "catch-variable": VarName;
     type: { qname: QName };
     "context-item": { label: "context item" };
 };

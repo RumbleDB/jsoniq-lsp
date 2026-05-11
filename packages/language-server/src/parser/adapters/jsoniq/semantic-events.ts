@@ -12,6 +12,8 @@ import { TextDocument } from "vscode-languageserver-textdocument";
 
 import { jsoniqListener } from "./grammar/jsoniqListener.js";
 import {
+    CatchCaseStatementContext,
+    CatchClauseContext,
     ContextItemDeclContext,
     CountClauseContext,
     DeclaredVarRefContext,
@@ -31,6 +33,16 @@ import {
     type ModuleAndThisIsItContext,
 } from "./grammar/jsoniqParser.js";
 import { parseFunctionName, parseQname, parseVarName } from "./name.js";
+
+const CATCH_VARIABLES = [
+    { qname: { prefix: "err", localName: "code" } },
+    { qname: { prefix: "err", localName: "description" } },
+    { qname: { prefix: "err", localName: "value" } },
+    { qname: { prefix: "err", localName: "module" } },
+    { qname: { prefix: "err", localName: "line-number" } },
+    { qname: { prefix: "err", localName: "column-number" } },
+    { qname: { prefix: "err", localName: "additional" } },
+] as const;
 
 class SemanticEventCollector {
     private events: SemanticEvent[] = [];
@@ -249,6 +261,18 @@ class JsoniqSemanticEventListener extends jsoniqListener {
     public override enterNamedFunctionRef = (node: NamedFunctionRefContext): void =>
         this.functionReference(node);
 
+    public override enterCatchCaseStatement = (node: CatchCaseStatementContext): void => {
+        this.enterAll(this.catchDeclarations(node));
+    };
+
+    public override exitCatchCaseStatement = this.exit;
+
+    public override enterCatchClause = (node: CatchClauseContext): void => {
+        this.enterAll(this.catchDeclarations(node));
+    };
+
+    public override exitCatchClause = this.exit;
+
     private enter(declaration: AnySemanticDeclaration | null): void {
         this.enterAll(declaration === null ? [] : [declaration]);
     }
@@ -286,6 +310,19 @@ class JsoniqSemanticEventListener extends jsoniqListener {
         if (name !== null && nameNode !== null) {
             this.events.reference(name, "function", nameNode);
         }
+    }
+
+    private catchDeclarations(
+        node: CatchCaseStatementContext | CatchClauseContext,
+    ): AnySemanticDeclaration[] {
+        const catchNode = node.Kcatch();
+
+        return CATCH_VARIABLES.map((name) => ({
+            name,
+            kind: "catch-variable",
+            range: rangeFromNode(catchNode, this.document),
+            selectionRange: rangeFromNode(catchNode, this.document),
+        }));
     }
 }
 

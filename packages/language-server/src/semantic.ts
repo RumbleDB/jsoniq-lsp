@@ -73,6 +73,7 @@ function getTokenTypeForDefinition(kind: DefinitionKind): number {
         case "for-position":
         case "group-by":
         case "count":
+        case "catch-variable":
             return 2;
     }
 }

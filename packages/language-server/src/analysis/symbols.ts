@@ -110,6 +110,7 @@ function toSymbolName(declaration: AnySemanticDeclaration): string {
         case "for-position":
         case "group-by":
         case "parameter":
+        case "catch-variable":
             return varNameToString(declaration.name);
         case "namespace":
             return declaration.name.prefix;
@@ -135,6 +136,7 @@ function definitionKindToSymbolKind(kind: SemanticDeclarationKind): SymbolKind {
         case "group-by":
         case "count":
         case "parameter":
+        case "catch-variable":
             return SymbolKind.Variable;
         case "type":
             return SymbolKind.Struct;

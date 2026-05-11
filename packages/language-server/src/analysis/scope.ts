@@ -185,6 +185,7 @@ export class Scope {
             case "for-position":
             case "group-by":
             case "count":
+            case "catch-variable":
                 return this.variableLookupKey(definition.name);
             default:
                 throw definition satisfies never;

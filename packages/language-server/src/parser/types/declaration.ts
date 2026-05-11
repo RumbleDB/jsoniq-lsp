@@ -4,7 +4,8 @@ export type VariableKind =
     | "for"
     | "for-position"
     | "group-by"
-    | "count";
+    | "count"
+    | "catch-variable";
 
 export type SemanticDeclarationKind =
     | VariableKind

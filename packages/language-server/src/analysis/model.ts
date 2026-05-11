@@ -124,9 +124,15 @@ export function isSourceDefinition(
 export function isSourceVariableDefinition(
     declaration: BaseDefinition | undefined,
 ): declaration is SourceVariableDefinition {
-    return ["declare-variable", "let", "for", "for-position", "group-by", "count"].includes(
-        declaration?.kind ?? "",
-    );
+    return [
+        "declare-variable",
+        "let",
+        "for",
+        "for-position",
+        "group-by",
+        "count",
+        "catch-variable",
+    ].includes(declaration?.kind ?? "");
 }
 
 export function isSourceParameterDefinition(
@@ -159,6 +165,7 @@ export function definitionNameToString(definition: BaseDefinition): string {
         case "for-position":
         case "group-by":
         case "count":
+        case "catch-variable":
             return varNameToString(definition.name);
         default:
             throw definition satisfies never;
