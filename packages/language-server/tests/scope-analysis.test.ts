@@ -161,6 +161,87 @@ describe("JSONiq variable scope analysis", () => {
         });
     });
 
+    it("resolves function references by full qname", async () => {
+        const document = testDocument("scope-function-qname-resolution", [
+            'declare namespace local = "http://example.com/local";',
+            'declare namespace other = "http://example.com/other";',
+            "declare function local:add($left, $right) {",
+            "  $left + $right",
+            "};",
+            "declare function other:add($left, $right) {",
+            "  $left - $right",
+            "};",
+            "other:add(1, 2)",
+        ]);
+
+        const analysis = await buildAnalysis(document);
+        const functionReference = analysis.references.find(
+            (reference) =>
+                reference.kind === "function" &&
+                reference.name.qname.prefix === "other" &&
+                reference.name.qname.localName === "add",
+        );
+
+        expect(functionReference).toMatchObject({
+            name: {
+                arity: 2,
+                qname: {
+                    prefix: "other",
+                    localName: "add",
+                },
+            },
+            declaration: {
+                kind: "function",
+                name: {
+                    arity: 2,
+                    qname: {
+                        prefix: "other",
+                        localName: "add",
+                    },
+                },
+            },
+        });
+    });
+
+    it("resolves function references by namespace uri, not just prefix", async () => {
+        const document = testDocument("scope-function-namespace-alias-resolution", [
+            'declare namespace a = "http://example.com/shared";',
+            'declare namespace b = "http://example.com/shared";',
+            "declare function a:add($left, $right) {",
+            "  $left + $right",
+            "};",
+            "b:add(1, 2)",
+        ]);
+
+        const analysis = await buildAnalysis(document);
+        const functionReference = analysis.references.find(
+            (reference) =>
+                reference.kind === "function" &&
+                reference.name.qname.prefix === "b" &&
+                reference.name.qname.localName === "add",
+        );
+
+        expect(functionReference).toMatchObject({
+            name: {
+                arity: 2,
+                qname: {
+                    prefix: "b",
+                    localName: "add",
+                },
+            },
+            declaration: {
+                kind: "function",
+                name: {
+                    arity: 2,
+                    qname: {
+                        prefix: "a",
+                        localName: "add",
+                    },
+                },
+            },
+        });
+    });
+
     it("supports multiple for variables in the same clause", async () => {
         const document = testDocument("scope-multi-for", [
             "for $x in (1, 2, 3), $y in ($x, 4)",
@@ -194,6 +275,65 @@ describe("JSONiq variable scope analysis", () => {
                 name: { qname: { localName: "y" } },
                 line: 1,
                 resolvedTo: { qname: { localName: "y" } },
+            },
+        ]);
+    });
+
+    it("resolves variables by full qname", async () => {
+        const document = testDocument("scope-variable-qname-resolution", [
+            'declare namespace local = "http://example.com/local";',
+            'declare namespace other = "http://example.com/other";',
+            "declare variable $local:value := 1;",
+            "declare variable $other:value := 2;",
+            "$other:value + $local:value",
+        ]);
+
+        const analysis = await buildAnalysis(document);
+        const variableReferences = analysis.references
+            .filter((reference) => reference.kind === "variable")
+            .map((reference) => ({
+                name: reference.name,
+                resolvedTo: reference.declaration.name,
+                resolvedKind: reference.declaration.kind,
+            }));
+
+        expect(variableReferences).toEqual([
+            {
+                name: { qname: { prefix: "other", localName: "value" } },
+                resolvedTo: { qname: { prefix: "other", localName: "value" } },
+                resolvedKind: "declare-variable",
+            },
+            {
+                name: { qname: { prefix: "local", localName: "value" } },
+                resolvedTo: { qname: { prefix: "local", localName: "value" } },
+                resolvedKind: "declare-variable",
+            },
+        ]);
+    });
+
+    it("resolves variables by namespace uri, not just prefix", async () => {
+        const document = testDocument("scope-variable-namespace-alias-resolution", [
+            'declare namespace a = "http://example.com/shared";',
+            'declare namespace b = "http://example.com/shared";',
+            "declare variable $a:value := 1;",
+            "$b:value",
+        ]);
+
+        const analysis = await buildAnalysis(document);
+
+        expect(
+            analysis.references
+                .filter((reference) => reference.kind === "variable")
+                .map((reference) => ({
+                    name: reference.name,
+                    resolvedTo: reference.declaration.name,
+                    resolvedKind: reference.declaration.kind,
+                })),
+        ).toEqual([
+            {
+                name: { qname: { prefix: "b", localName: "value" } },
+                resolvedTo: { qname: { prefix: "a", localName: "value" } },
+                resolvedKind: "declare-variable",
             },
         ]);
     });
