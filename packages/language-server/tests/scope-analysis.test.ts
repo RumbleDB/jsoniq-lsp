@@ -353,6 +353,11 @@ describe("JSONiq variable scope analysis", () => {
         ).toEqual([
             { qname: { prefix: "err", localName: "code" } },
             { qname: { prefix: "err", localName: "description" } },
+            { qname: { prefix: "err", localName: "value" } },
+            { qname: { prefix: "err", localName: "module" } },
+            { qname: { prefix: "err", localName: "line-number" } },
+            { qname: { prefix: "err", localName: "column-number" } },
+            { qname: { prefix: "err", localName: "additional" } },
         ]);
 
         expect(
