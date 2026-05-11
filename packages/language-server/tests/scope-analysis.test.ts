@@ -244,4 +244,16 @@ describe("JSONiq variable scope analysis", () => {
 
         expect(visibleDeclarations.map((declaration) => declaration.name)).toContain("$a");
     });
+
+    it("does not make an incomplete let declaration visible", async () => {
+        const source = "let $a := ";
+        const document = testDocument("scope-incomplete-let-init", source);
+
+        const visibleDeclarations = await getVisibleDeclarationsAtPosition(document, {
+            line: 0,
+            character: source.length,
+        });
+
+        expect(visibleDeclarations.length).toBe(0);
+    });
 });
