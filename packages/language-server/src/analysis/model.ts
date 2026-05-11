@@ -2,6 +2,7 @@ import type { SemanticDeclarationKind, VariableKind } from "server/parser/types/
 import {
     type DeclarationNameByKind,
     type FunctionName,
+    type ReferenceNameByKind,
     functionNameToString,
     qnameToString,
     varNameToString,
@@ -22,7 +23,7 @@ interface AbstractDefinition<K extends DefinitionKind> {
     kind: K;
 
     // List of references that resolve to this declaration.
-    references: Reference[];
+    references: ResolvedReference[];
 
     isBuiltin: boolean;
 }
@@ -75,21 +76,24 @@ export type SourceDefinition =
 
 export type Definition = SourceDefinition | BuiltinFunctionDefinition;
 
-export interface Reference {
-    name: string;
+export interface Reference<K extends keyof ReferenceNameByKind> {
+    name: ReferenceNameByKind[K];
+    kind: K;
     range: Range;
 }
 
-export interface ResolvedReference extends Reference {
-    declaration: Definition;
-}
+export type AnyReference<K extends keyof ReferenceNameByKind = keyof ReferenceNameByKind> =
+    K extends keyof ReferenceNameByKind ? Reference<K> : never;
+
+export type ResolvedReference<K extends keyof ReferenceNameByKind = keyof ReferenceNameByKind> =
+    AnyReference<K> & { declaration: Definition };
 
 export interface SymbolIndexEntry {
     range: Range;
     declaration: Definition;
 
     // The reference corresponding to this occurrence, if it is a reference.
-    reference: Reference | undefined;
+    reference: ResolvedReference | undefined;
 }
 
 export interface JsoniqAnalysis {

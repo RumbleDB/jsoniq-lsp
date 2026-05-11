@@ -20,7 +20,42 @@ describe("JSONiq variable scope analysis", () => {
         const analysis = await buildAnalysis(document);
         const declarationNames = analysis.definitions.map((declaration) => declaration.name);
 
-        expect(declarationNames).toEqual(["local:f#2", "$a", "$b", "$x", "$pos", "$y", "$g", "$c"]);
+        expect(declarationNames).toEqual([
+            {
+                arity: 2,
+                qname: {
+                    localName: "f",
+                    prefix: "local",
+                },
+            },
+            {
+                qname: {
+                    localName: "a",
+                },
+            },
+            {
+                qname: {
+                    localName: "b",
+                },
+            },
+            {
+                qname: { localName: "x" },
+            },
+            {
+                qname: {
+                    localName: "pos",
+                },
+            },
+            {
+                qname: { localName: "y" },
+            },
+            {
+                qname: { localName: "g" },
+            },
+            {
+                qname: { localName: "c" },
+            },
+        ]);
     });
 
     it("resolves references to the nearest declaration", async () => {
@@ -35,7 +70,7 @@ describe("JSONiq variable scope analysis", () => {
 
         const analysis = await buildAnalysis(document);
         const references = analysis.references
-            .filter((reference) => reference.name.startsWith("$"))
+            .filter((reference) => reference.kind === "variable")
             .map((reference) => ({
                 name: reference.name,
                 line: reference.range.start.line,
@@ -44,10 +79,46 @@ describe("JSONiq variable scope analysis", () => {
             }));
 
         expect(references).toEqual([
-            { name: "$x", line: 2, resolvedTo: "$x", resolvedKind: "parameter" },
-            { name: "$y", line: 3, resolvedTo: "$y", resolvedKind: "let" },
-            { name: "$x", line: 3, resolvedTo: "$x", resolvedKind: "parameter" },
-            { name: "$x", line: 5, resolvedTo: "$x", resolvedKind: "declare-variable" },
+            {
+                name: {
+                    qname: { localName: "x" },
+                },
+                line: 2,
+                resolvedTo: {
+                    qname: { localName: "x" },
+                },
+                resolvedKind: "parameter",
+            },
+            {
+                name: {
+                    qname: { localName: "y" },
+                },
+                line: 3,
+                resolvedTo: {
+                    qname: { localName: "y" },
+                },
+                resolvedKind: "let",
+            },
+            {
+                name: {
+                    qname: { localName: "x" },
+                },
+                line: 3,
+                resolvedTo: {
+                    qname: { localName: "x" },
+                },
+                resolvedKind: "parameter",
+            },
+            {
+                name: {
+                    qname: { localName: "x" },
+                },
+                line: 5,
+                resolvedTo: {
+                    qname: { localName: "x" },
+                },
+                resolvedKind: "declare-variable",
+            },
         ]);
     });
 
@@ -61,17 +132,30 @@ describe("JSONiq variable scope analysis", () => {
 
         const analysis = await buildAnalysis(document);
         const functionReference = analysis.references.find(
-            (reference) => reference.name === "local:add#2",
+            (reference) =>
+                reference.kind === "function" && reference.name.qname.localName === "add",
         );
 
         expect(functionReference).toMatchObject({
-            name: "local:add#2",
+            name: {
+                arity: 2,
+                qname: {
+                    localName: "add",
+                    prefix: "local",
+                },
+            },
             range: {
                 start: { line: 3, character: 0 },
                 end: { line: 3, character: "local:add".length },
             },
             declaration: {
-                name: "local:add#2",
+                name: {
+                    arity: 2,
+                    qname: {
+                        localName: "add",
+                        prefix: "local",
+                    },
+                },
                 kind: "function",
             },
         });
@@ -85,7 +169,10 @@ describe("JSONiq variable scope analysis", () => {
 
         const analysis = await buildAnalysis(document);
 
-        expect(analysis.definitions.map((declaration) => declaration.name)).toEqual(["$x", "$y"]);
+        expect(analysis.definitions.map((declaration) => declaration.name)).toEqual([
+            { qname: { localName: "x" } },
+            { qname: { localName: "y" } },
+        ]);
         expect(
             analysis.references.map((reference) => ({
                 name: reference.name,
@@ -93,9 +180,21 @@ describe("JSONiq variable scope analysis", () => {
                 resolvedTo: reference.declaration?.name,
             })),
         ).toEqual([
-            { name: "$x", line: 0, resolvedTo: "$x" },
-            { name: "$x", line: 1, resolvedTo: "$x" },
-            { name: "$y", line: 1, resolvedTo: "$y" },
+            {
+                name: { qname: { localName: "x" } },
+                line: 0,
+                resolvedTo: { qname: { localName: "x" } },
+            },
+            {
+                name: { qname: { localName: "x" } },
+                line: 1,
+                resolvedTo: { qname: { localName: "x" } },
+            },
+            {
+                name: { qname: { localName: "y" } },
+                line: 1,
+                resolvedTo: { qname: { localName: "y" } },
+            },
         ]);
     });
 
@@ -113,10 +212,10 @@ describe("JSONiq variable scope analysis", () => {
                 kind: declaration.kind,
             })),
         ).toEqual([
-            { name: "$x", kind: "for" },
-            { name: "$ix", kind: "for-position" },
-            { name: "$y", kind: "for" },
-            { name: "$iy", kind: "for-position" },
+            { name: { qname: { localName: "x" } }, kind: "for" },
+            { name: { qname: { localName: "ix" } }, kind: "for-position" },
+            { name: { qname: { localName: "y" } }, kind: "for" },
+            { name: { qname: { localName: "iy" } }, kind: "for-position" },
         ]);
 
         expect(
@@ -127,11 +226,36 @@ describe("JSONiq variable scope analysis", () => {
                 resolvedKind: reference.declaration?.kind,
             })),
         ).toEqual([
-            { name: "$x", line: 0, resolvedTo: "$x", resolvedKind: "for" },
-            { name: "$x", line: 1, resolvedTo: "$x", resolvedKind: "for" },
-            { name: "$ix", line: 1, resolvedTo: "$ix", resolvedKind: "for-position" },
-            { name: "$y", line: 1, resolvedTo: "$y", resolvedKind: "for" },
-            { name: "$iy", line: 1, resolvedTo: "$iy", resolvedKind: "for-position" },
+            {
+                name: { qname: { localName: "x" } },
+                line: 0,
+                resolvedTo: { qname: { localName: "x" } },
+                resolvedKind: "for",
+            },
+            {
+                name: { qname: { localName: "x" } },
+                line: 1,
+                resolvedTo: { qname: { localName: "x" } },
+                resolvedKind: "for",
+            },
+            {
+                name: { qname: { localName: "ix" } },
+                line: 1,
+                resolvedTo: { qname: { localName: "ix" } },
+                resolvedKind: "for-position",
+            },
+            {
+                name: { qname: { localName: "y" } },
+                line: 1,
+                resolvedTo: { qname: { localName: "y" } },
+                resolvedKind: "for",
+            },
+            {
+                name: { qname: { localName: "iy" } },
+                line: 1,
+                resolvedTo: { qname: { localName: "iy" } },
+                resolvedKind: "for-position",
+            },
         ]);
     });
 
@@ -145,7 +269,8 @@ describe("JSONiq variable scope analysis", () => {
 
         const analysis = await buildAnalysis(document);
         const parameter = analysis.definitions.find(
-            (declaration) => declaration.name === "$x" && declaration.kind === "parameter",
+            (declaration) =>
+                declaration.kind === "parameter" && declaration.name.qname.localName === "x",
         );
 
         expect(parameter).toBeDefined();
@@ -159,7 +284,7 @@ describe("JSONiq variable scope analysis", () => {
         const occurrence = findSymbolAtPosition(analysis, { line: 2, character: 14 });
 
         expect(occurrence?.reference).toBeDefined();
-        expect(occurrence?.declaration.name).toBe("$x");
+        expect(occurrence?.declaration.name).toEqual({ qname: { localName: "x" } });
         expect(occurrence?.declaration.kind).toBe("parameter");
     });
 
@@ -172,7 +297,8 @@ describe("JSONiq variable scope analysis", () => {
 
         const analysis = await buildAnalysis(document);
         const parameter = analysis.definitions.find(
-            (declaration) => declaration.name === "$x" && declaration.kind === "parameter",
+            (declaration) =>
+                declaration.kind === "parameter" && declaration.name.qname.localName === "x",
         );
 
         expect(parameter).toBeDefined();
@@ -186,7 +312,7 @@ describe("JSONiq variable scope analysis", () => {
         const occurrence = findSymbolAtPosition(analysis, { line: 1, character: 13 });
 
         expect(occurrence?.reference).toBeDefined();
-        expect(occurrence?.declaration.name).toBe("$x");
+        expect(occurrence?.declaration.name).toEqual({ qname: { localName: "x" } });
         expect(occurrence?.declaration.kind).toBe("parameter");
     });
 
@@ -199,13 +325,16 @@ describe("JSONiq variable scope analysis", () => {
 
         const analysis = await buildAnalysis(document);
         const xDeclarations = analysis.definitions.filter(
-            (declaration) => declaration.name === "$x" && declaration.kind === "let",
+            (declaration) => declaration.kind === "let" && declaration.name.qname.localName === "x",
         );
 
         expect(xDeclarations).toHaveLength(2);
 
         const references = analysis.references
-            .filter((reference) => reference.name === "$x")
+            .filter(
+                (reference) =>
+                    reference.kind === "variable" && reference.name.qname.localName === "x",
+            )
             .map((reference) => {
                 if (isSourceDefinition(reference.declaration)) {
                     return {
@@ -230,7 +359,11 @@ describe("JSONiq variable scope analysis", () => {
             character: source.length,
         });
 
-        expect(visibleDeclarations.map((declaration) => declaration.name)).not.toContain("$a");
+        expect(
+            visibleDeclarations
+                .filter((d) => d.kind === "declare-variable")
+                .map((declaration) => declaration.name.qname.localName),
+        ).not.toContain("$a");
     });
 
     it("makes a completed prolog variable visible after its semicolon", async () => {
@@ -242,7 +375,9 @@ describe("JSONiq variable scope analysis", () => {
             character: source.length,
         });
 
-        expect(visibleDeclarations.map((declaration) => declaration.name)).toContain("$a");
+        expect(visibleDeclarations.map((declaration) => declaration.name)).toContainEqual({
+            qname: { localName: "a" },
+        });
     });
 
     it("does not make an incomplete let declaration visible", async () => {

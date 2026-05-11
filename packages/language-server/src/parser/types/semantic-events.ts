@@ -7,7 +7,7 @@ export type SemanticEvent =
     | SemanticScopeEvent
     | SemanticEnterDeclarationEvent
     | SemanticExitDeclarationEvent
-    | SemanticReferenceEvent<keyof ReferenceNameByKind>;
+    | AnySemanticReferenceEvent;
 
 export type ScopeKind = "function" | "flowr";
 
@@ -27,12 +27,17 @@ export type SemanticExitDeclarationEvent = {
     declaration: AnySemanticDeclaration;
 };
 
-export type SemanticReferenceEvent<K extends keyof ReferenceNameByKind> = {
-    type: "reference";
-    name: ReferenceNameByKind[K];
-    kind: K;
-    range: Range;
-};
+export type SemanticReferenceEvent<K extends keyof ReferenceNameByKind> =
+    K extends keyof ReferenceNameByKind
+        ? {
+              type: "reference";
+              name: ReferenceNameByKind[K];
+              kind: K;
+              range: Range;
+          }
+        : never;
+
+export type AnySemanticReferenceEvent = SemanticReferenceEvent<keyof ReferenceNameByKind>;
 
 type SemanticDeclarationBase<K extends SemanticDeclarationKind> = {
     name: DeclarationNameByKind[K];

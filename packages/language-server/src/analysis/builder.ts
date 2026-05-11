@@ -9,6 +9,7 @@ import { TextDocument } from "vscode-languageserver-textdocument";
 import { isVisibleOnEnter, PendingDeclarations } from "./declarations.js";
 import { createSourceDefinition } from "./definitions.js";
 import {
+    type AnyReference,
     type Definition,
     type JsoniqAnalysis,
     type ResolvedReference,
@@ -47,10 +48,7 @@ class AnalysisBuilder {
                     this.exitDeclaration(event.declaration);
                     break;
                 case "reference":
-                    await this.recordReference(
-                        referenceNameToString(event.name, event.kind),
-                        event.range,
-                    );
+                    await this.recordReference(event);
                     break;
                 case "enterScope":
                     this.pushScope(event.scopeKind, event.range.start, event.range.end);
@@ -151,33 +149,33 @@ class AnalysisBuilder {
         return this.currentScope.resolve(name);
     }
 
-    private async recordReference(name: string, range: Range): Promise<void> {
-        const declaration = await this.resolve(name);
+    private async recordReference(reference: AnyReference): Promise<void> {
+        const lookupName = referenceNameToString(reference.name, reference.kind);
+        const declaration = await this.resolve(lookupName);
         if (declaration === undefined) {
             this.analysis.diagnostics.push({
                 severity: DiagnosticSeverity.Error,
-                message: `Reference to undefined variable '${name}'`,
-                range,
+                message: `Reference to undefined variable '${lookupName}'`,
+                range: reference.range,
                 code: "unresolved-variable",
             });
             return;
         }
 
-        const reference = {
-            name,
-            range,
+        const resolvedReference = {
+            ...reference,
             declaration,
         } satisfies ResolvedReference;
 
-        this.analysis.references.push(reference);
+        this.analysis.references.push(resolvedReference);
         this.analysis.symbolIndex.push({
-            range: reference.range,
+            range: resolvedReference.range,
             declaration,
-            reference,
+            reference: resolvedReference,
         });
 
         if (isSourceDefinition(declaration)) {
-            declaration.references.push(reference);
+            declaration.references.push(resolvedReference);
         }
     }
 }

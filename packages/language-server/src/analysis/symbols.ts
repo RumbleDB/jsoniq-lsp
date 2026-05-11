@@ -1,6 +1,6 @@
 import { parseDocument } from "server/parser/index.js";
 import type { SemanticDeclarationKind } from "server/parser/types/declaration.js";
-import { functionNameToString, qnameToString, varNameToString } from "server/parser/types/name.js";
+import { qnameToString, varNameToString } from "server/parser/types/name.js";
 import type { AnySemanticDeclaration } from "server/parser/types/semantic-events.js";
 import { sameRange } from "server/utils/range.js";
 import { DocumentSymbol, SymbolKind } from "vscode-languageserver";
@@ -114,7 +114,7 @@ function toSymbolName(declaration: AnySemanticDeclaration): string {
         case "namespace":
             return declaration.name.prefix;
         case "function":
-            return functionNameToString(declaration.name);
+            return qnameToString(declaration.name.qname);
         case "type":
             return qnameToString(declaration.name.qname);
         default:
