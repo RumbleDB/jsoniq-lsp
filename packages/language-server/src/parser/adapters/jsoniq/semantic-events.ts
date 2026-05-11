@@ -165,7 +165,9 @@ class JsoniqSemanticEventListener extends jsoniqListener {
             node,
             node.declaredVarRef(),
         );
-        declaration.completed = semicolon !== null && semicolon.symbol.start >= 0;
+        if (declaration !== null) {
+            declaration.completed = semicolon !== null && semicolon.symbol.start >= 0;
+        }
 
         this.enter(declaration);
     };
@@ -176,13 +178,14 @@ class JsoniqSemanticEventListener extends jsoniqListener {
         const declarations: AnySemanticDeclaration[] = [];
 
         for (const [index, declaredVarRef] of node.declaredVarRef().entries()) {
-            declarations.push(
-                this.variableDeclaration(
-                    index === 0 ? "for" : "for-position",
-                    node,
-                    declaredVarRef,
-                ),
+            const declaration = this.variableDeclaration(
+                index === 0 ? "for" : "for-position",
+                node,
+                declaredVarRef,
             );
+            if (declaration !== null) {
+                declarations.push(declaration);
+            }
         }
 
         this.enterAll(declarations);
@@ -225,7 +228,10 @@ class JsoniqSemanticEventListener extends jsoniqListener {
             return;
         }
 
-        this.events.reference(parseVarName(node), "variable", node);
+        const name = parseVarName(node);
+        if (name !== null) {
+            this.events.reference(name, "variable", node);
+        }
     };
 
     public override enterFunctionCall = (node: FunctionCallContext): void =>
@@ -234,8 +240,8 @@ class JsoniqSemanticEventListener extends jsoniqListener {
     public override enterNamedFunctionRef = (node: NamedFunctionRefContext): void =>
         this.functionReference(node);
 
-    private enter(declaration: AnySemanticDeclaration): void {
-        this.enterAll([declaration]);
+    private enter(declaration: AnySemanticDeclaration | null): void {
+        this.enterAll(declaration === null ? [] : [declaration]);
     }
 
     private enterAll(declarations: AnySemanticDeclaration[]): void {
@@ -258,13 +264,11 @@ class JsoniqSemanticEventListener extends jsoniqListener {
         kind: VariableKind | "parameter",
         declarationNode: ParseTree,
         declaredVarRef: DeclaredVarRefContext,
-    ): SemanticDeclaration<VariableKind | "parameter"> {
-        return this.createDeclaration(
-            parseVarName(declaredVarRef.varRef()),
-            kind,
-            declarationNode,
-            declaredVarRef.varRef(),
-        );
+    ): SemanticDeclaration<VariableKind | "parameter"> | null {
+        const name = parseVarName(declaredVarRef.varRef());
+        return name === null
+            ? null
+            : this.createDeclaration(name, kind, declarationNode, declaredVarRef.varRef());
     }
 
     private functionReference(node: FunctionCallContext | NamedFunctionRefContext): void {

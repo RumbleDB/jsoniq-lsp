@@ -9,8 +9,8 @@ import {
 } from "./grammar/jsoniqParser.js";
 
 export function parseQname(qnameNode: QnameContext): QName {
-    const prefix = qnameNode._ns?.text ?? qnameNode._nskw?.toString() ?? undefined;
-    const localName = qnameNode._local_name?.text ?? qnameNode._local_namekw?.toString() ?? "";
+    const prefix = qnameNode._ns?.text ?? qnameNode._nskw?.getText() ?? undefined;
+    const localName = qnameNode._local_name?.text ?? qnameNode._local_namekw?.getText() ?? "";
 
     if (prefix) {
         return { prefix, localName };
@@ -47,8 +47,9 @@ export function parseFunctionName(
     };
 }
 
-export function parseVarName(node: VarRefContext): VarName {
-    return { qname: parseQname(node.qname()) };
+export function parseVarName(node: VarRefContext): VarName | null {
+    const qname = node.qname();
+    return qname === null ? null : { qname: parseQname(qname) };
 }
 
 export function functionName(
