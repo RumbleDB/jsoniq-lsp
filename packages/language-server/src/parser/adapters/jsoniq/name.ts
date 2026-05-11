@@ -1,46 +1,22 @@
+import { FunctionName, QName, VarName } from "server/parser/types/name.js";
+
 import {
     FunctionCallContext,
     FunctionDeclContext,
     NamedFunctionRefContext,
+    QnameContext,
     VarRefContext,
 } from "./grammar/jsoniqParser.js";
 
-/**
- * Extracts the variable name from a VarRefContext node, including the leading "$" character.
- * @param node The VarRefContext node representing the variable reference in the parse tree
- * @returns The variable name as a string, including the leading "$" (e.g. "$x")
- */
-export function varRefName(node: VarRefContext): string {
-    return `$${node.qname().getText()}`;
-}
+export function parseQname(qnameNode: QnameContext): QName {
+    const prefix = qnameNode._ns?.text ?? qnameNode._nskw?.toString() ?? undefined;
+    const localName = qnameNode._local_name?.text ?? qnameNode._local_namekw?.toString() ?? "";
 
-export function varRefNameOrNull(node: VarRefContext): string | null {
-    const qname = node.qname();
-    const name = qname?.getText().trim();
-    return name === undefined || name === "" ? null : `$${name}`;
-}
-
-export function functionName(
-    node: FunctionDeclContext | FunctionCallContext | NamedFunctionRefContext,
-): string {
-    return (node._fn_name?.getText() ?? "").trim();
-}
-
-export function functionNameWithArity(
-    node: FunctionDeclContext | FunctionCallContext | NamedFunctionRefContext,
-): string {
-    return `${functionName(node)}#${functionArity(node)}`;
-}
-
-export function functionNameWithArityOrNull(
-    node: FunctionDeclContext | FunctionCallContext | NamedFunctionRefContext,
-): string | null {
-    const name = functionName(node);
-    if (name === undefined || name === "") {
-        return null;
+    if (prefix) {
+        return { prefix, localName };
     }
 
-    return `${name}#${functionArity(node)}`;
+    return { localName };
 }
 
 function functionArity(
@@ -54,4 +30,29 @@ function functionArity(
         return Number.parseInt(node._arity?.text ?? node.Literal().getText(), 10);
     }
     throw new Error("Unsupported node type for function arity extraction");
+}
+
+export function parseFunctionName(
+    node: FunctionDeclContext | FunctionCallContext | NamedFunctionRefContext,
+): FunctionName {
+    const qnameNode =
+        node instanceof FunctionDeclContext ? node.declaredQName().qname() : node.qname();
+    const qname = parseQname(qnameNode);
+
+    const arity = functionArity(node);
+
+    return {
+        qname,
+        arity,
+    };
+}
+
+export function parseVarName(node: VarRefContext): VarName {
+    return { qname: parseQname(node.qname()) };
+}
+
+export function functionName(
+    node: FunctionDeclContext | FunctionCallContext | NamedFunctionRefContext,
+): string {
+    return (node._fn_name?.getText() ?? "").trim();
 }

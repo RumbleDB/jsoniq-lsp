@@ -1,12 +1,13 @@
 import type { Range } from "vscode-languageserver";
 
 import type { SemanticDeclarationKind } from "./declaration.js";
+import type { DeclarationNameByKind, ReferenceNameByKind } from "./name.js";
 
 export type SemanticEvent =
     | SemanticScopeEvent
     | SemanticEnterDeclarationEvent
     | SemanticExitDeclarationEvent
-    | SemanticReferenceEvent;
+    | SemanticReferenceEvent<keyof ReferenceNameByKind>;
 
 export type ScopeKind = "function" | "flowr";
 
@@ -18,34 +19,39 @@ export type SemanticScopeEvent = {
 
 export type SemanticEnterDeclarationEvent = {
     type: "enterDeclaration";
-    declaration: SemanticDeclaration;
+    declaration: AnySemanticDeclaration;
 };
 
 export type SemanticExitDeclarationEvent = {
     type: "exitDeclaration";
-    declaration: SemanticDeclaration;
+    declaration: AnySemanticDeclaration;
 };
 
-export type SemanticReferenceEvent = {
+export type SemanticReferenceEvent<K extends keyof ReferenceNameByKind> = {
     type: "reference";
-    name: string;
-    kind: "variable" | "function";
+    name: ReferenceNameByKind[K];
+    kind: K;
     range: Range;
 };
 
 type SemanticDeclarationBase<K extends SemanticDeclarationKind> = {
-    name: string;
+    name: DeclarationNameByKind[K];
     kind: K;
     range: Range;
     selectionRange: Range;
     completed?: boolean;
 };
 
-export type SemanticSimpleDeclarationKind = Exclude<SemanticDeclarationKind, "namespace">;
-export type SemanticSimpleDeclaration = SemanticDeclarationBase<SemanticSimpleDeclarationKind>;
-
-export type SemanticNamespaceDeclaration = SemanticDeclarationBase<"namespace"> & {
-    namespaceUri: string;
+type SemanticDeclarationExtra = {
+    namespace: { namespaceUri: string };
 };
 
-export type SemanticDeclaration = SemanticSimpleDeclaration | SemanticNamespaceDeclaration;
+export type SemanticDeclaration<K extends SemanticDeclarationKind> =
+    K extends SemanticDeclarationKind
+        ? SemanticDeclarationBase<K> &
+              (K extends keyof SemanticDeclarationExtra
+                  ? { extra: SemanticDeclarationExtra[K] }
+                  : { extra?: never })
+        : never;
+
+export type AnySemanticDeclaration = SemanticDeclaration<SemanticDeclarationKind>;

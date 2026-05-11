@@ -1,5 +1,6 @@
 import { parseDocument } from "server/parser/index.js";
-import type { SemanticDeclaration, ScopeKind } from "server/parser/types/semantic-events.js";
+import { referenceNameToString } from "server/parser/types/name.js";
+import type { AnySemanticDeclaration, ScopeKind } from "server/parser/types/semantic-events.js";
 import { comparePositions } from "server/utils/position.js";
 import { findBuiltinFunctionDefinition } from "server/wrapper/builtin-functions.js";
 import { DiagnosticSeverity, Position, type Range } from "vscode-languageserver";
@@ -46,7 +47,10 @@ class AnalysisBuilder {
                     this.exitDeclaration(event.declaration);
                     break;
                 case "reference":
-                    await this.recordReference(event.name, event.range);
+                    await this.recordReference(
+                        referenceNameToString(event.name, event.kind),
+                        event.range,
+                    );
                     break;
                 case "enterScope":
                     this.pushScope(event.scopeKind, event.range.start, event.range.end);
@@ -113,7 +117,7 @@ class AnalysisBuilder {
         });
     }
 
-    private enterDeclaration(declaration: SemanticDeclaration): void {
+    private enterDeclaration(declaration: AnySemanticDeclaration): void {
         const definition = createSourceDefinition(
             this.document,
             declaration,
@@ -131,7 +135,7 @@ class AnalysisBuilder {
         }
     }
 
-    private exitDeclaration(declaration: SemanticDeclaration): void {
+    private exitDeclaration(declaration: AnySemanticDeclaration): void {
         const definition = this.pendingDeclarations.exit(declaration);
         if (!isVisibleOnEnter(definition.kind)) {
             this.currentScope.declare(definition);

@@ -1,12 +1,13 @@
 import { parseDocument } from "server/parser/index.js";
 import type { SemanticDeclarationKind } from "server/parser/types/declaration.js";
-import type { SemanticDeclaration } from "server/parser/types/semantic-events.js";
+import { functionNameToString, qnameToString, varNameToString } from "server/parser/types/name.js";
+import type { AnySemanticDeclaration } from "server/parser/types/semantic-events.js";
 import { sameRange } from "server/utils/range.js";
 import { DocumentSymbol, SymbolKind } from "vscode-languageserver";
 import { TextDocument } from "vscode-languageserver-textdocument";
 
 interface DocumentSymbolOwner {
-    declaration: SemanticDeclaration;
+    declaration: AnySemanticDeclaration;
     symbol: DocumentSymbol;
 }
 
@@ -39,7 +40,7 @@ export class DocumentSymbolsBuilder {
         return this.symbols;
     }
 
-    private enterDeclaration(declaration: SemanticDeclaration): void {
+    private enterDeclaration(declaration: AnySemanticDeclaration): void {
         const symbol = toDocumentSymbol(declaration);
         if (symbol === undefined) {
             return;
@@ -58,7 +59,7 @@ export class DocumentSymbolsBuilder {
         }
     }
 
-    private exitDeclaration(declaration: SemanticDeclaration): void {
+    private exitDeclaration(declaration: AnySemanticDeclaration): void {
         const currentOwner = this.owners[this.owners.length - 1];
         if (currentOwner !== undefined && sameDeclaration(currentOwner.declaration, declaration)) {
             this.owners.pop();
@@ -70,17 +71,16 @@ export class DocumentSymbolsBuilder {
     }
 }
 
-function sameDeclaration(left: SemanticDeclaration, right: SemanticDeclaration): boolean {
+function sameDeclaration(left: AnySemanticDeclaration, right: AnySemanticDeclaration): boolean {
     return (
         left.name === right.name && left.kind === right.kind && sameRange(left.range, right.range)
     );
 }
 
-function toDocumentSymbol(declaration: SemanticDeclaration): DocumentSymbol | undefined {
-    const name = sanitizeSymbolName(
-        declaration.kind === "function" ? splitFunctionName(declaration.name) : declaration.name,
-    );
-    if (name === null) {
+function toDocumentSymbol(declaration: AnySemanticDeclaration): DocumentSymbol | undefined {
+    const name = toSymbolName(declaration);
+
+    if (name === null || name.trim() === "") {
         return undefined;
     }
 
@@ -99,13 +99,27 @@ function declarationCanContainChildSymbols(kind: SemanticDeclarationKind): boole
     );
 }
 
-function splitFunctionName(name: string): string {
-    return name.split("#", 1)[0] ?? name;
-}
-
-function sanitizeSymbolName(name: string): string | null {
-    const trimmed = name.trim();
-    return trimmed !== "" && trimmed !== "$" ? trimmed : null;
+function toSymbolName(declaration: AnySemanticDeclaration): string {
+    switch (declaration.kind) {
+        case "context-item":
+            return declaration.name.label;
+        case "count":
+        case "declare-variable":
+        case "let":
+        case "for":
+        case "for-position":
+        case "group-by":
+        case "parameter":
+            return varNameToString(declaration.name);
+        case "namespace":
+            return declaration.name.prefix;
+        case "function":
+            return functionNameToString(declaration.name);
+        case "type":
+            return qnameToString(declaration.name.qname);
+        default:
+            throw declaration satisfies never;
+    }
 }
 
 function definitionKindToSymbolKind(kind: SemanticDeclarationKind): SymbolKind {

@@ -1,4 +1,5 @@
-import type { SemanticDeclaration } from "server/parser/types/semantic-events.js";
+import { functionNameToString, qnameToString, varNameToString } from "server/parser/types/name.js";
+import type { AnySemanticDeclaration } from "server/parser/types/semantic-events.js";
 import { TextDocument } from "vscode-languageserver-textdocument";
 
 import type {
@@ -11,11 +12,11 @@ import type {
 
 export function createSourceDefinition(
     document: TextDocument,
-    declaration: SemanticDeclaration,
+    declaration: AnySemanticDeclaration,
     containingFunction?: SourceFunctionDefinition,
 ): SourceDefinition {
     const base = {
-        name: declaration.name,
+        name: declarationNameToString(declaration),
         range: declaration.range,
         selectionRange: declaration.selectionRange,
         references: [],
@@ -51,7 +52,7 @@ export function createSourceDefinition(
         return {
             ...base,
             kind: "namespace",
-            namespaceUri: declaration.namespaceUri,
+            namespaceUri: declaration.extra.namespaceUri,
         } satisfies SourceNamespaceDefinition;
     }
 
@@ -67,4 +68,27 @@ export function createSourceDefinition(
         ...base,
         kind: declaration.kind,
     } satisfies SourceVariableDefinition;
+}
+
+function declarationNameToString(declaration: AnySemanticDeclaration): string {
+    switch (declaration.kind) {
+        case "context-item":
+            return declaration.name.label;
+        case "namespace":
+            return declaration.name.prefix;
+        case "function":
+            return functionNameToString(declaration.name);
+        case "type":
+            return qnameToString(declaration.name.qname);
+        case "parameter":
+        case "declare-variable":
+        case "let":
+        case "for":
+        case "for-position":
+        case "group-by":
+        case "count":
+            return varNameToString(declaration.name);
+        default:
+            throw declaration satisfies never;
+    }
 }

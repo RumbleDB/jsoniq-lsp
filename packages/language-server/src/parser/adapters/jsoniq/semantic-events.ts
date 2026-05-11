@@ -1,10 +1,10 @@
 import { ParseTreeWalker, type ParseTree } from "antlr4ng";
+import type { VariableKind } from "server/parser/types/declaration.js";
+import type { ReferenceNameByKind } from "server/parser/types/name.js";
 import type {
+    AnySemanticDeclaration,
     SemanticDeclaration,
     SemanticEvent,
-    SemanticNamespaceDeclaration,
-    SemanticReferenceEvent,
-    SemanticSimpleDeclarationKind,
     ScopeKind,
 } from "server/parser/types/semantic-events.js";
 import { rangeFromNode } from "server/utils/range.js";
@@ -30,7 +30,7 @@ import {
     VarRefContext,
     type ModuleAndThisIsItContext,
 } from "./grammar/jsoniqParser.js";
-import { functionNameWithArityOrNull, varRefNameOrNull } from "./name.js";
+import { parseFunctionName, parseQname, parseVarName } from "./name.js";
 
 class SemanticEventCollector {
     private events: SemanticEvent[] = [];
@@ -41,15 +41,19 @@ class SemanticEventCollector {
         return this.events;
     }
 
-    public enterDeclaration(declaration: SemanticDeclaration): void {
+    public enterDeclaration(declaration: AnySemanticDeclaration): void {
         this.events.push({ type: "enterDeclaration", declaration });
     }
 
-    public exitDeclaration(declaration: SemanticDeclaration): void {
+    public exitDeclaration(declaration: AnySemanticDeclaration): void {
         this.events.push({ type: "exitDeclaration", declaration });
     }
 
-    public reference(name: string, kind: SemanticReferenceEvent["kind"], node: ParseTree): void {
+    public reference<K extends keyof ReferenceNameByKind>(
+        name: ReferenceNameByKind[K],
+        kind: K,
+        node: ParseTree,
+    ): void {
         this.events.push({
             type: "reference",
             name,
@@ -68,7 +72,7 @@ class SemanticEventCollector {
 }
 
 class JsoniqSemanticEventListener extends jsoniqListener {
-    private readonly declarationStack: SemanticDeclaration[][] = [];
+    private readonly declarationStack: AnySemanticDeclaration[][] = [];
 
     constructor(
         private readonly document: TextDocument,
@@ -77,48 +81,67 @@ class JsoniqSemanticEventListener extends jsoniqListener {
         super();
     }
 
+    private createDeclaration<K extends AnySemanticDeclaration["kind"]>(
+        name: SemanticDeclaration<K>["name"],
+        kind: K,
+        node: ParseTree,
+        selectNode: ParseTree = node,
+        extra: Partial<SemanticDeclaration<K>> = {},
+    ): SemanticDeclaration<K> {
+        return {
+            name,
+            kind,
+            range: rangeFromNode(node, this.document),
+            selectionRange: rangeFromNode(selectNode, this.document),
+            ...extra,
+        } as SemanticDeclaration<K>;
+    }
+
     public override enterNamespaceDecl = (node: NamespaceDeclContext): void => {
         const nameNode = node.NCName();
         const prefix = nameNode.getText().trim();
         if (prefix === "") {
-            this.enter([]);
             return;
         }
 
         const declaration = {
-            name: prefix,
+            name: { prefix },
             kind: "namespace",
-            namespaceUri: node.uriLiteral().getText(),
+            extra: { namespaceUri: node.uriLiteral().getText() },
             range: rangeFromNode(node, this.document),
             selectionRange: rangeFromNode(nameNode, this.document),
-        } satisfies SemanticNamespaceDeclaration;
+        } satisfies SemanticDeclaration<"namespace">;
 
-        this.enter([declaration]);
+        this.enter(declaration);
     };
 
     public override exitNamespaceDecl = this.exit;
 
     public override enterContextItemDecl = (node: ContextItemDeclContext): void => {
-        this.enter([this.contextItemDeclaration(node)]);
+        this.enter({
+            name: { label: "context item" },
+            kind: "context-item",
+            range: rangeFromNode(node, this.document),
+            selectionRange: {
+                start: rangeFromNode(node.Kcontext(), this.document).start,
+                end: rangeFromNode(node.Kitem(), this.document).end,
+            },
+        });
     };
 
     public override exitContextItemDecl = this.exit;
 
     public override enterTypeDecl = (node: TypeDeclContext): void => {
-        const nameNode = node.declaredQName();
-        this.enter(this.declaration("type", nameNode.getText(), node, nameNode));
+        const nameNode = node.declaredQName().qname();
+        const name = { qname: parseQname(nameNode) };
+        this.enter(this.createDeclaration(name, "type", node, nameNode));
     };
 
     public override exitTypeDecl = this.exit;
 
     public override enterFunctionDecl = (node: FunctionDeclContext): void => {
         this.enter(
-            this.declaration(
-                "function",
-                functionNameWithArityOrNull(node),
-                node,
-                node.declaredQName(),
-            ),
+            this.createDeclaration(parseFunctionName(node), "function", node, node.declaredQName()),
         );
         this.events.scope(node, true, "function");
     };
@@ -135,24 +158,35 @@ class JsoniqSemanticEventListener extends jsoniqListener {
     public override exitParam = this.exit;
 
     public override enterVarDecl = (node: VarDeclContext): void => {
-        const declarations = this.variableDeclaration(
+        const semicolon = node.Ksemicolon();
+
+        const declaration = this.variableDeclaration(
             "declare-variable",
             node,
             node.declaredVarRef(),
         );
-        const semicolon = node.Ksemicolon();
-        if (semicolon === null || semicolon.symbol.start < 0) {
-            for (const declaration of declarations) {
-                declaration.completed = false;
-            }
-        }
-        this.enter(declarations);
+        declaration.completed = semicolon !== null && semicolon.symbol.start >= 0;
+
+        this.enter(declaration);
     };
 
     public override exitVarDecl = this.exit;
 
-    public override enterForVar = (node: ForVarContext): void =>
-        this.enter(this.forVarDeclarations(node));
+    public override enterForVar = (node: ForVarContext): void => {
+        const declarations: AnySemanticDeclaration[] = [];
+
+        for (const [index, declaredVarRef] of node.declaredVarRef().entries()) {
+            declarations.push(
+                this.variableDeclaration(
+                    index === 0 ? "for" : "for-position",
+                    node,
+                    declaredVarRef,
+                ),
+            );
+        }
+
+        this.enterAll(declarations);
+    };
 
     public override exitForVar = this.exit;
 
@@ -191,10 +225,7 @@ class JsoniqSemanticEventListener extends jsoniqListener {
             return;
         }
 
-        const name = varRefNameOrNull(node);
-        if (name !== null) {
-            this.events.reference(name, "variable", node);
-        }
+        this.events.reference(parseVarName(node), "variable", node);
     };
 
     public override enterFunctionCall = (node: FunctionCallContext): void =>
@@ -203,7 +234,11 @@ class JsoniqSemanticEventListener extends jsoniqListener {
     public override enterNamedFunctionRef = (node: NamedFunctionRefContext): void =>
         this.functionReference(node);
 
-    private enter(declarations: SemanticDeclaration[]): void {
+    private enter(declaration: AnySemanticDeclaration): void {
+        this.enterAll([declaration]);
+    }
+
+    private enterAll(declarations: AnySemanticDeclaration[]): void {
         this.declarationStack.push(declarations);
         for (const declaration of declarations) {
             this.events.enterDeclaration(declaration);
@@ -219,69 +254,22 @@ class JsoniqSemanticEventListener extends jsoniqListener {
         }
     }
 
-    private contextItemDeclaration(node: ContextItemDeclContext): SemanticDeclaration {
-        return {
-            name: "context item",
-            kind: "context-item",
-            range: rangeFromNode(node, this.document),
-            selectionRange: {
-                start: rangeFromNode(node.Kcontext(), this.document).start,
-                end: rangeFromNode(node.Kitem(), this.document).end,
-            },
-        };
-    }
-
-    private declaration(
-        kind: SemanticSimpleDeclarationKind,
-        name: string | null,
-        declarationNode: ParseTree,
-        selectionNode: ParseTree | null,
-    ): SemanticDeclaration[] {
-        const trimmedName = name?.trim();
-        if (trimmedName === undefined || trimmedName === "" || selectionNode === null) {
-            return [];
-        }
-
-        return [
-            {
-                name: trimmedName,
-                kind,
-                range: rangeFromNode(declarationNode, this.document),
-                selectionRange: rangeFromNode(selectionNode, this.document),
-            },
-        ];
-    }
-
     private variableDeclaration(
-        kind: SemanticSimpleDeclarationKind,
+        kind: VariableKind | "parameter",
         declarationNode: ParseTree,
         declaredVarRef: DeclaredVarRefContext,
-    ): SemanticDeclaration[] {
-        return this.declaration(
+    ): SemanticDeclaration<VariableKind | "parameter"> {
+        return this.createDeclaration(
+            parseVarName(declaredVarRef.varRef()),
             kind,
-            varRefNameOrNull(declaredVarRef.varRef()),
             declarationNode,
-            declaredVarRef,
+            declaredVarRef.varRef(),
         );
     }
 
-    private forVarDeclarations(node: ForVarContext): SemanticDeclaration[] {
-        const declarations: SemanticDeclaration[] = [];
-        for (const [index, declaredVarRef] of node.declaredVarRef().entries()) {
-            declarations.push(
-                ...this.variableDeclaration(
-                    index === 0 ? "for" : "for-position",
-                    node,
-                    declaredVarRef,
-                ),
-            );
-        }
-        return declarations;
-    }
-
     private functionReference(node: FunctionCallContext | NamedFunctionRefContext): void {
-        const nameNode = node._fn_name ?? node.qname();
-        const name = functionNameWithArityOrNull(node);
+        const nameNode = node.qname();
+        const name = parseFunctionName(node);
         if (name !== null && nameNode !== null) {
             this.events.reference(name, "function", nameNode);
         }

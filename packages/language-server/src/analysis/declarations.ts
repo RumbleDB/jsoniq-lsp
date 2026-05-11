@@ -1,17 +1,17 @@
 import type { SemanticDeclarationKind } from "server/parser/types/declaration.js";
-import type { SemanticDeclaration } from "server/parser/types/semantic-events.js";
+import type { AnySemanticDeclaration } from "server/parser/types/semantic-events.js";
 
 import type { SourceDefinition } from "./model.js";
 
 interface PendingDeclaration {
-    declaration: SemanticDeclaration;
+    declaration: AnySemanticDeclaration;
     definition: SourceDefinition;
 }
 
 export class PendingDeclarations {
     private readonly stack: PendingDeclaration[] = [];
 
-    public enter(declaration: SemanticDeclaration, definition: SourceDefinition): void {
+    public enter(declaration: AnySemanticDeclaration, definition: SourceDefinition): void {
         this.stack.push({ declaration, definition });
     }
 
@@ -19,7 +19,7 @@ export class PendingDeclarations {
         return this.stack[this.stack.length - 1]?.definition;
     }
 
-    public exit(declaration: SemanticDeclaration): SourceDefinition {
+    public exit(declaration: AnySemanticDeclaration): SourceDefinition {
         const pending = this.stack.pop();
         if (pending === undefined) {
             throw new Error(`Declaration ${declaration.name} exited without being entered.`);
