@@ -221,6 +221,8 @@ class AnalysisBuilder {
                     name,
                     node.range,
                     node.range,
+                    /// Catch variables are visible inmediate after the catch clause starts
+                    this.document.offsetAt(node.range.start),
                 ),
             );
         }
