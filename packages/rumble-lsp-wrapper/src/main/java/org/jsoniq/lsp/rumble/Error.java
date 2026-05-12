@@ -10,8 +10,7 @@ public record Error(
     static Error fromRumbleException(RumbleException exception) {
         return new Error(
                 exception.getErrorCode().toString(),
-                exception.getMessage(),
-                new Position(exception.getMetadata().getTokenLineNumber(),
-                        exception.getMetadata().getTokenColumnNumber()));
+                exception.getJSONiqErrorMessage(),
+                Position.fromExceptionMetadata(exception.getMetadata()));
     }
 }
