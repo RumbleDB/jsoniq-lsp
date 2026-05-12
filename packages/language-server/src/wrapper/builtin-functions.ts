@@ -75,11 +75,11 @@ async function getBuiltinFunctionMap(): Promise<Map<string, BuiltinFunctionDefin
     return builtinDefinitionsPromise;
 }
 
-export async function findBuiltinFunctionDefinition(
+function findBuiltinFunctionDefinition(
+    map: Map<string, BuiltinFunctionDefinition>,
     nameWithArity: string,
-): Promise<BuiltinFunctionDefinition | undefined> {
-    const builtinFunctionMap = await getBuiltinFunctionMap();
-    const direct = builtinFunctionMap.get(nameWithArity);
+): BuiltinFunctionDefinition | undefined {
+    const direct = map.get(nameWithArity);
     if (direct !== undefined) {
         return direct;
     }
@@ -96,7 +96,7 @@ export async function findBuiltinFunctionDefinition(
     }
 
     for (const prefix of DEFAULT_FUNCTION_PREFIXES) {
-        const candidate = builtinFunctionMap.get(`${prefix}:${name}#${arity}`);
+        const candidate = map.get(`${prefix}:${name}#${arity}`);
         if (candidate !== undefined) {
             return candidate;
         }
@@ -105,8 +105,17 @@ export async function findBuiltinFunctionDefinition(
     return undefined;
 }
 
-export async function listBuiltinFunctionDefinitions(): Promise<BuiltinFunctionDefinition[]> {
-    return [...(await getBuiltinFunctionMap()).values()];
+export type BuiltinFunctions = {
+    all: BuiltinFunctionDefinition[];
+    find: (nameWithArity: string) => BuiltinFunctionDefinition | undefined;
+};
+
+export async function getBuiltinFunctions(): Promise<BuiltinFunctions> {
+    const map = await getBuiltinFunctionMap();
+    return {
+        all: [...map.values()],
+        find: (nameWithArity: string) => findBuiltinFunctionDefinition(map, nameWithArity),
+    };
 }
 
 function parseBuiltinFunctionName(nameWithArity: string): FunctionName {

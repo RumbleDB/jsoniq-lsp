@@ -1,3 +1,4 @@
+import { getBuiltinFunctions } from "server/wrapper/builtin-functions.js";
 import { DocumentUri } from "vscode-languageserver";
 import { TextDocument } from "vscode-languageserver-textdocument";
 
@@ -22,7 +23,10 @@ async function getCachedAnalysis(document: TextDocument): Promise<CachedAnalysis
         return cached;
     }
 
-    const analysis = await buildAnalysis(document);
+    const builtinFunctions = await getBuiltinFunctions();
+
+    const analysis = buildAnalysis(document, builtinFunctions);
+
     const next = {
         version: document.version,
         analysis,

@@ -17,7 +17,7 @@ import { getVisibleDeclarationsAtPosition } from "./analysis/queries.js";
 import { collectCompletionIntent } from "./parser/index.js";
 import { qnameToString } from "./parser/types/name.js";
 import { getDocumentText } from "./parser/utils.js";
-import { listBuiltinFunctionDefinitions } from "./wrapper/builtin-functions.js";
+import { getBuiltinFunctions } from "./wrapper/builtin-functions.js";
 
 const VARIABLE_PREFIX_PATTERN = /\$[A-Za-z0-9_.:-]*$/;
 
@@ -106,7 +106,7 @@ function toCompletionItem(declaration: BaseDefinition): CompletionItem {
 }
 
 async function getBuiltinFunctionCompletionItems(): Promise<CompletionItem[]> {
-    return (await listBuiltinFunctionDefinitions()).map((definition) => {
+    return (await getBuiltinFunctions()).all.map((definition) => {
         const { qname, arity } = definition.name;
         const parameterTypes = definition.signature.parameterTypes.join(", ");
         const functionName = qnameToString(qname);

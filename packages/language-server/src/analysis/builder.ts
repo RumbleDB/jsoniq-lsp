@@ -3,7 +3,7 @@ import type { AstNode, FunctionDeclarationAstNode } from "server/parser/types/as
 import type { AnyAstDeclaration } from "server/parser/types/declaration.js";
 import { referenceNameToString } from "server/parser/types/name.js";
 import { comparePositions } from "server/utils/position.js";
-import { findBuiltinFunctionDefinition } from "server/wrapper/builtin-functions.js";
+import { BuiltinFunctions } from "server/wrapper/builtin-functions.js";
 import { DiagnosticSeverity, Position } from "vscode-languageserver";
 import { TextDocument } from "vscode-languageserver-textdocument";
 
@@ -35,7 +35,10 @@ class AnalysisBuilder {
     private currentScope: Scope;
     private readonly deferredScopeDefinitions: SourceDefinition[] = [];
 
-    public constructor(private readonly document: TextDocument) {
+    public constructor(
+        private readonly document: TextDocument,
+        private readonly builtinFunctions: BuiltinFunctions,
+    ) {
         const namespaces = new Map<string, SourceNamespaceDefinition>();
         this.analysis = {
             moduleScope: Scope.module(document, namespaces),
@@ -49,8 +52,8 @@ class AnalysisBuilder {
         this.currentScope = this.analysis.moduleScope;
     }
 
-    public async build(): Promise<JsoniqAnalysis> {
-        await this.visitNode(parseDocument(this.document).ast);
+    public build(): JsoniqAnalysis {
+        this.visitNode(parseDocument(this.document).ast);
 
         this.analysis.symbolIndex.sort((left, right) => {
             const startComparison = comparePositions(left.range.start, right.range.start);
@@ -68,39 +71,39 @@ class AnalysisBuilder {
         return this.analysis;
     }
 
-    private async visitNode(node: AstNode): Promise<void> {
+    private visitNode(node: AstNode): void {
         switch (node.kind) {
             case "module":
-                await this.visitChildren(node);
+                this.visitChildren(node);
                 break;
             case "functionDeclaration":
-                await this.visitFunctionDeclaration(node);
+                this.visitFunctionDeclaration(node);
                 break;
             case "variableDeclaration":
             case "letBinding":
             case "groupByBinding":
             case "countClause":
                 this.registerDeclaration(node.declaration);
-                await this.visitChildren(node);
+                this.visitChildren(node);
                 break;
             case "forBinding":
                 for (const declaration of node.declarations) {
                     this.registerDeclaration(declaration);
                 }
-                await this.visitChildren(node);
+                this.visitChildren(node);
                 break;
             case "flowrExpression":
-                await this.visitScopedChildren(node);
+                this.visitScopedChildren(node);
                 break;
             case "catchClause":
-                await this.visitCatchClause(node);
+                this.visitCatchClause(node);
                 break;
             case "declaration":
                 this.registerDeclaration(node.declaration);
                 break;
             case "variableReference":
             case "contextItemExpression":
-                await this.recordReference({
+                this.recordReference({
                     kind: "variable",
                     name: node.name,
                     range: node.range,
@@ -108,51 +111,51 @@ class AnalysisBuilder {
                 break;
             case "functionCall":
             case "namedFunctionReference":
-                await this.recordReference({
+                this.recordReference({
                     kind: "function",
                     name: node.name,
                     range: node.nameRange,
                 });
-                await this.visitChildren(node);
+                this.visitChildren(node);
                 break;
             case "reference":
-                await this.recordReference({
+                this.recordReference({
                     kind: node.referenceKind,
                     name: node.name,
                     range: node.range,
                 });
                 break;
             case "unknown":
-                await this.visitChildren(node);
+                this.visitChildren(node);
                 break;
             default:
                 throw node satisfies never;
         }
     }
 
-    private async visitChildren(node: AstNode): Promise<void> {
+    private visitChildren(node: AstNode) {
         for (const child of node.children) {
-            await this.visitNode(child);
+            this.visitNode(child);
         }
     }
 
-    private async visitFunctionDeclaration(node: FunctionDeclarationAstNode): Promise<void> {
+    private visitFunctionDeclaration(node: FunctionDeclarationAstNode) {
         this.registerDeclaration(node.declaration);
-        await this.visitScopedChildren(node);
+        this.visitScopedChildren(node);
     }
 
-    private async visitCatchClause(node: Extract<AstNode, { kind: "catchClause" }>): Promise<void> {
+    private visitCatchClause(node: Extract<AstNode, { kind: "catchClause" }>) {
         this.pushScope(node.range.start, node.range.end);
         for (const declaration of this.catchDeclarations(node)) {
             this.registerDeclaration(declaration);
         }
-        await this.visitChildren(node);
+        this.visitChildren(node);
         this.popScope();
     }
 
-    private async visitScopedChildren(node: AstNode): Promise<void> {
+    private visitScopedChildren(node: AstNode) {
         this.pushScope(node.range.start, node.range.end);
-        await this.visitChildren(node);
+        this.visitChildren(node);
         this.popScope();
     }
 
@@ -235,9 +238,9 @@ class AnalysisBuilder {
         }));
     }
 
-    private async resolve(reference: AnyReference): Promise<Definition | undefined> {
+    private resolve(reference: AnyReference): Definition | undefined {
         const lookupName = referenceNameToString(reference.name, reference.kind);
-        const builtinDefinition = await findBuiltinFunctionDefinition(lookupName);
+        const builtinDefinition = this.builtinFunctions.find(lookupName);
         if (builtinDefinition !== undefined) {
             return builtinDefinition;
         }
@@ -249,9 +252,9 @@ class AnalysisBuilder {
         );
     }
 
-    private async recordReference(reference: AnyReference): Promise<void> {
+    private recordReference(reference: AnyReference) {
         const lookupName = referenceNameToString(reference.name, reference.kind);
-        const declaration = await this.resolve(reference);
+        const declaration = this.resolve(reference);
         if (declaration === undefined) {
             this.analysis.diagnostics.push({
                 severity: DiagnosticSeverity.Error,
@@ -280,6 +283,9 @@ class AnalysisBuilder {
     }
 }
 
-export async function buildAnalysis(document: TextDocument): Promise<JsoniqAnalysis> {
-    return new AnalysisBuilder(document).build();
+export function buildAnalysis(
+    document: TextDocument,
+    builtinFunctions: BuiltinFunctions = { all: [], find: () => undefined },
+): JsoniqAnalysis {
+    return new AnalysisBuilder(document, builtinFunctions).build();
 }
