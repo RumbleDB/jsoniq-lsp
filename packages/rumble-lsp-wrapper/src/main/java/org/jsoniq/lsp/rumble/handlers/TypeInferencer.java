@@ -1,6 +1,7 @@
 package org.jsoniq.lsp.rumble.handlers;
 
 import org.jsoniq.lsp.rumble.messages.ResponseBody;
+import org.jsoniq.lsp.rumble.Position;
 import org.jsoniq.lsp.rumble.messages.Request;
 import org.rumbledb.compiler.VisitorHelpers;
 import org.rumbledb.config.RumbleRuntimeConfiguration;
@@ -31,8 +32,6 @@ import java.util.List;
 import java.util.Objects;
 
 public final class TypeInferencer implements RequestHandler {
-    public record Position(int line, int character) {
-    }
 
     public enum VariableKind {
         Declare("declare-variable"),
@@ -62,7 +61,9 @@ public final class TypeInferencer implements RequestHandler {
 
     public interface InferredTypeEntry {
         String kind();
+
         Position position();
+
         String name();
     }
 
@@ -184,25 +185,7 @@ public final class TypeInferencer implements RequestHandler {
                 code,
                 message,
                 metadata.getLocation(),
-                createPosition(metadata));
-    }
-
-    /**
-     * Creates a Position object from the given exception metadata.
-     * 
-     * Note: in language server, the type Position.line uses uinteger type, and
-     * starts from 0,
-     * while in Rumble ExceptionMetadata, the line number starts from 1, that's why
-     * 1 is subtracted from the line number to make it uniform.
-     * 
-     * @param metadata the exception metadata to create the position from
-     * @return a Position object representing the position of the error in the
-     *         source code
-     */
-    private static Position createPosition(ExceptionMetadata metadata) {
-        int line = Math.max(0, metadata.getTokenLineNumber() - 1);
-        int column = Math.max(0, metadata.getTokenColumnNumber());
-        return new Position(line, column);
+                Position.fromExceptionMetadata(metadata));
     }
 
     /**
@@ -267,7 +250,7 @@ public final class TypeInferencer implements RequestHandler {
             returnType = SequenceType.createSequenceType("item*");
         }
 
-        Position position = createPosition(metadata);
+        Position position = Position.fromExceptionMetadata(metadata);
         String functionName = functionDeclaration.getFunctionIdentifier().getName().toString();
         types.add(new FunctionType(position, functionName, parameterTypes, returnType.toString()));
     }
@@ -363,7 +346,7 @@ public final class TypeInferencer implements RequestHandler {
         }
 
         SequenceType variableType = variableDeclaration.getSequenceType();
-        Position position = createPosition(metadata);
+        Position position = Position.fromExceptionMetadata(metadata);
         types.add(new VariableType(
                 VariableKind.Declare,
                 position,
@@ -393,7 +376,7 @@ public final class TypeInferencer implements RequestHandler {
         try {
             SequenceType variableType = context.getVariableSequenceType(variableName);
             ExceptionMetadata metadata = context.getVariableMetadata(variableName);
-            Position position = createPosition(metadata);
+            Position position = Position.fromExceptionMetadata(metadata);
             types.add(new VariableType(kind, position, "$" + variableName.toString(), variableType.toString()));
         } catch (Throwable ignored) {
         }
