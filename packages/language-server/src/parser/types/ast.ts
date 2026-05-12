@@ -23,17 +23,13 @@ export interface AstNodeBase<K extends AstNodeKind> {
     parent?: AstNode;
 }
 
-export interface ModuleAstNode extends AstNodeBase<"module"> {
-    readonly children: AstNode[];
-}
+export interface ModuleAstNode extends AstNodeBase<"module"> {}
 
 export interface FunctionDeclarationAstNode extends AstNodeBase<"functionDeclaration"> {
     readonly declaration: Extract<AnyAstDeclaration, { kind: "function" }>;
 }
 
-export interface FlowrExpressionAstNode extends AstNodeBase<"flowrExpression"> {
-    readonly children: AstNode[];
-}
+export interface FlowrExpressionAstNode extends AstNodeBase<"flowrExpression"> {}
 
 export interface CatchClauseAstNode extends AstNodeBase<"catchClause"> {
     readonly declarations: Extract<AnyAstDeclaration, { kind: "catch-variable" }>[];
