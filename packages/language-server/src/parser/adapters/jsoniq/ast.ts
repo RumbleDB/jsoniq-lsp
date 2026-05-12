@@ -88,7 +88,7 @@ class JsoniqAstBuilder extends jsoniqVisitor<AstVisitResult> {
 
         return [
             {
-                kind: "namespaceDeclaration",
+                kind: "namespace-declaration",
                 prefix,
                 namespaceUri: namespaceUriNode.getText(),
                 range: rangeFromNode(node, this.document),
@@ -100,7 +100,7 @@ class JsoniqAstBuilder extends jsoniqVisitor<AstVisitResult> {
 
     public override visitContextItemDecl = (node: ContextItemDeclContext): AstVisitResult => [
         {
-            kind: "contextItemDeclaration",
+            kind: "context-item-declaration",
             name: {
                 qname: {
                     localName: "$",
@@ -117,7 +117,7 @@ class JsoniqAstBuilder extends jsoniqVisitor<AstVisitResult> {
 
     public override visitContextItemExpr = (node: ContextItemExprContext): AstVisitResult => [
         {
-            kind: "contextItemExpression",
+            kind: "context-item-expression",
             name: { qname: { localName: "$" } },
             range: rangeFromNode(node, this.document),
             children: [],
@@ -128,7 +128,7 @@ class JsoniqAstBuilder extends jsoniqVisitor<AstVisitResult> {
         const nameNode = node.declaredQName().qname();
         return [
             {
-                kind: "typeDeclaration",
+                kind: "type-declaration",
                 name: { qname: parseQname(nameNode) },
                 range: rangeFromNode(node, this.document),
                 selectionRange: rangeFromNode(nameNode, this.document),
@@ -139,7 +139,7 @@ class JsoniqAstBuilder extends jsoniqVisitor<AstVisitResult> {
 
     public override visitFunctionDecl = (node: FunctionDeclContext): AstVisitResult => [
         {
-            kind: "functionDeclaration",
+            kind: "function-declaration",
             range: rangeFromNode(node, this.document),
             name: parseFunctionName(node),
             nameRange: rangeFromNode(node.declaredQName(), this.document),
@@ -156,7 +156,7 @@ class JsoniqAstBuilder extends jsoniqVisitor<AstVisitResult> {
             ? []
             : [
                   {
-                      kind: "variableDeclaration",
+                      kind: "variable-declaration",
                       binding,
                       completed: semicolon !== null && semicolon.symbol.start >= 0,
                       range: rangeFromNode(node, this.document),
@@ -181,7 +181,7 @@ class JsoniqAstBuilder extends jsoniqVisitor<AstVisitResult> {
             ? []
             : [
                   {
-                      kind: "forBinding",
+                      kind: "for-binding",
                       bindings,
                       range: rangeFromNode(node, this.document),
                       children: this.visitChildrenAsNodes(node),
@@ -195,7 +195,7 @@ class JsoniqAstBuilder extends jsoniqVisitor<AstVisitResult> {
             ? []
             : [
                   {
-                      kind: "letBinding",
+                      kind: "let-binding",
                       binding,
                       range: rangeFromNode(node, this.document),
                       children: this.visitChildrenAsNodes(node),
@@ -209,7 +209,7 @@ class JsoniqAstBuilder extends jsoniqVisitor<AstVisitResult> {
             ? []
             : [
                   {
-                      kind: "groupByBinding",
+                      kind: "group-by-binding",
                       binding,
                       range: rangeFromNode(node, this.document),
                       children: this.visitChildrenAsNodes(node),
@@ -223,7 +223,7 @@ class JsoniqAstBuilder extends jsoniqVisitor<AstVisitResult> {
             ? []
             : [
                   {
-                      kind: "countClause",
+                      kind: "count-clause",
                       binding,
                       range: rangeFromNode(node, this.document),
                       children: this.visitChildrenAsNodes(node),
@@ -233,7 +233,7 @@ class JsoniqAstBuilder extends jsoniqVisitor<AstVisitResult> {
 
     public override visitFlowrExpr = (node: FlowrExprContext): AstVisitResult => [
         {
-            kind: "flowrExpression",
+            kind: "flowr-expression",
             range: rangeFromNode(node, this.document),
             children: this.visitChildrenAsNodes(node),
         },
@@ -241,7 +241,7 @@ class JsoniqAstBuilder extends jsoniqVisitor<AstVisitResult> {
 
     public override visitFlowrStatement = (node: FlowrStatementContext): AstVisitResult => [
         {
-            kind: "flowrExpression",
+            kind: "flowr-expression",
             range: rangeFromNode(node, this.document),
             children: this.visitChildrenAsNodes(node),
         },
@@ -257,7 +257,7 @@ class JsoniqAstBuilder extends jsoniqVisitor<AstVisitResult> {
             ? []
             : [
                   {
-                      kind: "variableReference",
+                      kind: "variable-reference",
                       name,
                       range: rangeFromNode(node, this.document),
                       children: [],
@@ -320,7 +320,7 @@ class JsoniqAstBuilder extends jsoniqVisitor<AstVisitResult> {
         return name !== null && nameNode !== null
             ? [
                   {
-                      kind: "functionCall",
+                      kind: "function-call",
                       name,
                       nameRange: rangeFromNode(nameNode, this.document),
                       range: rangeFromNode(node, this.document),
@@ -336,7 +336,7 @@ class JsoniqAstBuilder extends jsoniqVisitor<AstVisitResult> {
         return name !== null && nameNode !== null
             ? [
                   {
-                      kind: "namedFunctionReference",
+                      kind: "named-function-reference",
                       name,
                       nameRange: rangeFromNode(nameNode, this.document),
                       range: rangeFromNode(node, this.document),
@@ -349,7 +349,7 @@ class JsoniqAstBuilder extends jsoniqVisitor<AstVisitResult> {
     private catchClause(node: CatchCaseStatementContext | CatchClauseContext): AstVisitResult {
         return [
             {
-                kind: "catchClause",
+                kind: "catch-clause",
                 range: rangeFromNode(node, this.document),
                 children: this.visitChildrenAsNodes(node),
             },

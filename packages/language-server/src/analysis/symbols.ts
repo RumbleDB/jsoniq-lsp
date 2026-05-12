@@ -24,15 +24,15 @@ export class DocumentSymbolsBuilder {
     private visitNode(node: AstNode): void {
         switch (node.kind) {
             case "module":
-            case "flowrExpression":
+            case "flowr-expression":
             case "unknown":
-            case "catchClause":
+            case "catch-clause":
                 this.visitChildren(node);
                 break;
-            case "namespaceDeclaration":
+            case "namespace-declaration":
                 this.addSymbol(node.prefix, SymbolKind.Namespace, node.range, node.selectionRange);
                 break;
-            case "contextItemDeclaration":
+            case "context-item-declaration":
                 this.addSymbol(
                     varNameToString(node.name),
                     SymbolKind.Variable,
@@ -41,7 +41,7 @@ export class DocumentSymbolsBuilder {
                     true,
                 );
                 break;
-            case "typeDeclaration":
+            case "type-declaration":
                 this.addSymbol(
                     qnameToString(node.name.qname),
                     SymbolKind.Struct,
@@ -49,7 +49,7 @@ export class DocumentSymbolsBuilder {
                     node.selectionRange,
                 );
                 break;
-            case "functionDeclaration": {
+            case "function-declaration": {
                 this.addSymbol(
                     qnameToString(node.name.qname),
                     SymbolKind.Function,
@@ -68,7 +68,7 @@ export class DocumentSymbolsBuilder {
                 this.visitChildren(node);
                 break;
             }
-            case "variableDeclaration":
+            case "variable-declaration":
                 this.addSymbol(
                     varNameToString(node.binding.name),
                     SymbolKind.Variable,
@@ -78,8 +78,8 @@ export class DocumentSymbolsBuilder {
                 );
                 this.visitChildren(node);
                 break;
-            case "letBinding":
-            case "groupByBinding":
+            case "let-binding":
+            case "group-by-binding":
                 this.addSymbol(
                     varNameToString(node.binding.name),
                     SymbolKind.Variable,
@@ -89,7 +89,7 @@ export class DocumentSymbolsBuilder {
                 );
                 this.visitChildren(node);
                 break;
-            case "countClause":
+            case "count-clause":
                 this.addSymbol(
                     varNameToString(node.binding.name),
                     SymbolKind.Variable,
@@ -98,7 +98,7 @@ export class DocumentSymbolsBuilder {
                 );
                 this.visitChildren(node);
                 break;
-            case "forBinding":
+            case "for-binding":
                 for (const binding of node.bindings) {
                     this.addSymbol(
                         varNameToString(binding.name),
@@ -109,10 +109,10 @@ export class DocumentSymbolsBuilder {
                 }
                 this.visitChildren(node);
                 break;
-            case "functionCall":
-            case "namedFunctionReference":
-            case "variableReference":
-            case "contextItemExpression":
+            case "function-call":
+            case "named-function-reference":
+            case "variable-reference":
+            case "context-item-expression":
             case "reference":
                 break;
             default:

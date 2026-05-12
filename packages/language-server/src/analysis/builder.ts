@@ -98,7 +98,7 @@ class AnalysisBuilder {
             case "module":
                 this.visitChildren(node);
                 break;
-            case "namespaceDeclaration":
+            case "namespace-declaration":
                 const definition = createNamespaceDefinition(
                     this.document,
                     node.prefix,
@@ -109,7 +109,7 @@ class AnalysisBuilder {
                 this.recordDefinition(definition);
                 this.analysis.namespaces.set(definition.name.prefix, definition);
                 break;
-            case "contextItemDeclaration":
+            case "context-item-declaration":
                 this.recordDefinition(
                     createVariableDefinition(
                         this.document,
@@ -120,15 +120,15 @@ class AnalysisBuilder {
                     ),
                 );
                 break;
-            case "typeDeclaration":
+            case "type-declaration":
                 this.recordDefinition(
                     createTypeDefinition(this.document, node.name, node.range, node.selectionRange),
                 );
                 break;
-            case "functionDeclaration":
+            case "function-declaration":
                 this.visitFunctionDeclaration(node);
                 break;
-            case "variableDeclaration": {
+            case "variable-declaration": {
                 const variableDefinition = createVariableDefinition(
                     this.document,
                     "declare-variable",
@@ -143,40 +143,40 @@ class AnalysisBuilder {
                 this.recordDefinition(variableDefinition);
                 break;
             }
-            case "letBinding":
+            case "let-binding":
                 this.visitChildren(node);
                 this.recordDefinition(this.variableDefinition("let", node.binding));
                 break;
-            case "groupByBinding":
+            case "group-by-binding":
                 this.visitChildren(node);
                 this.recordDefinition(this.variableDefinition("group-by", node.binding));
                 break;
-            case "countClause":
+            case "count-clause":
                 this.visitChildren(node);
                 this.recordDefinition(this.variableDefinition("count", node.binding));
                 break;
-            case "forBinding":
+            case "for-binding":
                 this.visitChildren(node);
                 for (const binding of node.bindings) {
                     this.recordDefinition(this.variableDefinition(binding.bindingKind, binding));
                 }
                 break;
-            case "flowrExpression":
+            case "flowr-expression":
                 this.visitScopedChildren(node);
                 break;
-            case "catchClause":
+            case "catch-clause":
                 this.visitCatchClause(node);
                 break;
-            case "variableReference":
-            case "contextItemExpression":
+            case "variable-reference":
+            case "context-item-expression":
                 this.recordReference({
                     kind: "variable",
                     name: node.name,
                     range: node.range,
                 });
                 break;
-            case "functionCall":
-            case "namedFunctionReference":
+            case "function-call":
+            case "named-function-reference":
                 this.recordReference({
                     kind: "function",
                     name: node.name,

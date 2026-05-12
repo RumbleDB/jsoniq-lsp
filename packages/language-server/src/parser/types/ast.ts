@@ -4,23 +4,23 @@ import type { FunctionName, Prefix, QName, ReferenceNameByKind, VarName } from "
 
 export type AstNodeKind =
     | "module"
-    | "namespaceDeclaration"
-    | "contextItemDeclaration"
-    | "typeDeclaration"
-    | "functionDeclaration"
-    | "variableDeclaration"
-    | "forBinding"
-    | "letBinding"
-    | "groupByBinding"
-    | "countClause"
-    | "flowrExpression"
-    | "catchClause"
+    | "namespace-declaration"
+    | "context-item-declaration"
+    | "type-declaration"
+    | "function-declaration"
+    | "variable-declaration"
+    | "for-binding"
+    | "let-binding"
+    | "group-by-binding"
+    | "count-clause"
+    | "flowr-expression"
+    | "catch-clause"
     | "declaration"
     | "reference"
-    | "functionCall"
-    | "namedFunctionReference"
-    | "variableReference"
-    | "contextItemExpression"
+    | "function-call"
+    | "named-function-reference"
+    | "variable-reference"
+    | "context-item-expression"
     | "unknown";
 
 export interface AstNodeBase<K extends AstNodeKind> {
@@ -32,18 +32,18 @@ export interface AstNodeBase<K extends AstNodeKind> {
 
 export interface ModuleAstNode extends AstNodeBase<"module"> {}
 
-export interface NamespaceDeclarationAstNode extends AstNodeBase<"namespaceDeclaration"> {
+export interface NamespaceDeclarationAstNode extends AstNodeBase<"namespace-declaration"> {
     readonly prefix: Prefix;
     readonly namespaceUri: string;
     readonly selectionRange: Range;
 }
 
-export interface ContextItemDeclarationAstNode extends AstNodeBase<"contextItemDeclaration"> {
+export interface ContextItemDeclarationAstNode extends AstNodeBase<"context-item-declaration"> {
     readonly name: VarName;
     readonly selectionRange: Range;
 }
 
-export interface TypeDeclarationAstNode extends AstNodeBase<"typeDeclaration"> {
+export interface TypeDeclarationAstNode extends AstNodeBase<"type-declaration"> {
     readonly name: { qname: QName };
     readonly selectionRange: Range;
 }
@@ -64,36 +64,36 @@ export interface ForBindingVariable extends AstBinding {
     readonly bindingKind: "for" | "for-position";
 }
 
-export interface FunctionDeclarationAstNode extends AstNodeBase<"functionDeclaration"> {
+export interface FunctionDeclarationAstNode extends AstNodeBase<"function-declaration"> {
     readonly name: FunctionName;
     readonly nameRange: Range;
     readonly parameters: AstParameter[];
 }
 
-export interface VariableDeclarationAstNode extends AstNodeBase<"variableDeclaration"> {
+export interface VariableDeclarationAstNode extends AstNodeBase<"variable-declaration"> {
     readonly binding: AstBinding;
     readonly completed: boolean;
 }
 
-export interface ForBindingAstNode extends AstNodeBase<"forBinding"> {
+export interface ForBindingAstNode extends AstNodeBase<"for-binding"> {
     readonly bindings: ForBindingVariable[];
 }
 
-export interface LetBindingAstNode extends AstNodeBase<"letBinding"> {
+export interface LetBindingAstNode extends AstNodeBase<"let-binding"> {
     readonly binding: AstBinding;
 }
 
-export interface GroupByBindingAstNode extends AstNodeBase<"groupByBinding"> {
+export interface GroupByBindingAstNode extends AstNodeBase<"group-by-binding"> {
     readonly binding: AstBinding;
 }
 
-export interface CountClauseAstNode extends AstNodeBase<"countClause"> {
+export interface CountClauseAstNode extends AstNodeBase<"count-clause"> {
     readonly binding: AstBinding;
 }
 
-export interface FlowrExpressionAstNode extends AstNodeBase<"flowrExpression"> {}
+export interface FlowrExpressionAstNode extends AstNodeBase<"flowr-expression"> {}
 
-export interface CatchClauseAstNode extends AstNodeBase<"catchClause"> {}
+export interface CatchClauseAstNode extends AstNodeBase<"catch-clause"> {}
 
 export type ReferenceAstNode<K extends keyof ReferenceNameByKind = keyof ReferenceNameByKind> =
     K extends keyof ReferenceNameByKind
@@ -103,21 +103,21 @@ export type ReferenceAstNode<K extends keyof ReferenceNameByKind = keyof Referen
           }
         : never;
 
-export interface FunctionCallAstNode extends AstNodeBase<"functionCall"> {
+export interface FunctionCallAstNode extends AstNodeBase<"function-call"> {
     readonly name: FunctionName;
     readonly nameRange: Range;
 }
 
-export interface NamedFunctionReferenceAstNode extends AstNodeBase<"namedFunctionReference"> {
+export interface NamedFunctionReferenceAstNode extends AstNodeBase<"named-function-reference"> {
     readonly name: FunctionName;
     readonly nameRange: Range;
 }
 
-export interface VariableReferenceAstNode extends AstNodeBase<"variableReference"> {
+export interface VariableReferenceAstNode extends AstNodeBase<"variable-reference"> {
     readonly name: ReferenceNameByKind["variable"];
 }
 
-export interface ContextItemExpressionAstNode extends AstNodeBase<"contextItemExpression"> {
+export interface ContextItemExpressionAstNode extends AstNodeBase<"context-item-expression"> {
     readonly name: ReferenceNameByKind["variable"];
 }
 
