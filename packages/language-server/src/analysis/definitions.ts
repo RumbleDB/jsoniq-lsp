@@ -1,7 +1,7 @@
 import type {
-    AnySemanticDeclaration,
-    SemanticParameterDeclaration,
-} from "server/parser/types/semantic-events.js";
+    AnyAstDeclaration,
+    AstParameterDeclaration,
+} from "server/parser/types/declaration.js";
 import { TextDocument } from "vscode-languageserver-textdocument";
 
 import type {
@@ -14,7 +14,7 @@ import type {
 
 export function createSourceDefinition(
     document: TextDocument,
-    declaration: AnySemanticDeclaration,
+    declaration: AnyAstDeclaration,
 ): SourceDefinition {
     const base = {
         range: declaration.range,
@@ -68,7 +68,7 @@ export function createSourceDefinition(
 
 export function createSourceParameterDefinition(
     document: TextDocument,
-    declaration: SemanticParameterDeclaration,
+    declaration: AstParameterDeclaration,
     containingFunction: SourceFunctionDefinition,
 ): SourceParameterDefinition {
     return {

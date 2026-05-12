@@ -1,3 +1,4 @@
+import type { ScopeKind } from "server/parser/types/declaration.js";
 import {
     type FunctionName,
     type Prefix,
@@ -5,7 +6,6 @@ import {
     type ReferenceNameByKind,
     type VarName,
 } from "server/parser/types/name.js";
-import type { ScopeKind } from "server/parser/types/semantic-events.js";
 import { getDocumentText } from "server/parser/utils.js";
 import { TextDocument } from "vscode-languageserver-textdocument";
 

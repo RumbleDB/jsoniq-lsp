@@ -1,4 +1,4 @@
-import type { SemanticDeclarationKind, VariableKind } from "server/parser/types/declaration.js";
+import type { DeclarationKind, VariableKind } from "server/parser/types/declaration.js";
 import {
     type DeclarationNameByKind,
     type FunctionName,
@@ -13,7 +13,7 @@ import type { Diagnostic, Range } from "vscode-languageserver";
 
 import type { Scope } from "./scope.js";
 
-export type DefinitionKind = SemanticDeclarationKind | "builtin-function";
+export type DefinitionKind = DeclarationKind | "builtin-function";
 
 export type DefinitionNameByKind = DeclarationNameByKind & {
     "builtin-function": FunctionName;
@@ -34,7 +34,7 @@ export type BaseDefinition<K extends DefinitionKind = DefinitionKind> = K extend
     : never;
 
 export interface BaseSourceDefinition<
-    K extends SemanticDeclarationKind = SemanticDeclarationKind,
+    K extends DeclarationKind = DeclarationKind,
 > extends AbstractDefinition<K> {
     // Entire range of the declaration.
     range: Range;

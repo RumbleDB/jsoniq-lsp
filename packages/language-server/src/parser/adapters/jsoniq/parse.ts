@@ -12,9 +12,9 @@ import { getDocumentText } from "server/parser/utils.js";
 import { Diagnostic, DiagnosticSeverity, type Range } from "vscode-languageserver";
 import { TextDocument } from "vscode-languageserver-textdocument";
 
+import { buildJsoniqAst } from "./ast.js";
 import { jsoniqLexer } from "./grammar/jsoniqLexer.js";
 import { jsoniqParser } from "./grammar/jsoniqParser.js";
-import { collectSemanticEvents } from "./semantic-events.js";
 
 export interface JsoniqParsedDocument extends ParseResult {
     parser: jsoniqParser;
@@ -81,14 +81,15 @@ export function parseJsoniq(document: TextDocument): JsoniqParsedDocument {
     parser.addErrorListener(errorListener);
 
     const tree = parser.moduleAndThisIsIt();
+    const ast = buildJsoniqAst(tree, document);
 
     tokenStream.fill();
 
     return {
         parser,
         tokens: tokenStream.getTokens(),
+        ast,
         diagnostics: errorListener.diagnostics,
-        semanticEvents: collectSemanticEvents(tree, document),
     };
 }
 

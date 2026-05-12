@@ -1,9 +1,10 @@
 import { parseDocument } from "server/parser/index.js";
+import type { AstNode, FunctionDeclarationAstNode } from "server/parser/types/ast.js";
+import type { AnyAstDeclaration, ScopeKind } from "server/parser/types/declaration.js";
 import { referenceNameToString } from "server/parser/types/name.js";
-import type { AnySemanticDeclaration, ScopeKind } from "server/parser/types/semantic-events.js";
 import { comparePositions } from "server/utils/position.js";
 import { findBuiltinFunctionDefinition } from "server/wrapper/builtin-functions.js";
-import { DiagnosticSeverity, Position, type Range } from "vscode-languageserver";
+import { DiagnosticSeverity, Position } from "vscode-languageserver";
 import { TextDocument } from "vscode-languageserver-textdocument";
 
 import { createSourceDefinition, createSourceParameterDefinition } from "./definitions.js";
@@ -39,26 +40,7 @@ class AnalysisBuilder {
     }
 
     public async build(): Promise<JsoniqAnalysis> {
-        const events = parseDocument(this.document).semanticEvents;
-
-        for (const event of events) {
-            switch (event.type) {
-                case "declaration":
-                    this.registerDeclaration(event.declaration);
-                    break;
-                case "reference":
-                    await this.recordReference(event);
-                    break;
-                case "enterScope":
-                    this.pushScope(event.scopeKind, event.range.start, event.range.end);
-                    break;
-                case "exitScope":
-                    this.popScope(event.range.end, event.scopeKind);
-                    break;
-                default:
-                    throw event satisfies never;
-            }
-        }
+        await this.visitNode(parseDocument(this.document).ast);
 
         this.analysis.symbolIndex.sort((left, right) => {
             const startComparison = comparePositions(left.range.start, right.range.start);
@@ -76,6 +58,81 @@ class AnalysisBuilder {
         return this.analysis;
     }
 
+    private async visitNode(node: AstNode): Promise<void> {
+        switch (node.kind) {
+            case "module":
+                await this.visitChildren(node);
+                break;
+            case "functionDeclaration":
+                await this.visitFunctionDeclaration(node);
+                break;
+            case "flowrExpression":
+                await this.visitScopedChildren(node, "flowr");
+                break;
+            case "catchClause":
+                await this.visitCatchClause(node);
+                break;
+            case "declaration":
+                this.registerDeclaration(node.declaration);
+                break;
+            case "variableReference":
+            case "contextItemExpression":
+                await this.recordReference({
+                    kind: "variable",
+                    name: node.name,
+                    range: node.range,
+                });
+                break;
+            case "functionCall":
+            case "namedFunctionReference":
+                await this.recordReference({
+                    kind: "function",
+                    name: node.name,
+                    range: node.nameRange,
+                });
+                await this.visitChildren(node);
+                break;
+            case "reference":
+                await this.recordReference({
+                    kind: node.referenceKind,
+                    name: node.name,
+                    range: node.range,
+                });
+                break;
+            case "unknown":
+                await this.visitChildren(node);
+                break;
+            default:
+                throw node satisfies never;
+        }
+    }
+
+    private async visitChildren(node: AstNode): Promise<void> {
+        for (const child of node.children) {
+            await this.visitNode(child);
+        }
+    }
+
+    private async visitFunctionDeclaration(node: FunctionDeclarationAstNode): Promise<void> {
+        this.registerDeclaration(node.declaration);
+        await this.visitScopedChildren(node, "function");
+    }
+
+    private async visitCatchClause(node: Extract<AstNode, { kind: "catchClause" }>): Promise<void> {
+        this.pushScope("catch", node.range.start, node.range.end);
+        for (const declaration of node.declarations) {
+            this.registerDeclaration(declaration);
+        }
+        await this.visitChildren(node);
+        this.popScope("catch");
+    }
+
+    private async visitScopedChildren(node: AstNode, scopeKind: ScopeKind): Promise<void> {
+        this.pushScope(scopeKind, node.range.start, node.range.end);
+        await this.visitChildren(node);
+        this.popScope(scopeKind);
+    }
+
     private pushScope(scopeKind: ScopeKind, start: Position, end: Position): void {
         this.currentScope = this.currentScope.enter(
             scopeKind,
@@ -88,7 +145,7 @@ class AnalysisBuilder {
         }
     }
 
-    private popScope(scopeEnd: Range["end"], scopeKind: ScopeKind): void {
+    private popScope(scopeKind: ScopeKind): void {
         if (this.currentScope.kind !== scopeKind) {
             throw new Error(
                 `Tried to exit ${scopeKind} scope while inside ${this.currentScope.kind} scope.`,
@@ -111,7 +168,7 @@ class AnalysisBuilder {
         });
     }
 
-    private registerDeclaration(declaration: AnySemanticDeclaration): void {
+    private registerDeclaration(declaration: AnyAstDeclaration): void {
         const definition = createSourceDefinition(this.document, declaration);
         this.registerDefinition(definition);
 

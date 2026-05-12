@@ -1,13 +1,13 @@
 import { parseDocument } from "server/parser/index.js";
-import type { SemanticDeclarationKind } from "server/parser/types/declaration.js";
+import type { AstNode } from "server/parser/types/ast.js";
+import type { AnyAstDeclaration, DeclarationKind } from "server/parser/types/declaration.js";
 import { qnameToString, varNameToString } from "server/parser/types/name.js";
-import type { AnySemanticDeclaration } from "server/parser/types/semantic-events.js";
 import { comparePositions } from "server/utils/position.js";
 import { DocumentSymbol, SymbolKind } from "vscode-languageserver";
 import { TextDocument } from "vscode-languageserver-textdocument";
 
 interface DocumentSymbolOwner {
-    declaration: AnySemanticDeclaration;
+    declaration: AnyAstDeclaration;
     symbol: DocumentSymbol;
 }
 
@@ -18,26 +18,48 @@ export class DocumentSymbolsBuilder {
     public constructor(private readonly document: TextDocument) {}
 
     public build(): DocumentSymbol[] {
-        const events = parseDocument(this.document).semanticEvents;
-
-        for (const event of events) {
-            switch (event.type) {
-                case "declaration":
-                    this.addDeclaration(event.declaration);
-                    break;
-                case "enterScope":
-                case "exitScope":
-                case "reference":
-                    break;
-                default:
-                    throw event satisfies never;
-            }
-        }
-
+        this.visitNode(parseDocument(this.document).ast);
         return this.symbols;
     }
 
-    private addDeclaration(declaration: AnySemanticDeclaration): void {
+    private visitNode(node: AstNode): void {
+        switch (node.kind) {
+            case "module":
+            case "flowrExpression":
+            case "unknown":
+                this.visitChildren(node);
+                break;
+            case "functionDeclaration":
+                this.addDeclaration(node.declaration);
+                this.visitChildren(node);
+                break;
+            case "catchClause":
+                for (const declaration of node.declarations) {
+                    this.addDeclaration(declaration);
+                }
+                this.visitChildren(node);
+                break;
+            case "declaration":
+                this.addDeclaration(node.declaration);
+                break;
+            case "functionCall":
+            case "namedFunctionReference":
+            case "variableReference":
+            case "contextItemExpression":
+            case "reference":
+                break;
+            default:
+                throw node satisfies never;
+        }
+    }
+
+    private visitChildren(node: AstNode): void {
+        for (const child of node.children) {
+            this.visitNode(child);
+        }
+    }
+
+    private addDeclaration(declaration: AnyAstDeclaration): void {
         const symbol = toDocumentSymbol(declaration);
         if (symbol === undefined) {
             return;
@@ -64,7 +86,7 @@ export class DocumentSymbolsBuilder {
         }
     }
 
-    private leaveCompletedOwners(declaration: AnySemanticDeclaration): void {
+    private leaveCompletedOwners(declaration: AnyAstDeclaration): void {
         while (!this.currentOwnerContains(declaration)) {
             this.owners.pop();
         }
@@ -74,7 +96,7 @@ export class DocumentSymbolsBuilder {
         return this.owners[this.owners.length - 1];
     }
 
-    private currentOwnerContains(declaration: AnySemanticDeclaration): boolean {
+    private currentOwnerContains(declaration: AnyAstDeclaration): boolean {
         const owner = this.currentOwner();
         if (owner === undefined) {
             return true;
@@ -87,7 +109,7 @@ export class DocumentSymbolsBuilder {
     }
 }
 
-function toDocumentSymbol(declaration: AnySemanticDeclaration): DocumentSymbol | undefined {
+function toDocumentSymbol(declaration: AnyAstDeclaration): DocumentSymbol | undefined {
     const name = toSymbolName(declaration);
 
     if (name === null || name.trim() === "") {
@@ -103,13 +125,13 @@ function toDocumentSymbol(declaration: AnySemanticDeclaration): DocumentSymbol |
     };
 }
 
-function declarationCanContainChildSymbols(kind: SemanticDeclarationKind): boolean {
+function declarationCanContainChildSymbols(kind: DeclarationKind): boolean {
     return (
         kind === "function" || kind === "declare-variable" || kind === "let" || kind === "group-by"
     );
 }
 
-function toSymbolName(declaration: AnySemanticDeclaration): string {
+function toSymbolName(declaration: AnyAstDeclaration): string {
     switch (declaration.kind) {
         case "count":
         case "declare-variable":
@@ -131,7 +153,7 @@ function toSymbolName(declaration: AnySemanticDeclaration): string {
     }
 }
 
-function definitionKindToSymbolKind(kind: SemanticDeclarationKind): SymbolKind {
+function definitionKindToSymbolKind(kind: DeclarationKind): SymbolKind {
     switch (kind) {
         case "namespace":
             return SymbolKind.Namespace;
