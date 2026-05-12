@@ -1,6 +1,6 @@
 import { parseDocument } from "server/parser/index.js";
 import type { AstNode, FunctionDeclarationAstNode } from "server/parser/types/ast.js";
-import type { AnyAstDeclaration, ScopeKind } from "server/parser/types/declaration.js";
+import type { AnyAstDeclaration } from "server/parser/types/declaration.js";
 import { referenceNameToString } from "server/parser/types/name.js";
 import { comparePositions } from "server/utils/position.js";
 import { findBuiltinFunctionDefinition } from "server/wrapper/builtin-functions.js";
@@ -67,7 +67,7 @@ class AnalysisBuilder {
                 await this.visitFunctionDeclaration(node);
                 break;
             case "flowrExpression":
-                await this.visitScopedChildren(node, "flowr");
+                await this.visitScopedChildren(node);
                 break;
             case "catchClause":
                 await this.visitCatchClause(node);
@@ -115,27 +115,26 @@ class AnalysisBuilder {
 
     private async visitFunctionDeclaration(node: FunctionDeclarationAstNode): Promise<void> {
         this.registerDeclaration(node.declaration);
-        await this.visitScopedChildren(node, "function");
+        await this.visitScopedChildren(node);
     }
 
     private async visitCatchClause(node: Extract<AstNode, { kind: "catchClause" }>): Promise<void> {
-        this.pushScope("catch", node.range.start, node.range.end);
+        this.pushScope(node.range.start, node.range.end);
         for (const declaration of node.declarations) {
             this.registerDeclaration(declaration);
         }
         await this.visitChildren(node);
-        this.popScope("catch");
+        this.popScope();
     }
 
-    private async visitScopedChildren(node: AstNode, scopeKind: ScopeKind): Promise<void> {
-        this.pushScope(scopeKind, node.range.start, node.range.end);
+    private async visitScopedChildren(node: AstNode): Promise<void> {
+        this.pushScope(node.range.start, node.range.end);
         await this.visitChildren(node);
-        this.popScope(scopeKind);
+        this.popScope();
     }
 
-    private pushScope(scopeKind: ScopeKind, start: Position, end: Position): void {
+    private pushScope(start: Position, end: Position): void {
         this.currentScope = this.currentScope.enter(
-            scopeKind,
             this.document.offsetAt(start),
             this.document.offsetAt(end),
         );
@@ -145,13 +144,7 @@ class AnalysisBuilder {
         }
     }
 
-    private popScope(scopeKind: ScopeKind): void {
-        if (this.currentScope.kind !== scopeKind) {
-            throw new Error(
-                `Tried to exit ${scopeKind} scope while inside ${this.currentScope.kind} scope.`,
-            );
-        }
-
+    private popScope(): void {
         const parent = this.currentScope.parent;
         if (parent === undefined) {
             throw new Error("Cannot exit the module scope.");

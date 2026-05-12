@@ -1,4 +1,3 @@
-import type { ScopeKind } from "server/parser/types/declaration.js";
 import {
     type FunctionName,
     type Prefix,
@@ -15,14 +14,11 @@ import {
     type SourceNamespaceDefinition,
 } from "./model.js";
 
-export type AnalysisScopeKind = ScopeKind | "module";
-
 export class Scope {
     private readonly definitionByName = new Map<string, SourceDefinition[]>();
     private readonly children: Scope[] = [];
 
     private constructor(
-        public readonly kind: AnalysisScopeKind,
         public readonly parent: Scope | undefined,
         public readonly startOffset: number,
         public readonly endOffset: number,
@@ -33,14 +29,11 @@ export class Scope {
         document: TextDocument,
         namespaces: ReadonlyMap<Prefix, SourceNamespaceDefinition>,
     ): Scope {
-        return new Scope("module", undefined, 0, getDocumentText(document).length, namespaces);
+        return new Scope(undefined, 0, getDocumentText(document).length, namespaces);
     }
 
-    /**
-     * Enters a new scope.
-     */
-    public enter(kind: ScopeKind, startOffset: number, endOffset: number): Scope {
-        const child = new Scope(kind, this, startOffset, endOffset, this.namespaces);
+    public enter(startOffset: number, endOffset: number): Scope {
+        const child = new Scope(this, startOffset, endOffset, this.namespaces);
         this.children.push(child);
         return child;
     }

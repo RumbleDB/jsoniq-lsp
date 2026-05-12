@@ -13,8 +13,6 @@ export type VariableKind =
 
 export type DeclarationKind = VariableKind | "namespace" | "type" | "parameter" | "function";
 
-export type ScopeKind = "function" | "flowr" | "catch";
-
 type AstDeclarationBase<K extends DeclarationKind> = {
     name: DeclarationNameByKind[K];
     kind: K;
