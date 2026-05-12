@@ -1,3 +1,5 @@
+import { Position } from "vscode-languageserver";
+
 import type {
     BuiltInFunctionListResponseBody,
     BuiltinFunctionsRequestPayload,
@@ -37,7 +39,11 @@ export type WrapperDaemonResponse<ResponseType extends WrapperRequestType, Respo
     id: number;
     responseType: ResponseType;
     body: ResponseBody;
-    error: string | null;
+    error: {
+        code: string;
+        message: string;
+        position: Position | null;
+    };
 };
 
 export type WrapperResponseBodyByType = {

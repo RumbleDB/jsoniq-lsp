@@ -251,11 +251,6 @@ class RumbleWrapperClient {
             return;
         }
 
-        if (response.error !== null) {
-            pendingRequest.reject(new Error(response.error));
-            return;
-        }
-
         pendingRequest.resolve(response);
     }
 
