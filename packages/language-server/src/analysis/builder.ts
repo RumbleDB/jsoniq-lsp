@@ -21,7 +21,6 @@ import {
 } from "./definitions.js";
 import {
     type AnyReference,
-    DeclarationKind,
     type Definition,
     type JsoniqAnalysis,
     type ResolvedReference,
@@ -29,7 +28,6 @@ import {
     type SourceFunctionDefinition,
     type SourceNamespaceDefinition,
     type VariableKind,
-    definitionNameToString,
     isSourceDefinition,
 } from "./model.js";
 import { Scope } from "./scope.js";
@@ -42,12 +40,6 @@ const CATCH_VARIABLES = [
     { qname: { prefix: "err", localName: "line-number" } },
     { qname: { prefix: "err", localName: "column-number" } },
     { qname: { prefix: "err", localName: "additional" } },
-] as const;
-
-const UNIQUE_DECLARATION_TYPES: DeclarationKind[] = [
-    "namespace",
-    "type",
-    "declare-variable",
 ] as const;
 
 class AnalysisBuilder {
@@ -258,32 +250,12 @@ class AnalysisBuilder {
     }
 
     private recordDefinition(definition: SourceDefinition): void {
-        const duplicateDefinition = UNIQUE_DECLARATION_TYPES.includes(definition.kind)
-            ? this.analysis.definitions.find(
-                  (existingDefinition) =>
-                      existingDefinition.kind === definition.kind &&
-                      definitionNameToString(existingDefinition) ===
-                          definitionNameToString(definition),
-              )
-            : undefined;
-
         this.analysis.definitions.push(definition);
         this.analysis.symbolIndex.push({
             range: definition.selectionRange,
             declaration: definition,
             reference: undefined,
         });
-
-        if (duplicateDefinition !== undefined) {
-            this.analysis.diagnostics.push({
-                severity: DiagnosticSeverity.Error,
-                message: `Duplicate ${definition.kind} declaration for '${definitionNameToString(definition)}'.`,
-                range: definition.range,
-                code: `duplicate-${definition.kind}`,
-            });
-            return;
-        }
-
         this.currentScope.declare(definition);
     }
 
