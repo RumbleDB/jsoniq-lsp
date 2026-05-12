@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0"
-         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>org.jsoniq.lsp</groupId>
@@ -14,13 +14,19 @@
         <maven.compiler.source>17</maven.compiler.source>
         <maven.compiler.target>17</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <rumble.version>2.1.0</rumble.version>
+        <rumble.local.jar>
+            ${project.basedir}/rumble/target/rumbledb-${rumble.version}-jar-with-dependencies.jar
+        </rumble.local.jar>
     </properties>
 
     <dependencies>
         <dependency>
             <groupId>com.github.rumbledb</groupId>
             <artifactId>rumbledb</artifactId>
-            <version>2.0.0</version>
+            <version>${rumble.version}</version>
+            <scope>system</scope>
+            <systemPath>${rumble.local.jar}</systemPath>
         </dependency>
         <dependency>
             <groupId>com.esotericsoftware</groupId>
