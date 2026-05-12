@@ -21,6 +21,7 @@ import {
 } from "./definitions.js";
 import {
     type AnyReference,
+    DeclarationKind,
     type Definition,
     type JsoniqAnalysis,
     type ResolvedReference,
@@ -28,6 +29,7 @@ import {
     type SourceFunctionDefinition,
     type SourceNamespaceDefinition,
     type VariableKind,
+    definitionNameToString,
     isSourceDefinition,
 } from "./model.js";
 import { Scope } from "./scope.js";
@@ -42,13 +44,18 @@ const CATCH_VARIABLES = [
     { qname: { prefix: "err", localName: "additional" } },
 ] as const;
 
+const UNIQUE_DECLARATION_TYPES: DeclarationKind[] = [
+    "namespace",
+    "type",
+    "declare-variable",
+] as const;
+
 class AnalysisBuilder {
     private static readonly NEVER_VISIBLE_OFFSET = Number.POSITIVE_INFINITY;
 
     private readonly analysis: JsoniqAnalysis;
 
     private currentScope: Scope;
-    private readonly deferredScopeDefinitions: SourceDefinition[] = [];
 
     public constructor(
         private readonly document: TextDocument,
@@ -92,18 +99,18 @@ class AnalysisBuilder {
                 this.visitChildren(node);
                 break;
             case "namespaceDeclaration":
-                this.recordScopedDefinition(
-                    createNamespaceDefinition(
-                        this.document,
-                        node.prefix,
-                        node.namespaceUri,
-                        node.range,
-                        node.selectionRange,
-                    ),
+                const definition = createNamespaceDefinition(
+                    this.document,
+                    node.prefix,
+                    node.namespaceUri,
+                    node.range,
+                    node.selectionRange,
                 );
+                this.recordDefinition(definition);
+                this.analysis.namespaces.set(definition.name.prefix, definition);
                 break;
             case "contextItemDeclaration":
-                this.recordScopedDefinition(
+                this.recordDefinition(
                     createVariableDefinition(
                         this.document,
                         "declare-variable",
@@ -114,7 +121,7 @@ class AnalysisBuilder {
                 );
                 break;
             case "typeDeclaration":
-                this.recordScopedDefinition(
+                this.recordDefinition(
                     createTypeDefinition(this.document, node.name, node.range, node.selectionRange),
                 );
                 break;
@@ -132,31 +139,26 @@ class AnalysisBuilder {
                         ? this.document.offsetAt(node.range.end)
                         : AnalysisBuilder.NEVER_VISIBLE_OFFSET,
                 );
-                this.recordDefinition(variableDefinition);
                 this.visitChildren(node);
-                if (node.completed) {
-                    this.currentScope.declare(variableDefinition);
-                }
+                this.recordDefinition(variableDefinition);
                 break;
             }
             case "letBinding":
                 this.visitChildren(node);
-                this.recordScopedDefinition(this.variableDefinition("let", node.binding));
+                this.recordDefinition(this.variableDefinition("let", node.binding));
                 break;
             case "groupByBinding":
                 this.visitChildren(node);
-                this.recordScopedDefinition(this.variableDefinition("group-by", node.binding));
+                this.recordDefinition(this.variableDefinition("group-by", node.binding));
                 break;
             case "countClause":
                 this.visitChildren(node);
-                this.recordScopedDefinition(this.variableDefinition("count", node.binding));
+                this.recordDefinition(this.variableDefinition("count", node.binding));
                 break;
             case "forBinding":
                 this.visitChildren(node);
                 for (const binding of node.bindings) {
-                    this.recordScopedDefinition(
-                        this.variableDefinition(binding.bindingKind, binding),
-                    );
+                    this.recordDefinition(this.variableDefinition(binding.bindingKind, binding));
                 }
                 break;
             case "flowrExpression":
@@ -210,15 +212,17 @@ class AnalysisBuilder {
             node.range,
             node.nameRange,
         );
-        this.recordScopedDefinition(definition);
+        this.recordDefinition(definition);
+        this.pushScope(node.range.start, node.range.end);
         this.registerFunctionParameters(definition, node.parameters);
-        this.visitScopedChildren(node);
+        this.visitChildren(node);
+        this.popScope();
     }
 
     private visitCatchClause(node: CatchClauseAstNode) {
         this.pushScope(node.range.start, node.range.end);
         for (const name of CATCH_VARIABLES) {
-            this.recordScopedDefinition(
+            this.recordDefinition(
                 createVariableDefinition(
                     this.document,
                     "catch-variable",
@@ -243,10 +247,6 @@ class AnalysisBuilder {
             this.document.offsetAt(start),
             this.document.offsetAt(end),
         );
-
-        for (const definition of this.deferredScopeDefinitions.splice(0)) {
-            this.currentScope.declare(definition);
-        }
     }
 
     private popScope(): void {
@@ -257,39 +257,34 @@ class AnalysisBuilder {
         this.currentScope = parent;
     }
 
-    private registerDefinition(newDefinition: SourceDefinition): void {
-        this.analysis.definitions.push(newDefinition);
+    private recordDefinition(definition: SourceDefinition): void {
+        const duplicateDefinition = UNIQUE_DECLARATION_TYPES.includes(definition.kind)
+            ? this.analysis.definitions.find(
+                  (existingDefinition) =>
+                      existingDefinition.kind === definition.kind &&
+                      definitionNameToString(existingDefinition) ===
+                          definitionNameToString(definition),
+              )
+            : undefined;
+
+        this.analysis.definitions.push(definition);
         this.analysis.symbolIndex.push({
-            range: newDefinition.selectionRange,
-            declaration: newDefinition,
+            range: definition.selectionRange,
+            declaration: definition,
             reference: undefined,
         });
-    }
 
-    private recordScopedDefinition(definition: SourceDefinition): void {
-        this.recordDefinition(definition);
-        if (definition.kind === "namespace") {
+        if (duplicateDefinition !== undefined) {
+            this.analysis.diagnostics.push({
+                severity: DiagnosticSeverity.Error,
+                message: `Duplicate ${definition.kind} declaration for '${definitionNameToString(definition)}'.`,
+                range: definition.range,
+                code: `duplicate-${definition.kind}`,
+            });
             return;
         }
 
         this.currentScope.declare(definition);
-    }
-
-    private recordDefinition(definition: SourceDefinition): void {
-        this.registerDefinition(definition);
-
-        if (definition.kind === "namespace") {
-            if (this.analysis.namespaces.has(definition.name.prefix)) {
-                this.analysis.diagnostics.push({
-                    severity: DiagnosticSeverity.Error,
-                    message: `Duplicate namespace declaration for prefix '${definition.name.prefix}'.`,
-                    range: definition.range,
-                    code: "duplicate-namespace",
-                });
-            } else {
-                this.analysis.namespaces.set(definition.name.prefix, definition);
-            }
-        }
     }
 
     private resolve(reference: AnyReference): Definition | undefined {
@@ -344,9 +339,8 @@ class AnalysisBuilder {
                 parameter.selectionRange,
                 definition,
             );
-            this.registerDefinition(parameterDefinition);
+            this.recordDefinition(parameterDefinition);
             definition.parameters.push(parameterDefinition);
-            this.deferredScopeDefinitions.push(parameterDefinition);
         }
     }
 
