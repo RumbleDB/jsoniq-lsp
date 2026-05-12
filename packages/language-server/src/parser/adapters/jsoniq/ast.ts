@@ -2,17 +2,20 @@ import type { ParseTree } from "antlr4ng";
 import {
     attachParents,
     type AstNode,
-    type CatchClauseAstNode,
+    type CountClauseAstNode,
+    type ForBindingAstNode,
     type FunctionCallAstNode,
     type FunctionDeclarationAstNode,
+    type GroupByBindingAstNode,
     type JsoniqAst,
+    type LetBindingAstNode,
     type NamedFunctionReferenceAstNode,
+    type VariableDeclarationAstNode,
 } from "server/parser/types/ast.js";
 import type {
     AnyAstDeclaration,
     AstDeclaration,
     AstParameterDeclaration,
-    VariableKind,
 } from "server/parser/types/declaration.js";
 import { rangeFromNode } from "server/utils/range.js";
 import { TextDocument } from "vscode-languageserver-textdocument";
@@ -41,7 +44,7 @@ import {
 import { jsoniqVisitor } from "./grammar/jsoniqVisitor.js";
 import { parseFunctionName, parseQname, parseVarName } from "./name.js";
 
-type AstVisitResult = AstNode | AstNode[] | undefined;
+type AstVisitResult = AstNode[];
 
 const CATCH_VARIABLES = [
     { qname: { prefix: "err", localName: "code" } },
@@ -59,36 +62,38 @@ class JsoniqAstBuilder extends jsoniqVisitor<AstVisitResult> {
     }
 
     protected override defaultResult(): AstVisitResult {
-        return undefined;
+        return [];
     }
 
     protected override aggregateResult(
-        aggregate: AstVisitResult | null,
-        nextResult: AstVisitResult | null,
+        aggregate: AstVisitResult,
+        nextResult: AstVisitResult,
     ): AstVisitResult {
-        return [...asNodes(aggregate), ...asNodes(nextResult)];
+        return aggregate.concat(nextResult);
     }
 
-    public override visitModuleAndThisIsIt = (node: ModuleAndThisIsItContext): AstVisitResult => ({
-        kind: "module",
-        range: rangeFromNode(node, this.document),
-        children: this.visitChildrenAsNodes(node),
-    });
+    public override visitModuleAndThisIsIt = (node: ModuleAndThisIsItContext): AstVisitResult => [
+        {
+            kind: "module",
+            range: rangeFromNode(node, this.document),
+            children: this.visitChildrenAsNodes(node),
+        },
+    ];
 
     public override visitNamespaceDecl = (node: NamespaceDeclContext): AstVisitResult => {
         const nameNode = node.NCName();
         if (nameNode === null) {
-            return undefined;
+            return [];
         }
 
         const prefix = nameNode.getText().trim();
         if (prefix === "") {
-            return undefined;
+            return [];
         }
 
         const namespaceUriNode = node.uriLiteral();
         if (namespaceUriNode === null) {
-            return undefined;
+            return [];
         }
 
         return this.declaration({
@@ -115,12 +120,14 @@ class JsoniqAstBuilder extends jsoniqVisitor<AstVisitResult> {
             },
         });
 
-    public override visitContextItemExpr = (node: ContextItemExprContext): AstVisitResult => ({
-        kind: "contextItemExpression",
-        name: { qname: { localName: "$" } },
-        range: rangeFromNode(node, this.document),
-        children: [],
-    });
+    public override visitContextItemExpr = (node: ContextItemExprContext): AstVisitResult => [
+        {
+            kind: "contextItemExpression",
+            name: { qname: { localName: "$" } },
+            range: rangeFromNode(node, this.document),
+            children: [],
+        },
+    ];
 
     public override visitTypeDecl = (node: TypeDeclContext): AstVisitResult => {
         const nameNode = node.declaredQName().qname();
@@ -128,8 +135,8 @@ class JsoniqAstBuilder extends jsoniqVisitor<AstVisitResult> {
         return this.declaration(this.createDeclaration(name, "type", node, nameNode));
     };
 
-    public override visitFunctionDecl = (node: FunctionDeclContext): AstVisitResult =>
-        ({
+    public override visitFunctionDecl = (node: FunctionDeclContext): AstVisitResult => [
+        {
             kind: "functionDeclaration",
             range: rangeFromNode(node, this.document),
             declaration: this.createDeclaration(
@@ -142,7 +149,8 @@ class JsoniqAstBuilder extends jsoniqVisitor<AstVisitResult> {
                 },
             ),
             children: this.visitChildrenAsNodes(node),
-        }) satisfies FunctionDeclarationAstNode;
+        } satisfies FunctionDeclarationAstNode,
+    ];
 
     public override visitVarDecl = (node: VarDeclContext): AstVisitResult => {
         const declaration = this.variableDeclaration(
@@ -155,71 +163,117 @@ class JsoniqAstBuilder extends jsoniqVisitor<AstVisitResult> {
             declaration.completed = semicolon !== null && semicolon.symbol.start >= 0;
         }
 
-        return [...asNodes(this.declaration(declaration)), ...this.visitChildrenAsNodes(node)];
+        return declaration === null
+            ? []
+            : [
+                  {
+                      kind: "variableDeclaration",
+                      declaration,
+                      range: rangeFromNode(node, this.document),
+                      children: this.visitChildrenAsNodes(node),
+                  } satisfies VariableDeclarationAstNode,
+              ];
     };
 
-    public override visitForVar = (node: ForVarContext): AstVisitResult => [
-        ...node
-            .declaredVarRef()
-            .flatMap((declaredVarRef, index) =>
-                asNodes(
-                    this.declaration(
-                        this.variableDeclaration(
-                            index === 0 ? "for" : "for-position",
-                            node,
-                            declaredVarRef,
-                        ),
-                    ),
-                ),
-            ),
-        ...this.visitChildrenAsNodes(node),
+    public override visitForVar = (node: ForVarContext): AstVisitResult => {
+        const declarations: ForBindingAstNode["declarations"] = [];
+        for (const [index, declaredVarRef] of node.declaredVarRef().entries()) {
+            const declaration = this.variableDeclaration(
+                index === 0 ? "for" : "for-position",
+                node,
+                declaredVarRef,
+            );
+            if (declaration !== null) {
+                declarations.push(declaration);
+            }
+        }
+
+        return declarations.length === 0
+            ? []
+            : [
+                  {
+                      kind: "forBinding",
+                      declarations,
+                      range: rangeFromNode(node, this.document),
+                      children: this.visitChildrenAsNodes(node),
+                  } satisfies ForBindingAstNode,
+              ];
+    };
+
+    public override visitLetVar = (node: LetVarContext): AstVisitResult => {
+        const declaration = this.variableDeclaration("let", node, node.declaredVarRef());
+        return declaration === null
+            ? []
+            : [
+                  {
+                      kind: "letBinding",
+                      declaration,
+                      range: rangeFromNode(node, this.document),
+                      children: this.visitChildrenAsNodes(node),
+                  } satisfies LetBindingAstNode,
+              ];
+    };
+
+    public override visitGroupByVar = (node: GroupByVarContext): AstVisitResult => {
+        const declaration = this.variableDeclaration("group-by", node, node.declaredVarRef());
+        return declaration === null
+            ? []
+            : [
+                  {
+                      kind: "groupByBinding",
+                      declaration,
+                      range: rangeFromNode(node, this.document),
+                      children: this.visitChildrenAsNodes(node),
+                  } satisfies GroupByBindingAstNode,
+              ];
+    };
+
+    public override visitCountClause = (node: CountClauseContext): AstVisitResult => {
+        const declaration = this.variableDeclaration("count", node, node.declaredVarRef());
+        return declaration === null
+            ? []
+            : [
+                  {
+                      kind: "countClause",
+                      declaration,
+                      range: rangeFromNode(node, this.document),
+                      children: this.visitChildrenAsNodes(node),
+                  } satisfies CountClauseAstNode,
+              ];
+    };
+
+    public override visitFlowrExpr = (node: FlowrExprContext): AstVisitResult => [
+        {
+            kind: "flowrExpression",
+            range: rangeFromNode(node, this.document),
+            children: this.visitChildrenAsNodes(node),
+        },
     ];
 
-    public override visitLetVar = (node: LetVarContext): AstVisitResult => [
-        ...asNodes(this.declaration(this.variableDeclaration("let", node, node.declaredVarRef()))),
-        ...this.visitChildrenAsNodes(node),
+    public override visitFlowrStatement = (node: FlowrStatementContext): AstVisitResult => [
+        {
+            kind: "flowrExpression",
+            range: rangeFromNode(node, this.document),
+            children: this.visitChildrenAsNodes(node),
+        },
     ];
-
-    public override visitGroupByVar = (node: GroupByVarContext): AstVisitResult => [
-        ...asNodes(
-            this.declaration(this.variableDeclaration("group-by", node, node.declaredVarRef())),
-        ),
-        ...this.visitChildrenAsNodes(node),
-    ];
-
-    public override visitCountClause = (node: CountClauseContext): AstVisitResult => [
-        ...asNodes(
-            this.declaration(this.variableDeclaration("count", node, node.declaredVarRef())),
-        ),
-        ...this.visitChildrenAsNodes(node),
-    ];
-
-    public override visitFlowrExpr = (node: FlowrExprContext): AstVisitResult => ({
-        kind: "flowrExpression",
-        range: rangeFromNode(node, this.document),
-        children: this.visitChildrenAsNodes(node),
-    });
-
-    public override visitFlowrStatement = (node: FlowrStatementContext): AstVisitResult => ({
-        kind: "flowrExpression",
-        range: rangeFromNode(node, this.document),
-        children: this.visitChildrenAsNodes(node),
-    });
 
     public override visitVarRef = (node: VarRefContext): AstVisitResult => {
         if (node.parent instanceof DeclaredVarRefContext) {
-            return undefined;
+            return [];
         }
 
         const name = parseVarName(node);
         return name === null
-            ? undefined
-            : {
-                  kind: "variableReference",
-                  name,
-                  range: rangeFromNode(node, this.document),
-                  children: [],
-              };
+            ? []
+            : [
+                  {
+                      kind: "variableReference",
+                      name,
+                      range: rangeFromNode(node, this.document),
+                      children: [],
+                  },
+              ];
     };
 
     public override visitFunctionCall = (node: FunctionCallContext): AstVisitResult =>
@@ -235,7 +289,7 @@ class JsoniqAstBuilder extends jsoniqVisitor<AstVisitResult> {
         this.catchClause(node);
 
     private visitChildrenAsNodes(node: ParseTree): AstNode[] {
-        return asNodes(this.visitChildren(node));
+        return this.visitChildren(node) ?? [];
     }
 
     private createDeclaration<K extends AnyAstDeclaration["kind"]>(
@@ -256,20 +310,24 @@ class JsoniqAstBuilder extends jsoniqVisitor<AstVisitResult> {
 
     private declaration(declaration: AnyAstDeclaration | null): AstVisitResult {
         return declaration === null
-            ? undefined
-            : {
-                  kind: "declaration",
-                  declaration,
-                  range: declaration.range,
-                  children: [],
-              };
+            ? []
+            : [
+                  {
+                      kind: "declaration",
+                      declaration,
+                      range: declaration.range,
+                      children: [],
+                  },
+              ];
     }
 
-    private variableDeclaration(
-        kind: VariableKind,
+    private variableDeclaration<
+        K extends "declare-variable" | "let" | "for" | "for-position" | "group-by" | "count",
+    >(
+        kind: K,
         declarationNode: ParseTree,
         declaredVarRef: DeclaredVarRefContext,
-    ): AstDeclaration<VariableKind> | null {
+    ): AstDeclaration<K> | null {
         const name = parseVarName(declaredVarRef.varRef());
         return name === null
             ? null
@@ -297,37 +355,43 @@ class JsoniqAstBuilder extends jsoniqVisitor<AstVisitResult> {
         const nameNode = node.qname();
         const name = parseFunctionName(node);
         return name !== null && nameNode !== null
-            ? ({
-                  kind: "functionCall",
-                  name,
-                  nameRange: rangeFromNode(nameNode, this.document),
-                  range: rangeFromNode(node, this.document),
-                  children: this.visitChildrenAsNodes(node),
-              } satisfies FunctionCallAstNode)
-            : undefined;
+            ? [
+                  {
+                      kind: "functionCall",
+                      name,
+                      nameRange: rangeFromNode(nameNode, this.document),
+                      range: rangeFromNode(node, this.document),
+                      children: this.visitChildrenAsNodes(node),
+                  } satisfies FunctionCallAstNode,
+              ]
+            : [];
     }
 
     private namedFunctionReference(node: NamedFunctionRefContext): AstVisitResult {
         const nameNode = node.qname();
         const name = parseFunctionName(node);
         return name !== null && nameNode !== null
-            ? ({
-                  kind: "namedFunctionReference",
-                  name,
-                  nameRange: rangeFromNode(nameNode, this.document),
-                  range: rangeFromNode(node, this.document),
-                  children: [],
-              } satisfies NamedFunctionReferenceAstNode)
-            : undefined;
+            ? [
+                  {
+                      kind: "namedFunctionReference",
+                      name,
+                      nameRange: rangeFromNode(nameNode, this.document),
+                      range: rangeFromNode(node, this.document),
+                      children: [],
+                  } satisfies NamedFunctionReferenceAstNode,
+              ]
+            : [];
     }
 
-    private catchClause(node: CatchCaseStatementContext | CatchClauseContext): CatchClauseAstNode {
-        return {
-            kind: "catchClause",
-            range: rangeFromNode(node, this.document),
-            declarations: this.catchDeclarations(node),
-            children: this.visitChildrenAsNodes(node),
-        };
+    private catchClause(node: CatchCaseStatementContext | CatchClauseContext): AstVisitResult {
+        return [
+            {
+                kind: "catchClause",
+                range: rangeFromNode(node, this.document),
+                declarations: this.catchDeclarations(node),
+                children: this.visitChildrenAsNodes(node),
+            },
+        ];
     }
 
     private catchDeclarations(
@@ -344,25 +408,10 @@ class JsoniqAstBuilder extends jsoniqVisitor<AstVisitResult> {
     }
 }
 
-function asNodes(result: AstVisitResult | null): AstNode[] {
-    if (result === null || result === undefined) {
-        return [];
-    }
-
-    return Array.isArray(result) ? result : [result];
-}
-
 export function buildJsoniqAst(tree: ModuleAndThisIsItContext, document: TextDocument): JsoniqAst {
-    const ast = new JsoniqAstBuilder(document).visit(tree);
-    const module = asNodes(ast)[0];
-
-    if (module?.kind !== "module") {
-        return attachParents({
-            kind: "module",
-            range: rangeFromNode(tree, document),
-            children: asNodes(ast),
-        });
+    const ast = new JsoniqAstBuilder(document).visitModuleAndThisIsIt(tree)[0];
+    if (ast === undefined || ast.kind !== "module") {
+        throw new Error("Expected module AST root.");
     }
-
-    return attachParents(module);
+    return attachParents(ast);
 }

@@ -66,6 +66,19 @@ class AnalysisBuilder {
             case "functionDeclaration":
                 await this.visitFunctionDeclaration(node);
                 break;
+            case "variableDeclaration":
+            case "letBinding":
+            case "groupByBinding":
+            case "countClause":
+                this.registerDeclaration(node.declaration);
+                await this.visitChildren(node);
+                break;
+            case "forBinding":
+                for (const declaration of node.declarations) {
+                    this.registerDeclaration(declaration);
+                }
+                await this.visitChildren(node);
+                break;
             case "flowrExpression":
                 await this.visitScopedChildren(node);
                 break;

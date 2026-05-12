@@ -30,7 +30,17 @@ export class DocumentSymbolsBuilder {
                 this.visitChildren(node);
                 break;
             case "functionDeclaration":
+            case "variableDeclaration":
+            case "letBinding":
+            case "groupByBinding":
+            case "countClause":
                 this.addDeclaration(node.declaration);
+                this.visitChildren(node);
+                break;
+            case "forBinding":
+                for (const declaration of node.declarations) {
+                    this.addDeclaration(declaration);
+                }
                 this.visitChildren(node);
                 break;
             case "catchClause":

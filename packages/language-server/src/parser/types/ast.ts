@@ -6,6 +6,11 @@ import type { FunctionName, ReferenceNameByKind } from "./name.js";
 export type AstNodeKind =
     | "module"
     | "functionDeclaration"
+    | "variableDeclaration"
+    | "forBinding"
+    | "letBinding"
+    | "groupByBinding"
+    | "countClause"
     | "flowrExpression"
     | "catchClause"
     | "declaration"
@@ -27,6 +32,26 @@ export interface ModuleAstNode extends AstNodeBase<"module"> {}
 
 export interface FunctionDeclarationAstNode extends AstNodeBase<"functionDeclaration"> {
     readonly declaration: Extract<AnyAstDeclaration, { kind: "function" }>;
+}
+
+export interface VariableDeclarationAstNode extends AstNodeBase<"variableDeclaration"> {
+    readonly declaration: Extract<AnyAstDeclaration, { kind: "declare-variable" }>;
+}
+
+export interface ForBindingAstNode extends AstNodeBase<"forBinding"> {
+    readonly declarations: Extract<AnyAstDeclaration, { kind: "for" | "for-position" }>[];
+}
+
+export interface LetBindingAstNode extends AstNodeBase<"letBinding"> {
+    readonly declaration: Extract<AnyAstDeclaration, { kind: "let" }>;
+}
+
+export interface GroupByBindingAstNode extends AstNodeBase<"groupByBinding"> {
+    readonly declaration: Extract<AnyAstDeclaration, { kind: "group-by" }>;
+}
+
+export interface CountClauseAstNode extends AstNodeBase<"countClause"> {
+    readonly declaration: Extract<AnyAstDeclaration, { kind: "count" }>;
 }
 
 export interface FlowrExpressionAstNode extends AstNodeBase<"flowrExpression"> {}
@@ -72,6 +97,11 @@ export interface UnknownAstNode extends AstNodeBase<"unknown"> {
 export type AstNode =
     | ModuleAstNode
     | FunctionDeclarationAstNode
+    | VariableDeclarationAstNode
+    | ForBindingAstNode
+    | LetBindingAstNode
+    | GroupByBindingAstNode
+    | CountClauseAstNode
     | FlowrExpressionAstNode
     | CatchClauseAstNode
     | DeclarationAstNode
