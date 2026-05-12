@@ -51,17 +51,14 @@ export class Scope {
     public resolve<K extends keyof ReferenceNameByKind>(
         kind: K,
         name: ReferenceNameByKind[K],
-        offset: number,
     ): SourceDefinition | undefined {
         const declarations = this.definitionByName.get(this.referenceLookupKey(name, kind));
-        const declaration = declarations?.findLast(
-            (decl) => decl.visibleFrom !== null && decl.visibleFrom < offset,
-        );
+        const declaration = declarations?.at(-1);
         if (declaration !== undefined) {
             return declaration;
         }
 
-        return this.parent?.resolve(kind, name, offset);
+        return this.parent?.resolve(kind, name);
     }
 
     /**
@@ -92,9 +89,7 @@ export class Scope {
         const visible = new Map<string, SourceDefinition>();
 
         for (const [name, definitions] of this.definitionByName.entries()) {
-            const definition = definitions.findLast(
-                (def) => def.visibleFrom !== null && def.visibleFrom < offset,
-            );
+            const definition = definitions.findLast((candidate) => candidate.visibleFrom <= offset);
             if (definition !== undefined) {
                 visible.set(name, definition);
             }
@@ -108,7 +103,7 @@ export class Scope {
                 }
 
                 const definition = definitions.findLast(
-                    (def) => def.visibleFrom !== null && def.visibleFrom < offset,
+                    (candidate) => candidate.visibleFrom <= offset,
                 );
 
                 if (definition !== undefined) {

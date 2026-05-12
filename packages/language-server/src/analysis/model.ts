@@ -52,8 +52,8 @@ export interface BaseSourceDefinition<
     // Range of the declaration name token.
     selectionRange: Range;
 
-    // Offset where this declaration becomes visible.
-    visibleFrom: number | null;
+    // Offset from which the declaration is visible to position-based queries.
+    visibleFrom: number;
 
     isBuiltin: false;
 }

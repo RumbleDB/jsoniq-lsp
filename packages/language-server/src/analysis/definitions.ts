@@ -15,18 +15,15 @@ import type {
 interface DefinitionBaseInput {
     range: Range;
     selectionRange: Range;
-    visibleFrom?: number | null;
+    visibleFrom?: number;
 }
 
 function createBaseDefinition(document: TextDocument, input: DefinitionBaseInput) {
     return {
         range: input.range,
         selectionRange: input.selectionRange,
+        visibleFrom: input.visibleFrom ?? document.offsetAt(input.range.end),
         references: [],
-        visibleFrom:
-            input.visibleFrom === undefined
-                ? document.offsetAt(input.range.end)
-                : input.visibleFrom,
         isBuiltin: false as const,
     };
 }
@@ -37,15 +34,14 @@ export function createVariableDefinition(
     name: VarName,
     range: Range,
     selectionRange: Range,
-    visibleFrom?: number | null,
+    visibleFrom?: number,
 ): SourceVariableDefinition {
     return {
-        ...createBaseDefinition(
-            document,
-            visibleFrom === undefined
-                ? { range, selectionRange }
-                : { range, selectionRange, visibleFrom },
-        ),
+        ...createBaseDefinition(document, {
+            range,
+            selectionRange,
+            ...(visibleFrom === undefined ? {} : { visibleFrom }),
+        }),
         kind,
         name,
     };

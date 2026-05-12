@@ -43,6 +43,8 @@ const CATCH_VARIABLES = [
 ] as const;
 
 class AnalysisBuilder {
+    private static readonly NEVER_VISIBLE_OFFSET = Number.POSITIVE_INFINITY;
+
     private readonly analysis: JsoniqAnalysis;
 
     private currentScope: Scope;
@@ -90,7 +92,7 @@ class AnalysisBuilder {
                 this.visitChildren(node);
                 break;
             case "namespaceDeclaration":
-                this.registerScopedDefinition(
+                this.recordScopedDefinition(
                     createNamespaceDefinition(
                         this.document,
                         node.prefix,
@@ -101,7 +103,7 @@ class AnalysisBuilder {
                 );
                 break;
             case "contextItemDeclaration":
-                this.registerScopedDefinition(
+                this.recordScopedDefinition(
                     createVariableDefinition(
                         this.document,
                         "declare-variable",
@@ -112,45 +114,50 @@ class AnalysisBuilder {
                 );
                 break;
             case "typeDeclaration":
-                this.registerScopedDefinition(
+                this.recordScopedDefinition(
                     createTypeDefinition(this.document, node.name, node.range, node.selectionRange),
                 );
                 break;
             case "functionDeclaration":
                 this.visitFunctionDeclaration(node);
                 break;
-            case "variableDeclaration":
-                this.registerScopedDefinition(
-                    createVariableDefinition(
-                        this.document,
-                        "declare-variable",
-                        node.binding.name,
-                        node.binding.range,
-                        node.binding.selectionRange,
-                        node.completed ? undefined : null,
-                    ),
+            case "variableDeclaration": {
+                const variableDefinition = createVariableDefinition(
+                    this.document,
+                    "declare-variable",
+                    node.binding.name,
+                    node.binding.range,
+                    node.binding.selectionRange,
+                    node.completed
+                        ? this.document.offsetAt(node.range.end)
+                        : AnalysisBuilder.NEVER_VISIBLE_OFFSET,
                 );
+                this.recordDefinition(variableDefinition);
                 this.visitChildren(node);
+                if (node.completed) {
+                    this.currentScope.declare(variableDefinition);
+                }
                 break;
+            }
             case "letBinding":
-                this.registerScopedDefinition(this.variableDefinition("let", node.binding));
                 this.visitChildren(node);
+                this.recordScopedDefinition(this.variableDefinition("let", node.binding));
                 break;
             case "groupByBinding":
-                this.registerScopedDefinition(this.variableDefinition("group-by", node.binding));
                 this.visitChildren(node);
+                this.recordScopedDefinition(this.variableDefinition("group-by", node.binding));
                 break;
             case "countClause":
-                this.registerScopedDefinition(this.variableDefinition("count", node.binding));
                 this.visitChildren(node);
+                this.recordScopedDefinition(this.variableDefinition("count", node.binding));
                 break;
             case "forBinding":
+                this.visitChildren(node);
                 for (const binding of node.bindings) {
-                    this.registerScopedDefinition(
+                    this.recordScopedDefinition(
                         this.variableDefinition(binding.bindingKind, binding),
                     );
                 }
-                this.visitChildren(node);
                 break;
             case "flowrExpression":
                 this.visitScopedChildren(node);
@@ -203,7 +210,7 @@ class AnalysisBuilder {
             node.range,
             node.nameRange,
         );
-        this.registerScopedDefinition(definition);
+        this.recordScopedDefinition(definition);
         this.registerFunctionParameters(definition, node.parameters);
         this.visitScopedChildren(node);
     }
@@ -211,14 +218,13 @@ class AnalysisBuilder {
     private visitCatchClause(node: CatchClauseAstNode) {
         this.pushScope(node.range.start, node.range.end);
         for (const name of CATCH_VARIABLES) {
-            this.registerScopedDefinition(
+            this.recordScopedDefinition(
                 createVariableDefinition(
                     this.document,
                     "catch-variable",
                     name,
                     node.range,
                     node.range,
-                    this.document.offsetAt(node.range.start),
                 ),
             );
         }
@@ -260,7 +266,16 @@ class AnalysisBuilder {
         });
     }
 
-    private registerScopedDefinition(definition: SourceDefinition): void {
+    private recordScopedDefinition(definition: SourceDefinition): void {
+        this.recordDefinition(definition);
+        if (definition.kind === "namespace") {
+            return;
+        }
+
+        this.currentScope.declare(definition);
+    }
+
+    private recordDefinition(definition: SourceDefinition): void {
         this.registerDefinition(definition);
 
         if (definition.kind === "namespace") {
@@ -274,10 +289,7 @@ class AnalysisBuilder {
             } else {
                 this.analysis.namespaces.set(definition.name.prefix, definition);
             }
-            return;
         }
-
-        this.currentScope.declare(definition);
     }
 
     private resolve(reference: AnyReference): Definition | undefined {
@@ -287,11 +299,7 @@ class AnalysisBuilder {
             return builtinDefinition;
         }
 
-        return this.currentScope.resolve(
-            reference.kind,
-            reference.name,
-            this.document.offsetAt(reference.range.start),
-        );
+        return this.currentScope.resolve(reference.kind, reference.name);
     }
 
     private recordReference(reference: AnyReference) {
@@ -349,6 +357,7 @@ class AnalysisBuilder {
             binding.name,
             binding.range,
             binding.selectionRange,
+            this.document.offsetAt(binding.range.end),
         );
     }
 }
