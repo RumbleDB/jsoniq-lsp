@@ -1,85 +1,113 @@
-import type {
-    AnyAstDeclaration,
-    AstParameterDeclaration,
-} from "server/parser/types/declaration.js";
+import type { FunctionName, QName, VarName } from "server/parser/types/name.js";
+import type { Range } from "vscode-languageserver";
 import { TextDocument } from "vscode-languageserver-textdocument";
 
 import type {
+    DeclarationKind,
     SourceDefinition,
     SourceFunctionDefinition,
     SourceNamespaceDefinition,
     SourceParameterDefinition,
     SourceVariableDefinition,
+    VariableKind,
 } from "./model.js";
 
-export function createSourceDefinition(
-    document: TextDocument,
-    declaration: AnyAstDeclaration,
-): SourceDefinition {
-    const base = {
-        range: declaration.range,
-        selectionRange: declaration.selectionRange,
-        references: [],
-        visibleFrom:
-            declaration.completed === false ? null : document.offsetAt(declaration.range.end),
-        isBuiltin: false as const,
-    };
-
-    if (declaration.kind === "function") {
-        return {
-            ...base,
-            name: declaration.name,
-            kind: "function",
-            parameters: [],
-
-            /// For function declarations, the declaration becomes visible after the symbol name
-            visibleFrom: document.offsetAt(declaration.selectionRange.end),
-        } satisfies SourceFunctionDefinition;
-    }
-
-    if (declaration.kind === "parameter") {
-        throw new Error("Parameter declarations must be created with their owning function.");
-    }
-
-    if (declaration.kind === "namespace") {
-        return {
-            ...base,
-            name: declaration.name,
-            kind: "namespace",
-            namespaceUri: declaration.extra.namespaceUri,
-        } satisfies SourceNamespaceDefinition;
-    }
-
-    if (declaration.kind === "type") {
-        /// TODO: Add more support for these kinds of definitions
-        return {
-            ...base,
-            name: declaration.name,
-            kind: declaration.kind,
-        } satisfies SourceDefinition;
-    }
-
-    return {
-        ...base,
-        name: declaration.name,
-        kind: declaration.kind,
-    } satisfies SourceVariableDefinition;
+interface DefinitionBaseInput {
+    range: Range;
+    selectionRange: Range;
+    visibleFrom?: number | null;
 }
 
-export function createSourceParameterDefinition(
+function createBaseDefinition(document: TextDocument, input: DefinitionBaseInput) {
+    return {
+        range: input.range,
+        selectionRange: input.selectionRange,
+        references: [],
+        visibleFrom:
+            input.visibleFrom === undefined
+                ? document.offsetAt(input.range.end)
+                : input.visibleFrom,
+        isBuiltin: false as const,
+    };
+}
+
+export function createVariableDefinition(
     document: TextDocument,
-    declaration: AstParameterDeclaration,
+    kind: VariableKind,
+    name: VarName,
+    range: Range,
+    selectionRange: Range,
+    visibleFrom?: number | null,
+): SourceVariableDefinition {
+    return {
+        ...createBaseDefinition(
+            document,
+            visibleFrom === undefined
+                ? { range, selectionRange }
+                : { range, selectionRange, visibleFrom },
+        ),
+        kind,
+        name,
+    };
+}
+
+export function createFunctionDefinition(
+    document: TextDocument,
+    name: FunctionName,
+    range: Range,
+    selectionRange: Range,
+): SourceFunctionDefinition {
+    return {
+        ...createBaseDefinition(document, {
+            range,
+            selectionRange,
+            visibleFrom: document.offsetAt(selectionRange.end),
+        }),
+        kind: "function",
+        name,
+        parameters: [],
+    };
+}
+
+export function createParameterDefinition(
+    document: TextDocument,
+    name: VarName,
+    range: Range,
+    selectionRange: Range,
     containingFunction: SourceFunctionDefinition,
 ): SourceParameterDefinition {
     return {
-        range: declaration.range,
-        selectionRange: declaration.selectionRange,
-        references: [],
-        visibleFrom:
-            declaration.completed === false ? null : document.offsetAt(declaration.range.end),
-        isBuiltin: false,
-        name: declaration.name,
+        ...createBaseDefinition(document, { range, selectionRange }),
         kind: "parameter",
+        name,
         function: containingFunction,
+    };
+}
+
+export function createNamespaceDefinition(
+    document: TextDocument,
+    prefix: string,
+    namespaceUri: string,
+    range: Range,
+    selectionRange: Range,
+): SourceNamespaceDefinition {
+    return {
+        ...createBaseDefinition(document, { range, selectionRange }),
+        kind: "namespace",
+        name: { prefix },
+        namespaceUri,
+    };
+}
+
+export function createTypeDefinition(
+    document: TextDocument,
+    name: { qname: QName },
+    range: Range,
+    selectionRange: Range,
+): Extract<SourceDefinition, { kind: "type" }> {
+    return {
+        ...createBaseDefinition(document, { range, selectionRange }),
+        kind: "type" satisfies DeclarationKind,
+        name,
     };
 }

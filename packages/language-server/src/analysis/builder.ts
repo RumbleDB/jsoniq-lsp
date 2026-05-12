@@ -1,20 +1,33 @@
 import { parseDocument } from "server/parser/index.js";
-import type { AstNode, FunctionDeclarationAstNode } from "server/parser/types/ast.js";
-import type { AnyAstDeclaration } from "server/parser/types/declaration.js";
+import type {
+    AstBinding,
+    AstNode,
+    AstParameter,
+    CatchClauseAstNode,
+    FunctionDeclarationAstNode,
+} from "server/parser/types/ast.js";
 import { referenceNameToString } from "server/parser/types/name.js";
 import { comparePositions } from "server/utils/position.js";
 import { BuiltinFunctions } from "server/wrapper/builtin-functions.js";
 import { DiagnosticSeverity, Position } from "vscode-languageserver";
 import { TextDocument } from "vscode-languageserver-textdocument";
 
-import { createSourceDefinition, createSourceParameterDefinition } from "./definitions.js";
+import {
+    createFunctionDefinition,
+    createNamespaceDefinition,
+    createParameterDefinition,
+    createTypeDefinition,
+    createVariableDefinition,
+} from "./definitions.js";
 import {
     type AnyReference,
     type Definition,
     type JsoniqAnalysis,
     type ResolvedReference,
     type SourceDefinition,
+    type SourceFunctionDefinition,
     type SourceNamespaceDefinition,
+    type VariableKind,
     isSourceDefinition,
 } from "./model.js";
 import { Scope } from "./scope.js";
@@ -76,19 +89,66 @@ class AnalysisBuilder {
             case "module":
                 this.visitChildren(node);
                 break;
+            case "namespaceDeclaration":
+                this.registerScopedDefinition(
+                    createNamespaceDefinition(
+                        this.document,
+                        node.prefix,
+                        node.namespaceUri,
+                        node.range,
+                        node.selectionRange,
+                    ),
+                );
+                break;
+            case "contextItemDeclaration":
+                this.registerScopedDefinition(
+                    createVariableDefinition(
+                        this.document,
+                        "declare-variable",
+                        node.name,
+                        node.range,
+                        node.selectionRange,
+                    ),
+                );
+                break;
+            case "typeDeclaration":
+                this.registerScopedDefinition(
+                    createTypeDefinition(this.document, node.name, node.range, node.selectionRange),
+                );
+                break;
             case "functionDeclaration":
                 this.visitFunctionDeclaration(node);
                 break;
             case "variableDeclaration":
+                this.registerScopedDefinition(
+                    createVariableDefinition(
+                        this.document,
+                        "declare-variable",
+                        node.binding.name,
+                        node.binding.range,
+                        node.binding.selectionRange,
+                        node.completed ? undefined : null,
+                    ),
+                );
+                this.visitChildren(node);
+                break;
             case "letBinding":
+                this.registerScopedDefinition(this.variableDefinition("let", node.binding));
+                this.visitChildren(node);
+                break;
             case "groupByBinding":
+                this.registerScopedDefinition(this.variableDefinition("group-by", node.binding));
+                this.visitChildren(node);
+                break;
             case "countClause":
-                this.registerDeclaration(node.declaration);
+                this.registerScopedDefinition(this.variableDefinition("count", node.binding));
                 this.visitChildren(node);
                 break;
             case "forBinding":
-                for (const declaration of node.declarations) {
-                    this.registerDeclaration(declaration);
+                for (const binding of node.bindings) {
+                    this.registerScopedDefinition(
+                        this.variableDefinition(binding.bindingKind, binding),
+                    );
                 }
                 this.visitChildren(node);
                 break;
@@ -97,9 +157,6 @@ class AnalysisBuilder {
                 break;
             case "catchClause":
                 this.visitCatchClause(node);
-                break;
-            case "declaration":
-                this.registerDeclaration(node.declaration);
                 break;
             case "variableReference":
             case "contextItemExpression":
@@ -140,14 +197,30 @@ class AnalysisBuilder {
     }
 
     private visitFunctionDeclaration(node: FunctionDeclarationAstNode) {
-        this.registerDeclaration(node.declaration);
+        const definition = createFunctionDefinition(
+            this.document,
+            node.name,
+            node.range,
+            node.nameRange,
+        );
+        this.registerScopedDefinition(definition);
+        this.registerFunctionParameters(definition, node.parameters);
         this.visitScopedChildren(node);
     }
 
-    private visitCatchClause(node: Extract<AstNode, { kind: "catchClause" }>) {
+    private visitCatchClause(node: CatchClauseAstNode) {
         this.pushScope(node.range.start, node.range.end);
-        for (const declaration of this.catchDeclarations(node)) {
-            this.registerDeclaration(declaration);
+        for (const name of CATCH_VARIABLES) {
+            this.registerScopedDefinition(
+                createVariableDefinition(
+                    this.document,
+                    "catch-variable",
+                    name,
+                    node.range,
+                    node.range,
+                    this.document.offsetAt(node.range.start),
+                ),
+            );
         }
         this.visitChildren(node);
         this.popScope();
@@ -187,28 +260,8 @@ class AnalysisBuilder {
         });
     }
 
-    private registerDeclaration(declaration: AnyAstDeclaration): void {
-        const definition = createSourceDefinition(this.document, declaration);
-
-        if (declaration.kind === "catch-variable") {
-            definition.visibleFrom = this.document.offsetAt(declaration.range.start);
-        }
-
+    private registerScopedDefinition(definition: SourceDefinition): void {
         this.registerDefinition(definition);
-
-        if (declaration.kind === "function" && definition.kind === "function") {
-            for (const parameter of declaration.extra.parameters) {
-                const parameterDefinition = createSourceParameterDefinition(
-                    this.document,
-                    parameter,
-                    definition,
-                );
-
-                this.registerDefinition(parameterDefinition);
-                definition.parameters.push(parameterDefinition);
-                this.deferredScopeDefinitions.push(parameterDefinition);
-            }
-        }
 
         if (definition.kind === "namespace") {
             if (this.analysis.namespaces.has(definition.name.prefix)) {
@@ -225,17 +278,6 @@ class AnalysisBuilder {
         }
 
         this.currentScope.declare(definition);
-    }
-
-    private catchDeclarations(
-        node: Extract<AstNode, { kind: "catchClause" }>,
-    ): Extract<AnyAstDeclaration, { kind: "catch-variable" }>[] {
-        return CATCH_VARIABLES.map((name) => ({
-            name,
-            kind: "catch-variable",
-            range: node.range,
-            selectionRange: node.range,
-        }));
     }
 
     private resolve(reference: AnyReference): Definition | undefined {
@@ -280,6 +322,34 @@ class AnalysisBuilder {
         if (isSourceDefinition(declaration)) {
             declaration.references.push(resolvedReference);
         }
+    }
+
+    private registerFunctionParameters(
+        definition: SourceFunctionDefinition,
+        parameters: AstParameter[],
+    ): void {
+        for (const parameter of parameters) {
+            const parameterDefinition = createParameterDefinition(
+                this.document,
+                parameter.name,
+                parameter.range,
+                parameter.selectionRange,
+                definition,
+            );
+            this.registerDefinition(parameterDefinition);
+            definition.parameters.push(parameterDefinition);
+            this.deferredScopeDefinitions.push(parameterDefinition);
+        }
+    }
+
+    private variableDefinition(kind: VariableKind, binding: AstBinding): SourceDefinition {
+        return createVariableDefinition(
+            this.document,
+            kind,
+            binding.name,
+            binding.range,
+            binding.selectionRange,
+        );
     }
 }
 

@@ -1,19 +1,18 @@
 import { parseDocument } from "server/parser/index.js";
 import type { AstNode } from "server/parser/types/ast.js";
-import type { AnyAstDeclaration, DeclarationKind } from "server/parser/types/declaration.js";
 import { qnameToString, varNameToString } from "server/parser/types/name.js";
 import { comparePositions } from "server/utils/position.js";
-import { DocumentSymbol, SymbolKind } from "vscode-languageserver";
+import { DocumentSymbol, SymbolKind, type Range } from "vscode-languageserver";
 import { TextDocument } from "vscode-languageserver-textdocument";
 
-interface DocumentSymbolOwner {
-    declaration: AnyAstDeclaration;
+interface SymbolOwner {
+    range: Range;
     symbol: DocumentSymbol;
 }
 
 export class DocumentSymbolsBuilder {
     private readonly symbols: DocumentSymbol[] = [];
-    private readonly owners: DocumentSymbolOwner[] = [];
+    private readonly owners: SymbolOwner[] = [];
 
     public constructor(private readonly document: TextDocument) {}
 
@@ -27,27 +26,88 @@ export class DocumentSymbolsBuilder {
             case "module":
             case "flowrExpression":
             case "unknown":
-                this.visitChildren(node);
-                break;
-            case "functionDeclaration":
-            case "variableDeclaration":
-            case "letBinding":
-            case "groupByBinding":
-            case "countClause":
-                this.addDeclaration(node.declaration);
-                this.visitChildren(node);
-                break;
-            case "forBinding":
-                for (const declaration of node.declarations) {
-                    this.addDeclaration(declaration);
-                }
-                this.visitChildren(node);
-                break;
             case "catchClause":
                 this.visitChildren(node);
                 break;
-            case "declaration":
-                this.addDeclaration(node.declaration);
+            case "namespaceDeclaration":
+                this.addSymbol(node.prefix, SymbolKind.Namespace, node.range, node.selectionRange);
+                break;
+            case "contextItemDeclaration":
+                this.addSymbol(
+                    varNameToString(node.name),
+                    SymbolKind.Variable,
+                    node.range,
+                    node.selectionRange,
+                    true,
+                );
+                break;
+            case "typeDeclaration":
+                this.addSymbol(
+                    qnameToString(node.name.qname),
+                    SymbolKind.Struct,
+                    node.range,
+                    node.selectionRange,
+                );
+                break;
+            case "functionDeclaration": {
+                this.addSymbol(
+                    qnameToString(node.name.qname),
+                    SymbolKind.Function,
+                    node.range,
+                    node.nameRange,
+                    true,
+                );
+                for (const parameter of node.parameters) {
+                    this.addSymbol(
+                        varNameToString(parameter.name),
+                        SymbolKind.Variable,
+                        parameter.range,
+                        parameter.selectionRange,
+                    );
+                }
+                this.visitChildren(node);
+                break;
+            }
+            case "variableDeclaration":
+                this.addSymbol(
+                    varNameToString(node.binding.name),
+                    SymbolKind.Variable,
+                    node.binding.range,
+                    node.binding.selectionRange,
+                    true,
+                );
+                this.visitChildren(node);
+                break;
+            case "letBinding":
+            case "groupByBinding":
+                this.addSymbol(
+                    varNameToString(node.binding.name),
+                    SymbolKind.Variable,
+                    node.binding.range,
+                    node.binding.selectionRange,
+                    true,
+                );
+                this.visitChildren(node);
+                break;
+            case "countClause":
+                this.addSymbol(
+                    varNameToString(node.binding.name),
+                    SymbolKind.Variable,
+                    node.binding.range,
+                    node.binding.selectionRange,
+                );
+                this.visitChildren(node);
+                break;
+            case "forBinding":
+                for (const binding of node.bindings) {
+                    this.addSymbol(
+                        varNameToString(binding.name),
+                        SymbolKind.Variable,
+                        binding.range,
+                        binding.selectionRange,
+                    );
+                }
+                this.visitChildren(node);
                 break;
             case "functionCall":
             case "namedFunctionReference":
@@ -66,13 +126,26 @@ export class DocumentSymbolsBuilder {
         }
     }
 
-    private addDeclaration(declaration: AnyAstDeclaration): void {
-        const symbol = toDocumentSymbol(declaration);
-        if (symbol === undefined) {
+    private addSymbol(
+        name: string,
+        kind: SymbolKind,
+        range: Range,
+        selectionRange: Range,
+        canContainChildren = false,
+    ): void {
+        if (name.trim() === "") {
             return;
         }
 
-        this.leaveCompletedOwners(declaration);
+        this.leaveCompletedOwners(range);
+
+        const symbol: DocumentSymbol = {
+            name,
+            kind,
+            range,
+            selectionRange,
+            children: [],
+        };
 
         const parent = this.currentOwner()?.symbol;
         if (parent === undefined) {
@@ -82,102 +155,30 @@ export class DocumentSymbolsBuilder {
             parent.children.push(symbol);
         }
 
-        if (declarationCanContainChildSymbols(declaration.kind)) {
-            this.owners.push({ declaration, symbol });
-        }
-
-        if (declaration.kind === "function") {
-            for (const parameter of declaration.extra.parameters) {
-                this.addDeclaration(parameter);
-            }
+        if (canContainChildren) {
+            this.owners.push({ range, symbol });
         }
     }
 
-    private leaveCompletedOwners(declaration: AnyAstDeclaration): void {
-        while (!this.currentOwnerContains(declaration)) {
+    private leaveCompletedOwners(range: Range): void {
+        while (!this.currentOwnerContains(range)) {
             this.owners.pop();
         }
     }
 
-    private currentOwner(): DocumentSymbolOwner | undefined {
+    private currentOwner(): SymbolOwner | undefined {
         return this.owners[this.owners.length - 1];
     }
 
-    private currentOwnerContains(declaration: AnyAstDeclaration): boolean {
+    private currentOwnerContains(range: Range): boolean {
         const owner = this.currentOwner();
         if (owner === undefined) {
             return true;
         }
 
         return (
-            comparePositions(owner.declaration.range.start, declaration.range.start) <= 0 &&
-            comparePositions(declaration.range.end, owner.declaration.range.end) <= 0
+            comparePositions(owner.range.start, range.start) <= 0 &&
+            comparePositions(range.end, owner.range.end) <= 0
         );
-    }
-}
-
-function toDocumentSymbol(declaration: AnyAstDeclaration): DocumentSymbol | undefined {
-    const name = toSymbolName(declaration);
-
-    if (name === null || name.trim() === "") {
-        return undefined;
-    }
-
-    return {
-        name,
-        kind: definitionKindToSymbolKind(declaration.kind),
-        range: declaration.range,
-        selectionRange: declaration.selectionRange,
-        children: [],
-    };
-}
-
-function declarationCanContainChildSymbols(kind: DeclarationKind): boolean {
-    return (
-        kind === "function" || kind === "declare-variable" || kind === "let" || kind === "group-by"
-    );
-}
-
-function toSymbolName(declaration: AnyAstDeclaration): string {
-    switch (declaration.kind) {
-        case "count":
-        case "declare-variable":
-        case "let":
-        case "for":
-        case "for-position":
-        case "group-by":
-        case "parameter":
-        case "catch-variable":
-            return varNameToString(declaration.name);
-        case "namespace":
-            return declaration.name.prefix;
-        case "function":
-            return qnameToString(declaration.name.qname);
-        case "type":
-            return qnameToString(declaration.name.qname);
-        default:
-            throw declaration satisfies never;
-    }
-}
-
-function definitionKindToSymbolKind(kind: DeclarationKind): SymbolKind {
-    switch (kind) {
-        case "namespace":
-            return SymbolKind.Namespace;
-        case "declare-variable":
-        case "let":
-        case "for":
-        case "for-position":
-        case "group-by":
-        case "count":
-        case "parameter":
-        case "catch-variable":
-            return SymbolKind.Variable;
-        case "type":
-            return SymbolKind.Struct;
-        case "function":
-            return SymbolKind.Function;
-        default:
-            throw kind satisfies never;
     }
 }

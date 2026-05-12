@@ -1,4 +1,3 @@
-import type { DeclarationKind, VariableKind } from "server/parser/types/declaration.js";
 import {
     type DeclarationNameByKind,
     type FunctionName,
@@ -12,6 +11,17 @@ import type { BuiltinFunctionDefinition } from "server/wrapper/builtin-functions
 import type { Diagnostic, Range } from "vscode-languageserver";
 
 import type { Scope } from "./scope.js";
+
+export type VariableKind =
+    | "declare-variable"
+    | "let"
+    | "for"
+    | "for-position"
+    | "group-by"
+    | "count"
+    | "catch-variable";
+
+export type DeclarationKind = VariableKind | "namespace" | "type" | "parameter" | "function";
 
 export type DefinitionKind = DeclarationKind | "builtin-function";
 

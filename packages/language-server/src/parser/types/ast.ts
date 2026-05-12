@@ -1,10 +1,12 @@
 import type { Range } from "vscode-languageserver";
 
-import type { AnyAstDeclaration } from "./declaration.js";
-import type { FunctionName, ReferenceNameByKind } from "./name.js";
+import type { FunctionName, Prefix, QName, ReferenceNameByKind, VarName } from "./name.js";
 
 export type AstNodeKind =
     | "module"
+    | "namespaceDeclaration"
+    | "contextItemDeclaration"
+    | "typeDeclaration"
     | "functionDeclaration"
     | "variableDeclaration"
     | "forBinding"
@@ -30,37 +32,68 @@ export interface AstNodeBase<K extends AstNodeKind> {
 
 export interface ModuleAstNode extends AstNodeBase<"module"> {}
 
+export interface NamespaceDeclarationAstNode extends AstNodeBase<"namespaceDeclaration"> {
+    readonly prefix: Prefix;
+    readonly namespaceUri: string;
+    readonly selectionRange: Range;
+}
+
+export interface ContextItemDeclarationAstNode extends AstNodeBase<"contextItemDeclaration"> {
+    readonly name: VarName;
+    readonly selectionRange: Range;
+}
+
+export interface TypeDeclarationAstNode extends AstNodeBase<"typeDeclaration"> {
+    readonly name: { qname: QName };
+    readonly selectionRange: Range;
+}
+
+export interface AstParameter {
+    readonly name: VarName;
+    readonly range: Range;
+    readonly selectionRange: Range;
+}
+
+export interface AstBinding {
+    readonly name: VarName;
+    readonly range: Range;
+    readonly selectionRange: Range;
+}
+
+export interface ForBindingVariable extends AstBinding {
+    readonly bindingKind: "for" | "for-position";
+}
+
 export interface FunctionDeclarationAstNode extends AstNodeBase<"functionDeclaration"> {
-    readonly declaration: Extract<AnyAstDeclaration, { kind: "function" }>;
+    readonly name: FunctionName;
+    readonly nameRange: Range;
+    readonly parameters: AstParameter[];
 }
 
 export interface VariableDeclarationAstNode extends AstNodeBase<"variableDeclaration"> {
-    readonly declaration: Extract<AnyAstDeclaration, { kind: "declare-variable" }>;
+    readonly binding: AstBinding;
+    readonly completed: boolean;
 }
 
 export interface ForBindingAstNode extends AstNodeBase<"forBinding"> {
-    readonly declarations: Extract<AnyAstDeclaration, { kind: "for" | "for-position" }>[];
+    readonly bindings: ForBindingVariable[];
 }
 
 export interface LetBindingAstNode extends AstNodeBase<"letBinding"> {
-    readonly declaration: Extract<AnyAstDeclaration, { kind: "let" }>;
+    readonly binding: AstBinding;
 }
 
 export interface GroupByBindingAstNode extends AstNodeBase<"groupByBinding"> {
-    readonly declaration: Extract<AnyAstDeclaration, { kind: "group-by" }>;
+    readonly binding: AstBinding;
 }
 
 export interface CountClauseAstNode extends AstNodeBase<"countClause"> {
-    readonly declaration: Extract<AnyAstDeclaration, { kind: "count" }>;
+    readonly binding: AstBinding;
 }
 
 export interface FlowrExpressionAstNode extends AstNodeBase<"flowrExpression"> {}
 
 export interface CatchClauseAstNode extends AstNodeBase<"catchClause"> {}
-
-export interface DeclarationAstNode extends AstNodeBase<"declaration"> {
-    readonly declaration: AnyAstDeclaration;
-}
 
 export type ReferenceAstNode<K extends keyof ReferenceNameByKind = keyof ReferenceNameByKind> =
     K extends keyof ReferenceNameByKind
@@ -94,6 +127,9 @@ export interface UnknownAstNode extends AstNodeBase<"unknown"> {
 
 export type AstNode =
     | ModuleAstNode
+    | NamespaceDeclarationAstNode
+    | ContextItemDeclarationAstNode
+    | TypeDeclarationAstNode
     | FunctionDeclarationAstNode
     | VariableDeclarationAstNode
     | ForBindingAstNode
@@ -102,7 +138,6 @@ export type AstNode =
     | CountClauseAstNode
     | FlowrExpressionAstNode
     | CatchClauseAstNode
-    | DeclarationAstNode
     | ReferenceAstNode
     | FunctionCallAstNode
     | NamedFunctionReferenceAstNode
