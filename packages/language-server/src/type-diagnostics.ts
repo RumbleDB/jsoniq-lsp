@@ -12,7 +12,7 @@ export async function collectTypeDiagnostics(document: TextDocument): Promise<Di
         diagnostics.push(toDiagnostic(document, error));
     }
 
-    if (response.error.position) {
+    if (response.error?.position) {
         diagnostics.push({
             severity: DiagnosticSeverity.Error,
             range: {

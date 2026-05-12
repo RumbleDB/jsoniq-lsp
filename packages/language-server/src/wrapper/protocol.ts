@@ -43,7 +43,7 @@ export type WrapperDaemonResponse<ResponseType extends WrapperRequestType, Respo
         code: string;
         message: string;
         position: Position | null;
-    };
+    } | null;
 };
 
 export type WrapperResponseBodyByType = {
