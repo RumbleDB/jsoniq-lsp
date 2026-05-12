@@ -44,9 +44,6 @@ export class DocumentSymbolsBuilder {
                 this.visitChildren(node);
                 break;
             case "catchClause":
-                for (const declaration of node.declarations) {
-                    this.addDeclaration(declaration);
-                }
                 this.visitChildren(node);
                 break;
             case "declaration":

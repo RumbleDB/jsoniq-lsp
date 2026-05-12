@@ -56,9 +56,7 @@ export interface CountClauseAstNode extends AstNodeBase<"countClause"> {
 
 export interface FlowrExpressionAstNode extends AstNodeBase<"flowrExpression"> {}
 
-export interface CatchClauseAstNode extends AstNodeBase<"catchClause"> {
-    readonly declarations: Extract<AnyAstDeclaration, { kind: "catch-variable" }>[];
-}
+export interface CatchClauseAstNode extends AstNodeBase<"catchClause"> {}
 
 export interface DeclarationAstNode extends AstNodeBase<"declaration"> {
     readonly declaration: AnyAstDeclaration;

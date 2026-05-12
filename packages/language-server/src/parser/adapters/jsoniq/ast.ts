@@ -46,16 +46,6 @@ import { parseFunctionName, parseQname, parseVarName } from "./name.js";
 
 type AstVisitResult = AstNode[];
 
-const CATCH_VARIABLES = [
-    { qname: { prefix: "err", localName: "code" } },
-    { qname: { prefix: "err", localName: "description" } },
-    { qname: { prefix: "err", localName: "value" } },
-    { qname: { prefix: "err", localName: "module" } },
-    { qname: { prefix: "err", localName: "line-number" } },
-    { qname: { prefix: "err", localName: "column-number" } },
-    { qname: { prefix: "err", localName: "additional" } },
-] as const;
-
 class JsoniqAstBuilder extends jsoniqVisitor<AstVisitResult> {
     public constructor(private readonly document: TextDocument) {
         super();
@@ -388,23 +378,9 @@ class JsoniqAstBuilder extends jsoniqVisitor<AstVisitResult> {
             {
                 kind: "catchClause",
                 range: rangeFromNode(node, this.document),
-                declarations: this.catchDeclarations(node),
                 children: this.visitChildrenAsNodes(node),
             },
         ];
-    }
-
-    private catchDeclarations(
-        node: CatchCaseStatementContext | CatchClauseContext,
-    ): Extract<AnyAstDeclaration, { kind: "catch-variable" }>[] {
-        const catchNode = node.Kcatch();
-
-        return CATCH_VARIABLES.map((name) => ({
-            name,
-            kind: "catch-variable",
-            range: rangeFromNode(catchNode, this.document),
-            selectionRange: rangeFromNode(catchNode, this.document),
-        }));
     }
 }
 

@@ -19,6 +19,16 @@ import {
 } from "./model.js";
 import { Scope } from "./scope.js";
 
+const CATCH_VARIABLES = [
+    { qname: { prefix: "err", localName: "code" } },
+    { qname: { prefix: "err", localName: "description" } },
+    { qname: { prefix: "err", localName: "value" } },
+    { qname: { prefix: "err", localName: "module" } },
+    { qname: { prefix: "err", localName: "line-number" } },
+    { qname: { prefix: "err", localName: "column-number" } },
+    { qname: { prefix: "err", localName: "additional" } },
+] as const;
+
 class AnalysisBuilder {
     private readonly analysis: JsoniqAnalysis;
 
@@ -133,7 +143,7 @@ class AnalysisBuilder {
 
     private async visitCatchClause(node: Extract<AstNode, { kind: "catchClause" }>): Promise<void> {
         this.pushScope(node.range.start, node.range.end);
-        for (const declaration of node.declarations) {
+        for (const declaration of this.catchDeclarations(node)) {
             this.registerDeclaration(declaration);
         }
         await this.visitChildren(node);
@@ -176,6 +186,11 @@ class AnalysisBuilder {
 
     private registerDeclaration(declaration: AnyAstDeclaration): void {
         const definition = createSourceDefinition(this.document, declaration);
+
+        if (declaration.kind === "catch-variable") {
+            definition.visibleFrom = this.document.offsetAt(declaration.range.start);
+        }
+
         this.registerDefinition(definition);
 
         if (declaration.kind === "function" && definition.kind === "function") {
@@ -207,6 +222,17 @@ class AnalysisBuilder {
         }
 
         this.currentScope.declare(definition);
+    }
+
+    private catchDeclarations(
+        node: Extract<AstNode, { kind: "catchClause" }>,
+    ): Extract<AnyAstDeclaration, { kind: "catch-variable" }>[] {
+        return CATCH_VARIABLES.map((name) => ({
+            name,
+            kind: "catch-variable",
+            range: node.range,
+            selectionRange: node.range,
+        }));
     }
 
     private async resolve(reference: AnyReference): Promise<Definition | undefined> {
