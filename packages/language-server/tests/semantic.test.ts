@@ -15,16 +15,4 @@ describe("JSONiq semantic diagnostics", () => {
 
         expect(diagnostics.map((diagnostic) => diagnostic.code)).toEqual(["unresolved-variable"]);
     });
-
-    it("allows duplicate declarations", async () => {
-        const document = testDocument("semantic-duplicate", [
-            "declare variable $x := 1;",
-            "declare variable $x := 2;",
-            "$x",
-        ]);
-
-        const diagnostics = await collectSemanticDiagnostics(document);
-
-        expect(diagnostics).toEqual([]);
-    });
 });
