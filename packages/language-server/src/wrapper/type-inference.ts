@@ -83,16 +83,6 @@ export function clearTypeInferenceCache(uri: DocumentUri): void {
     pendingInferenceByUri.delete(uri);
 }
 
-const FALLBACK_TYPE_INFERENCE_RESPONSE: TypeInferenceResponse = {
-    id: -1,
-    responseType: REQUEST_TYPE_INFER_TYPES,
-    body: {
-        types: [],
-        typeErrors: [],
-    },
-    error: "Wrapper request failed.",
-};
-
 const logger = createLogger("type-inference");
 
 export async function getTypeInference(document: TextDocument): Promise<TypeInferenceResponse> {
@@ -126,16 +116,9 @@ export async function getTypeInference(document: TextDocument): Promise<TypeInfe
             );
             logger.debug(JSON.stringify(response, null, 2));
             return response;
-        })
-        .catch((error) => {
-            pendingInferenceByUri.delete(document.uri);
-            logger.warn(
-                `Type inference failed for ${document.uri} (version ${document.version}). Returning fallback response.`,
-            );
-            logger.debug(`Error: ${error instanceof Error ? error.message : String(error)}`);
-            return FALLBACK_TYPE_INFERENCE_RESPONSE;
         });
 
     pendingInferenceByUri.set(document.uri, inferencePromise);
+
     return inferencePromise;
 }

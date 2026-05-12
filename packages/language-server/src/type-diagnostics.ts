@@ -5,11 +5,30 @@ import { getTypeInference, type WrapperTypeError } from "./wrapper/type-inferenc
 
 export async function collectTypeDiagnostics(document: TextDocument): Promise<Diagnostic[]> {
     const response = await getTypeInference(document);
-    if (response.body.typeErrors.length === 0) {
-        return [];
+
+    const diagnostics: Diagnostic[] = [];
+
+    for (const error of response.body.typeErrors) {
+        diagnostics.push(toDiagnostic(document, error));
     }
 
-    return response.body.typeErrors.map((error) => toDiagnostic(document, error));
+    if (response.error.position) {
+        diagnostics.push({
+            severity: DiagnosticSeverity.Error,
+            range: {
+                start: response.error.position,
+                end: {
+                    line: response.error.position.line + 1,
+                    character: 0,
+                },
+            },
+            code: response.error.code,
+            source: "jsoniq-type-inference",
+            message: response.error.message,
+        });
+    }
+
+    return diagnostics;
 }
 
 function toDiagnostic(document: TextDocument, error: WrapperTypeError): Diagnostic {
