@@ -69,8 +69,8 @@ connection.onInitialize(async (_params: InitializeParams): Promise<InitializeRes
             },
         },
         serverInfo: {
-            name: "jsoniq-lsp",
-            version: "0.1.0",
+            name: "JSONiq Language Server",
+            version: require("../package.json").version,
         },
     };
 });
