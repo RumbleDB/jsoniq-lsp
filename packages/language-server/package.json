@@ -24,7 +24,6 @@
         "start": "node ./dist/main.mjs",
         "test": "vitest run tests",
         "clean": "rm -rf dist",
-        "prepack": "pnpm run build:prod",
         "ensure-wrapper": "node ./dist/wrapper/executable/ensure-wrapper.mjs",
         "lint": "oxlint",
         "lint:fix": "oxlint --fix",

@@ -50,7 +50,7 @@ export async function publishLanguageServer(languageServerPackage: PackageJson):
         LANGUAGE_SERVER_PACKAGE_DIR,
         "pack",
         "--pack-destination",
-        `../../${RELEASE_OUTPUT_DIR}`,
+        RELEASE_OUTPUT_DIR,
     ]);
 
     const packagePath = findOneFile(RELEASE_OUTPUT_DIR, ".tgz");
