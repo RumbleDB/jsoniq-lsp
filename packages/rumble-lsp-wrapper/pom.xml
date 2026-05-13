@@ -14,9 +14,8 @@
         <maven.compiler.source>17</maven.compiler.source>
         <maven.compiler.target>17</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <rumble.version>2.1.0</rumble.version>
         <rumble.local.jar>
-            ${project.basedir}/rumble/target/rumbledb-${rumble.version}-jar-with-dependencies.jar
+            ${project.basedir}/generated-resources/rumbledb-current-jar-with-dependencies.jar
         </rumble.local.jar>
     </properties>
 
@@ -24,7 +23,7 @@
         <dependency>
             <groupId>com.github.rumbledb</groupId>
             <artifactId>rumbledb</artifactId>
-            <version>${rumble.version}</version>
+            <version>local</version>
             <scope>system</scope>
             <systemPath>${rumble.local.jar}</systemPath>
         </dependency>
@@ -57,6 +56,17 @@
     </dependencies>
 
     <build>
+        <resources>
+            <resource>
+                <directory>src/main/resources</directory>
+            </resource>
+            <resource>
+                <directory>generated-resources</directory>
+                <includes>
+                    <include>rumble-build.properties</include>
+                </includes>
+            </resource>
+        </resources>
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
