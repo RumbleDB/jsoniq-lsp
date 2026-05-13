@@ -71,10 +71,24 @@ export function findOneFile(dir: string, suffix: string): string {
 
 export function npmPackageExists(name: string, version: string): boolean {
     try {
-        output("npm", ["view", `${name}@${version}`, "version"]);
+        execFileSync("npm", ["view", `${name}@${version}`, "version"], {
+            stdio: "pipe",
+        });
         return true;
-    } catch {
-        return false;
+    } catch (error) {
+        const stderr =
+            typeof error === "object" &&
+            error !== null &&
+            "stderr" in error &&
+            Buffer.isBuffer(error.stderr)
+                ? error.stderr.toString("utf8")
+                : "";
+
+        if (stderr.includes("E404")) {
+            return false;
+        }
+
+        throw error;
     }
 }
 
