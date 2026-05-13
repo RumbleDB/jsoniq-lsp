@@ -7,7 +7,7 @@
         "changeset": "changeset",
         "release:status": "changeset status --verbose",
         "release:version": "changeset version",
-        "release:publish": "changeset publish",
+        "release:publish": "node scripts/release/publish.mts",
         "build:core": "run-p build:wrapper build:server",
         "build:core:prod": "run-p build:wrapper:prod build:server:prod",
         "build:wrapper": "sh packages/rumble-lsp-wrapper/scripts/fetch-rumble.sh && mvn -f packages/rumble-lsp-wrapper/pom.xml -q package",
@@ -32,6 +32,7 @@
     },
     "devDependencies": {
         "@changesets/cli": "^2.31.0",
+        "@octokit/rest": "^22.0.1",
         "husky": "^9.1.7",
         "lint-staged": "^17.0.2",
         "npm-run-all2": "^8.0.4",

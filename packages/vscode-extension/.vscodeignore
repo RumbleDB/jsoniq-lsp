@@ -8,3 +8,4 @@
 !syntaxes/**
 !README.md
 !node_modules/@jimmycai/jsoniq-language-server
+!node_modules/@jimmycai/jsoniq-language-server/**
