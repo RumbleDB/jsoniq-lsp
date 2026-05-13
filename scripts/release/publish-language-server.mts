@@ -20,6 +20,7 @@ function sha256(file: string): string {
 }
 
 export async function publishLanguageServer(languageServerPackage: PackageJson): Promise<string> {
+    run("pnpm", ["run", "generate:grammar"]);
     run("pnpm", ["run", "build:core:prod"]);
 
     const jarPath = findOneFile(WRAPPER_TARGET_DIR, "-all.jar");
