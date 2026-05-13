@@ -33,19 +33,16 @@ export function releaseTag(packageJson: PackageJson): string {
 }
 
 export async function getRelease(tag: string): Promise<Release | null> {
-    const response = await octokit.rest.repos.getReleaseByTag({
-        owner,
-        repo,
-        tag,
-    });
-    if (response.status === 200) {
+    try {
+        const response = await octokit.rest.repos.getReleaseByTag({
+            owner,
+            repo,
+            tag,
+        });
+
         return response.data;
-    } else if (response.status === 404) {
+    } catch {
         return null;
-    } else {
-        throw new Error(
-            `Unexpected response status ${response.status} when fetching release with tag '${tag}'.`,
-        );
     }
 }
 
