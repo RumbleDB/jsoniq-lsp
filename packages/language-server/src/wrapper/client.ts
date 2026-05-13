@@ -46,6 +46,9 @@ class RumbleWrapperClient {
     private processReadyPromise: Promise<void> | undefined;
     private handshakeCompleted = false;
     private rumbleVersion: string | null = null;
+    private rumbleCommit: string | null = null;
+    private rumbleCommitShort: string | null = null;
+    private rumbleRef: string | null = null;
 
     public async connect(): Promise<void> {
         if (this.child !== undefined && this.handshakeCompleted) {
@@ -108,6 +111,9 @@ class RumbleWrapperClient {
             );
 
             this.rumbleVersion = handshakeResponse.body.rumbleVersion;
+            this.rumbleCommit = handshakeResponse.body.rumbleCommit;
+            this.rumbleCommitShort = handshakeResponse.body.rumbleCommitShort;
+            this.rumbleRef = handshakeResponse.body.rumbleRef;
             this.handshakeCompleted = true;
             logger.info(
                 `Handshake with wrapper successful. Response: ${JSON.stringify(handshakeResponse)}`,
@@ -124,6 +130,10 @@ class RumbleWrapperClient {
 
     public dispose(): void {
         this.handshakeCompleted = false;
+        this.rumbleVersion = null;
+        this.rumbleCommit = null;
+        this.rumbleCommitShort = null;
+        this.rumbleRef = null;
 
         for (const pendingRequest of this.pending.values()) {
             clearTimeout(pendingRequest.timeout);
@@ -275,6 +285,18 @@ class RumbleWrapperClient {
 
     public getRumbleVersion(): string | null {
         return this.rumbleVersion;
+    }
+
+    public getRumbleCommit(): string | null {
+        return this.rumbleCommit;
+    }
+
+    public getRumbleCommitShort(): string | null {
+        return this.rumbleCommitShort;
+    }
+
+    public getRumbleRef(): string | null {
+        return this.rumbleRef;
     }
 
     public async getMemoryUsage(): Promise<WrapperMemoryUsage | null> {

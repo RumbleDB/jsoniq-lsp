@@ -8,6 +8,8 @@ describe("wrapper client surface", () => {
 
     it("starts with unknown rumble version", () => {
         expect(getWrapperClient().getRumbleVersion()).toBeNull();
+        expect(getWrapperClient().getRumbleCommit()).toBeNull();
+        expect(getWrapperClient().getRumbleCommitShort()).toBeNull();
     });
 
     it("dispose can be called safely", () => {
@@ -18,5 +20,7 @@ describe("wrapper client surface", () => {
         const client = getWrapperClient();
         await expect(client.connect()).resolves.toBeUndefined();
         expect(client.getRumbleVersion()).toBeDefined();
+        expect(client.getRumbleCommit()).toBeDefined();
+        expect(client.getRumbleCommitShort()).toBeDefined();
     }, 30_000);
 });

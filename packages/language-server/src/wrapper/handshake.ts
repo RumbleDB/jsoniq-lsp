@@ -8,6 +8,9 @@ export interface HandshakeRequestPayload {
 
 export interface HandshakeResponseBody {
     rumbleVersion: string;
+    rumbleCommit: string;
+    rumbleCommitShort: string;
+    rumbleRef: string;
 }
 
 export type HandshakeResponse = WrapperDaemonResponse<
