@@ -16,7 +16,7 @@ WRAPPER_RUMBLE_JAR_LINK="$WRAPPER_GENERATED_RESOURCES_DIR/rumbledb-current-jar-w
 WRAPPER_BUILD_STAMP="$WRAPPER_GENERATED_RESOURCES_DIR/rumble-build.stamp"
 
 RUMBLE_REPO_URL="https://github.com/RumbleDB/rumble.git"
-RUMBLE_REF="/jimmy/master"
+RUMBLE_REF="jimmy/master"
 RUMBLE_TARGET_DIR="$RUMBLE_DIR/target"
 
 ensure_rumble_checkout() {
