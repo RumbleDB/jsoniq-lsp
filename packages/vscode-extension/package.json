@@ -1,5 +1,5 @@
 {
-    "name": "jsoniq-vscode-extension",
+    "name": "jsoniq-vscode",
     "displayName": "JSONiq Language Support",
     "version": "1.0.0",
     "private": true,
