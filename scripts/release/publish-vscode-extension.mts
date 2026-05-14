@@ -1,6 +1,3 @@
-import fs from "node:fs";
-import path from "node:path";
-
 import { ensureRelease, releaseTag, uploadReleaseAsset } from "./github.mts";
 import {
     findOneFile,
