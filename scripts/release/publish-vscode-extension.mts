@@ -14,14 +14,6 @@ import {
 export async function publishVsCodeExtension(extensionPackage: PackageJson): Promise<void> {
     const languageServerPackage = readPackage(LANGUAGE_SERVER_PACKAGE_DIR);
 
-    run("pnpm", ["run", "build:client"]);
-
-    for (const file of fs.readdirSync(VSCODE_EXTENSION_PACKAGE_DIR)) {
-        if (file.endsWith(".vsix")) {
-            fs.rmSync(path.join(VSCODE_EXTENSION_PACKAGE_DIR, file));
-        }
-    }
-
     run(
         "npm",
         [
@@ -32,10 +24,11 @@ export async function publishVsCodeExtension(extensionPackage: PackageJson): Pro
         { cwd: VSCODE_EXTENSION_PACKAGE_DIR },
     );
     run("npm", ["install"], { cwd: VSCODE_EXTENSION_PACKAGE_DIR });
+    run("npm", ["run", "build:prod"], { cwd: VSCODE_EXTENSION_PACKAGE_DIR });
+
     run(
-        "pnpm",
+        "npx",
         [
-            "dlx",
             "--allow-build=@vscode/vsce-sign",
             "--allow-build=keytar",
             "@vscode/vsce",
