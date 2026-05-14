@@ -10,7 +10,7 @@
     "repository": {
         "url": "https://github.com/CaiJimmy/jsoniq-lsp"
     },
-    "publisher": "local",
+    "publisher": "RumbleDB",
     "main": "./dist/extension.js",
     "scripts": {
         "build": "pnpm run clean && pnpm run typecheck && rolldown -c",
