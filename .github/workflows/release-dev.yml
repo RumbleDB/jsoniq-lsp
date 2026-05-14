@@ -1,4 +1,4 @@
-name: Publish Dev Build
+name: Create Dev Release
 
 on:
     workflow_dispatch:
