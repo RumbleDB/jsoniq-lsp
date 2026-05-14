@@ -36,7 +36,7 @@ async function main(): Promise<void> {
 
     const extensionPackage = readPackage(VSCODE_EXTENSION_PACKAGE_DIR);
     const languageServerPackage = readPackage(LANGUAGE_SERVER_PACKAGE_DIR);
-    const extensionVersion = `${extensionPackage.version}-dev.${buildId}`;
+    const extensionVersion = `${extensionPackage.version}-dev.git-${buildId}`;
     const languageServerFileSpec = `file:${languageServerPackagePath}`;
 
     cleanVsCodeExtensionInstall();
