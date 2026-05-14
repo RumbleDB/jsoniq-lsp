@@ -12,6 +12,13 @@ import {
 } from "./shared.mts";
 
 export async function publishVsCodeExtension(extensionPackage: PackageJson): Promise<void> {
+    /// Remove node_modules and package-lock.json to ensure a clean install and build (vsce does not support pnpm node_modules structure)
+    run("rm", [
+        "-rf",
+        `${VSCODE_EXTENSION_PACKAGE_DIR}/node_modules`,
+        `${VSCODE_EXTENSION_PACKAGE_DIR}/package-lock.json`,
+    ]);
+
     const languageServerPackage = readPackage(LANGUAGE_SERVER_PACKAGE_DIR);
 
     run(
@@ -23,7 +30,7 @@ export async function publishVsCodeExtension(extensionPackage: PackageJson): Pro
         ],
         { cwd: VSCODE_EXTENSION_PACKAGE_DIR },
     );
-    run("npm", ["install"], { cwd: VSCODE_EXTENSION_PACKAGE_DIR });
+    run("npm", ["install", "--omit=dev"], { cwd: VSCODE_EXTENSION_PACKAGE_DIR });
     run("npm", ["run", "build:prod"], { cwd: VSCODE_EXTENSION_PACKAGE_DIR });
 
     run(

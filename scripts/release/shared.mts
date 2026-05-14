@@ -40,6 +40,7 @@ export function run(
     args: string[],
     options: Parameters<typeof execFileSync>[2] = {},
 ): void {
+    console.log(`> ${command} ${args.join(" ")}`);
     execFileSync(command, args, { stdio: "inherit", ...options });
 }
 
