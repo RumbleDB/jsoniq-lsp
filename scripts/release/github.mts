@@ -8,8 +8,8 @@ type PackageJson = {
     version: string;
 };
 
-type Release = Awaited<ReturnType<typeof octokit.rest.repos.createRelease>>["data"];
-type ReleaseAsset = Release["assets"][number];
+export type Release = Awaited<ReturnType<typeof octokit.rest.repos.createRelease>>["data"];
+export type ReleaseAsset = Release["assets"][number];
 
 const githubToken = process.env.GITHUB_TOKEN;
 const repository = process.env.GITHUB_REPOSITORY;
@@ -59,6 +59,7 @@ export async function ensureRelease(tag: string, name: string): Promise<Release>
         tag_name: tag,
         name,
         generate_release_notes: true,
+        prerelease: tag.includes("dev-"),
     });
 
     return response.data;

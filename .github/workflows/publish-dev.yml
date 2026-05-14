@@ -4,7 +4,6 @@ on:
     workflow_dispatch:
 
 env:
-    RELEASE_OUTPUT_DIR: .release-assets
     HUSKY: 0
 
 permissions:
@@ -25,7 +24,7 @@ jobs:
             - name: Set up Node.js
               uses: actions/setup-node@v6
               with:
-                  node-version: 24
+                  node-version: 26
                   cache: pnpm
 
             - name: Set up Java
@@ -38,148 +37,7 @@ jobs:
             - name: Install dependencies
               run: pnpm install --frozen-lockfile
 
-            - name: Generate grammar
-              run: pnpm run generate:grammar
-
-            - name: Build production version
-              run: pnpm run build:prod
-
-            - name: Upload Java wrapper to a new release
-              id: wrapper_release_meta
-              run: |
-                  SHORT_SHA="${GITHUB_SHA::7}"
-                  BUILD_DATE="$(date -u +'%Y%m%d-%H%M%S')"
-                  TAG_NAME="dev-${BUILD_DATE}-${SHORT_SHA}"
-                  RELEASE_NAME="Dev Build ${BUILD_DATE} (${SHORT_SHA})"
-                  ASSET_PATH="$(ls packages/rumble-lsp-wrapper/target/rumble-lsp-wrapper-*-all.jar | head -n 1)"
-                  ASSET_NAME="$(basename "${ASSET_PATH}")"
-                  ASSET_SHA256="$(sha256sum "${ASSET_PATH}" | awk '{print $1}')"
-
-                  echo "tag_name=${TAG_NAME}" >> "${GITHUB_OUTPUT}"
-                  echo "release_name=${RELEASE_NAME}" >> "${GITHUB_OUTPUT}"
-                  echo "asset_path=${ASSET_PATH}" >> "${GITHUB_OUTPUT}"
-                  echo "asset_name=${ASSET_NAME}" >> "${GITHUB_OUTPUT}"
-                  echo "asset_sha256=${ASSET_SHA256}" >> "${GITHUB_OUTPUT}"
-
-            - name: Validate wrapper asset
-              run: test -f "${{ steps.wrapper_release_meta.outputs.asset_path }}"
-
-            - name: Create GitHub release and upload wrapper
-              id: create_release
-              uses: softprops/action-gh-release@v3
-              with:
-                  tag_name: ${{ steps.wrapper_release_meta.outputs.tag_name }}
-                  name: ${{ steps.wrapper_release_meta.outputs.release_name }}
-                  generate_release_notes: true
-                  files: ${{ steps.wrapper_release_meta.outputs.asset_path }}
-
-            - name: Write wrapper permalink manifest
-              uses: actions/github-script@v9
+            - name: Publish dev build
+              run: pnpm release:publish-dev
               env:
-                  RELEASE_TAG: ${{ steps.wrapper_release_meta.outputs.tag_name }}
-                  RELEASE_ASSET_NAME: ${{ steps.wrapper_release_meta.outputs.asset_name }}
-                  RELEASE_ASSET_SHA256: ${{ steps.wrapper_release_meta.outputs.asset_sha256 }}
-                  OUTPUT_PATH: packages/language-server/assets/wrapper/release-manifest.json
-              with:
-                  script: |
-                      const fs = require("fs");
-                      const path = require("path");
-
-                      const tag = process.env.RELEASE_TAG;
-                      const assetName = process.env.RELEASE_ASSET_NAME;
-                      const assetSha256 = process.env.RELEASE_ASSET_SHA256;
-                      const outputPath = process.env.OUTPUT_PATH;
-                      const [owner, repo] = process.env.GITHUB_REPOSITORY.split("/");
-
-                      const release = await github.rest.repos.getReleaseByTag({
-                        owner,
-                        repo,
-                        tag,
-                      });
-
-                      const asset = release.data.assets.find((item) => item.name === assetName);
-                      if (!asset) {
-                        core.setFailed(`Release asset '${assetName}' not found for tag '${tag}'.`);
-                        return;
-                      }
-
-                      const manifest = {
-                        tag,
-                        releaseName: release.data.name,
-                        releaseUrl: release.data.html_url,
-                        assetName: asset.name,
-                        jarUrl: asset.browser_download_url,
-                        jarSha256: assetSha256,
-                        jarSizeBytes: asset.size,
-                        createdAt: new Date().toISOString(),
-                        commitSha: process.env.GITHUB_SHA,
-                      };
-
-                      fs.mkdirSync(path.dirname(outputPath), { recursive: true });
-                      fs.writeFileSync(outputPath, `${JSON.stringify(manifest, null, 2)}\n`, "utf8");
-                      core.info(`Wrote wrapper manifest to ${outputPath}`);
-
-            - name: Pack language server
-              id: pack_language_server
-              run: |
-                  mkdir -p "${RELEASE_OUTPUT_DIR}"
-                  pnpm --dir packages/language-server pack --pack-destination "../../${RELEASE_OUTPUT_DIR}"
-                  PACKAGE_ASSET_PATH="$(ls "${RELEASE_OUTPUT_DIR}"/*.tgz | head -n 1)"
-                  PACKAGE_ASSET_NAME="$(basename "${PACKAGE_ASSET_PATH}")"
-
-                  echo "package_asset_path=${PACKAGE_ASSET_PATH}" >> "${GITHUB_OUTPUT}"
-                  echo "package_asset_name=${PACKAGE_ASSET_NAME}" >> "${GITHUB_OUTPUT}"
-
-            - name: Upload language server package to release
-              uses: softprops/action-gh-release@v3
-              with:
-                  tag_name: ${{ steps.wrapper_release_meta.outputs.tag_name }}
-                  files: ${{ steps.pack_language_server.outputs.package_asset_path }}
-
-            - name: Prepare language server package for npm publish
-              working-directory: packages/language-server
-              run: |
-                  PUBLISH_NAME="$(node -p "require('./package.json').name")"
-                  BASE_VERSION="$(node -p "require('./package.json').version")"
-                  DEV_VERSION="${BASE_VERSION}-dev.${GITHUB_SHA::7}"
-                  pnpm version "${DEV_VERSION}" --no-git-tag-version --no-git-checks
-                  echo "Publishing ${PUBLISH_NAME}@${DEV_VERSION}"
-
-            - name: Publish language server package to npm
-              working-directory: packages/language-server
-              env:
-                  NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-              run: pnpm publish --tag dev --access public --no-git-checks
-
-            - name: Prepare VS Code extension package
-              working-directory: packages/vscode-extension
-              run: |
-                  EXTENSION_NAME="$(node -p "require('./package.json').name")"
-                  BASE_VERSION="$(node -p "require('./package.json').version")"
-                  DEV_VERSION="${BASE_VERSION}-dev.${GITHUB_SHA::7}"
-                  LANGUAGE_SERVER_PACKAGE_NAME="$(node -p "require('../language-server/package.json').name")"
-                  LANGUAGE_SERVER_PACKAGE_PATH="${GITHUB_WORKSPACE}/${{ steps.pack_language_server.outputs.package_asset_path }}"
-                  LANGUAGE_SERVER_FILE_SPEC="file:${LANGUAGE_SERVER_PACKAGE_PATH}"
-
-                  pnpm version "${DEV_VERSION}" --no-git-tag-version --no-git-checks
-                  echo "Packing ${EXTENSION_NAME}@${DEV_VERSION} extension"
-                  echo "Reinstalling runtime dependencies with npm using ${LANGUAGE_SERVER_PACKAGE_NAME} from ${LANGUAGE_SERVER_PACKAGE_PATH}"
-
-                  rm -rf node_modules package-lock.json
-                  npm pkg set "dependencies.${LANGUAGE_SERVER_PACKAGE_NAME}=${LANGUAGE_SERVER_FILE_SPEC}"
-                  npm install --omit=dev
-
-                  test -f "node_modules/${LANGUAGE_SERVER_PACKAGE_NAME}/package.json"
-                  test -f "node_modules/${LANGUAGE_SERVER_PACKAGE_NAME}/dist/main.mjs"
-                  test -f "node_modules/vscode-languageclient/package.json"
-
-            - name: Pack VS Code extension
-              working-directory: packages/vscode-extension
-              run: |
-                  pnpm dlx --allow-build=@vscode/vsce-sign --allow-build=keytar @vscode/vsce package --skip-license --pre-release
-
-            - name: Upload VS Code extension package to release
-              uses: softprops/action-gh-release@v3
-              with:
-                  tag_name: ${{ steps.wrapper_release_meta.outputs.tag_name }}
-                  files: packages/vscode-extension/*.vsix
+                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -1,6 +1,5 @@
 import { getRelease, releaseTag } from "./github.mts";
-import { publishLanguageServer } from "./publish-language-server.mts";
-import { publishVsCodeExtension } from "./publish-vscode-extension.mts";
+import { publishLanguageServer } from "./language-server.mts";
 import {
     LANGUAGE_SERVER_PACKAGE_DIR,
     npmPackageExists,
@@ -8,6 +7,7 @@ import {
     readPackage,
     VSCODE_EXTENSION_PACKAGE_DIR,
 } from "./shared.mts";
+import { publishVsCodeExtension } from "./vscode-extension.mts";
 
 prepareOutputDir();
 

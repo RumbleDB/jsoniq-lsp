@@ -2,7 +2,7 @@ import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 
-import { ensureRelease, releaseTag, uploadReleaseAsset } from "./github.mts";
+import { ensureRelease, releaseTag, uploadReleaseAsset, type Release } from "./github.mts";
 import {
     findOneFile,
     LANGUAGE_SERVER_PACKAGE_DIR,
@@ -19,15 +19,18 @@ function sha256(file: string): string {
     return crypto.createHash("sha256").update(fs.readFileSync(file)).digest("hex");
 }
 
-export async function publishLanguageServer(languageServerPackage: PackageJson): Promise<string> {
+export function buildLanguageServerProductionArtifacts(): void {
     run("pnpm", ["run", "generate:grammar"]);
     run("pnpm", ["run", "build:core:prod"]);
+}
 
+export async function attachLanguageServerArtifacts(
+    release: Release,
+    tag: string,
+): Promise<string> {
     const jarPath = findOneFile(WRAPPER_TARGET_DIR, "-all.jar");
     const jarSha256 = sha256(jarPath);
     const jarSizeBytes = fs.statSync(jarPath).size;
-    const tag = releaseTag(languageServerPackage);
-    const release = await ensureRelease(tag, tag);
     const jarAsset = await uploadReleaseAsset(release, jarPath);
 
     const manifest = {
@@ -55,6 +58,16 @@ export async function publishLanguageServer(languageServerPackage: PackageJson):
 
     const packagePath = findOneFile(RELEASE_OUTPUT_DIR, ".tgz");
     await uploadReleaseAsset(release, packagePath);
+
+    return packagePath;
+}
+
+export async function publishLanguageServer(languageServerPackage: PackageJson): Promise<string> {
+    buildLanguageServerProductionArtifacts();
+
+    const tag = releaseTag(languageServerPackage);
+    const release = await ensureRelease(tag, tag);
+    const packagePath = await attachLanguageServerArtifacts(release, tag);
 
     run("pnpm", ["publish", "--access", "public", "--no-git-checks"], {
         cwd: LANGUAGE_SERVER_PACKAGE_DIR,
