@@ -33,7 +33,7 @@ export async function publishVsCodeExtension(extensionPackage: PackageJson): Pro
         ],
         { cwd: VSCODE_EXTENSION_PACKAGE_DIR },
     );
-    run("npm", ["install", "--omit=dev"], { cwd: VSCODE_EXTENSION_PACKAGE_DIR });
+    run("npm", ["install"], { cwd: VSCODE_EXTENSION_PACKAGE_DIR });
     run(
         "pnpm",
         [
