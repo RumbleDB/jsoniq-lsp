@@ -5,6 +5,7 @@ import {
 } from "./language-server.mts";
 import {
     LANGUAGE_SERVER_PACKAGE_DIR,
+    output,
     readPackage,
     run,
     VSCODE_EXTENSION_PACKAGE_DIR,
@@ -17,32 +18,25 @@ import {
 } from "./vscode-extension.mts";
 
 function shortSha(): string {
-    const sha = process.env.GITHUB_SHA;
+    let sha = process.env.GITHUB_SHA;
     if (sha === undefined || sha.length === 0) {
-        return "local";
+        sha = output("git", ["rev-parse", "HEAD"]);
     }
 
     return sha.slice(0, 7);
 }
 
-function timestamp(): string {
-    return new Date()
-        .toISOString()
-        .replace(/[-:]/g, "")
-        .replace(/\.\d{3}Z$/, "")
-        .replace("T", "-");
-}
-
 async function main(): Promise<void> {
-    const tag = `dev-${timestamp()}-${shortSha()}`;
-    const release = await ensureRelease(tag, `Dev Build ${tag}`);
+    const buildId = shortSha();
+    const tag = `dev/${buildId}`;
+    const release = await ensureRelease(tag, `Dev Build ${buildId}`, { prerelease: true });
 
     buildLanguageServerProductionArtifacts();
     const languageServerPackagePath = await attachLanguageServerArtifacts(release, tag);
 
     const extensionPackage = readPackage(VSCODE_EXTENSION_PACKAGE_DIR);
     const languageServerPackage = readPackage(LANGUAGE_SERVER_PACKAGE_DIR);
-    const extensionVersion = `${extensionPackage.version}-dev.${shortSha()}`;
+    const extensionVersion = `${extensionPackage.version}-dev.${buildId}`;
     const languageServerFileSpec = `file:${languageServerPackagePath}`;
 
     cleanVsCodeExtensionInstall();
@@ -61,7 +55,7 @@ async function main(): Promise<void> {
         { cwd: VSCODE_EXTENSION_PACKAGE_DIR },
     );
 
-    const vsixPath = packVsCodeExtension(false);
+    const vsixPath = packVsCodeExtension(true);
     await uploadReleaseAsset(release, vsixPath);
 }
 

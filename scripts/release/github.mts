@@ -46,7 +46,11 @@ export async function getRelease(tag: string): Promise<Release | null> {
     }
 }
 
-export async function ensureRelease(tag: string, name: string): Promise<Release> {
+export async function ensureRelease(
+    tag: string,
+    name: string,
+    options: { prerelease?: boolean } = {},
+): Promise<Release> {
     const existingRelease = await getRelease(tag);
 
     if (existingRelease !== null) {
@@ -59,7 +63,7 @@ export async function ensureRelease(tag: string, name: string): Promise<Release>
         tag_name: tag,
         name,
         generate_release_notes: true,
-        prerelease: tag.includes("dev-"),
+        prerelease: options.prerelease ?? false,
     });
 
     return response.data;
