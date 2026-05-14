@@ -2,11 +2,19 @@ import fs from "node:fs";
 import path from "node:path";
 
 import { ensureRelease, releaseTag, uploadReleaseAsset } from "./github.mts";
-import { findOneFile, run, VSCODE_EXTENSION_PACKAGE_DIR, type PackageJson } from "./shared.mts";
+import {
+    findOneFile,
+    LANGUAGE_SERVER_PACKAGE_DIR,
+    readPackage,
+    run,
+    VSCODE_EXTENSION_PACKAGE_DIR,
+    type PackageJson,
+} from "./shared.mts";
 
 export async function publishVsCodeExtension(extensionPackage: PackageJson): Promise<void> {
     const tag = releaseTag(extensionPackage);
     const release = await ensureRelease(tag, tag);
+    const languageServerPackage = readPackage(LANGUAGE_SERVER_PACKAGE_DIR);
 
     run("pnpm", ["run", "build:client"]);
 
@@ -16,6 +24,15 @@ export async function publishVsCodeExtension(extensionPackage: PackageJson): Pro
         }
     }
 
+    run(
+        "npm",
+        [
+            "pkg",
+            "set",
+            `dependencies.${languageServerPackage.name}=${languageServerPackage.version}`,
+        ],
+        { cwd: VSCODE_EXTENSION_PACKAGE_DIR },
+    );
     run("npm", ["install", "--omit=dev"], { cwd: VSCODE_EXTENSION_PACKAGE_DIR });
     run(
         "pnpm",
