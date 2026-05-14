@@ -12,8 +12,6 @@ import {
 } from "./shared.mts";
 
 export async function publishVsCodeExtension(extensionPackage: PackageJson): Promise<void> {
-    const tag = releaseTag(extensionPackage);
-    const release = await ensureRelease(tag, tag);
     const languageServerPackage = readPackage(LANGUAGE_SERVER_PACKAGE_DIR);
 
     run("pnpm", ["run", "build:client"]);
@@ -48,5 +46,8 @@ export async function publishVsCodeExtension(extensionPackage: PackageJson): Pro
     );
 
     const vsixPath = findOneFile(VSCODE_EXTENSION_PACKAGE_DIR, ".vsix");
+
+    const tag = releaseTag(extensionPackage);
+    const release = await ensureRelease(tag, tag);
     await uploadReleaseAsset(release, vsixPath);
 }
