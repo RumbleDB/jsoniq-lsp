@@ -76,6 +76,7 @@
     "activationEvents": [
         "onNotebook:jupyter-notebook"
     ],
+    "icon": "assets/icon.png",
     "engines": {
         "vscode": "^1.118.0"
     }
