@@ -48,11 +48,18 @@ export function packVsCodeExtension(preRelease: boolean): string {
     return findOneFile(VSCODE_EXTENSION_PACKAGE_DIR, ".vsix");
 }
 
-export async function publishVsCodeExtension(extensionPackage: PackageJson): Promise<void> {
+export async function publishVsCodeExtension(
+    extensionPackage: PackageJson,
+    languageServerPackagePath?: string,
+): Promise<void> {
     const languageServerPackage = readPackage(LANGUAGE_SERVER_PACKAGE_DIR);
+    const languageServerDependency =
+        languageServerPackagePath === undefined
+            ? languageServerPackage.version
+            : `file:${languageServerPackagePath}`;
 
     cleanVsCodeExtensionInstall();
-    setVsCodeExtensionLanguageServerDependency(languageServerPackage.version);
+    setVsCodeExtensionLanguageServerDependency(languageServerDependency);
     installAndBuildVsCodeExtension();
 
     const vsixPath = packVsCodeExtension(false);

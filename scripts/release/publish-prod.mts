@@ -25,10 +25,12 @@ if (!languageServerNeedsPublish && extensionReleaseExists) {
     process.exit(0);
 }
 
+let languageServerPackagePath: string | undefined;
+
 if (languageServerNeedsPublish) {
-    await publishLanguageServer(languageServerPackage);
+    languageServerPackagePath = await publishLanguageServer(languageServerPackage);
 }
 
 if (!extensionReleaseExists) {
-    await publishVsCodeExtension(extensionPackage);
+    await publishVsCodeExtension(extensionPackage, languageServerPackagePath);
 }
