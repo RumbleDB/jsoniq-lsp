@@ -1,6 +1,6 @@
 {
     "name": "jsoniq-vscode",
-    "displayName": "JSONiq",
+    "displayName": "JSONiq Language Support",
     "version": "1.0.0",
     "private": true,
     "description": "JSONiq language support for Visual Studio Code, powered by the JSONiq Language Server.",
