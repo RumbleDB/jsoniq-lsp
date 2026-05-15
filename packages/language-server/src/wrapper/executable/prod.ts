@@ -5,11 +5,11 @@ import { createLogger } from "server/utils/logger.js";
 
 import { createTerminalProgressReporter, downloadWithProgress } from "./download.js";
 import { type WrapperLaunchConfig, type WrapperResolutionOptions } from "./index.js";
-import { computeFileSha256, findPackageRoot } from "./utils.js";
+import { computeFileSha256, findPackageRoot, getWrapperCacheDirectory } from "./utils.js";
 
 /// Production environment: use package assets instead of compiled output.
 const PACKAGE_ROOT = findPackageRoot();
-const WRAPPER_JAR_PRODUCTION_FOLDER = path.join(PACKAGE_ROOT, "assets/wrapper");
+const WRAPPER_JAR_ASSET_FOLDER = path.join(PACKAGE_ROOT, "assets/wrapper");
 const WRAPPER_RELEASE_MANIFEST_FILE = "release-manifest.json";
 const WRAPPER_REMOTE_JAR_FILE = "rumble-lsp-wrapper.remote.jar";
 const WRAPPER_REMOTE_JAR_TEMP_FILE = `${WRAPPER_REMOTE_JAR_FILE}.download`;
@@ -21,7 +21,7 @@ interface WrapperReleaseManifest {
 }
 
 function readReleaseManifest(): WrapperReleaseManifest {
-    const manifestPath = path.join(WRAPPER_JAR_PRODUCTION_FOLDER, WRAPPER_RELEASE_MANIFEST_FILE);
+    const manifestPath = path.join(WRAPPER_JAR_ASSET_FOLDER, WRAPPER_RELEASE_MANIFEST_FILE);
     if (!fs.existsSync(manifestPath)) {
         throw new Error(`Wrapper release manifest not found: '${manifestPath}'.`);
     }
@@ -43,7 +43,8 @@ export async function resolveProductionJarPath(
     options: WrapperResolutionOptions = {},
 ): Promise<string> {
     const manifest = readReleaseManifest();
-    const cachedJarPath = path.join(WRAPPER_JAR_PRODUCTION_FOLDER, WRAPPER_REMOTE_JAR_FILE);
+    const wrapperCacheDirectory = getWrapperCacheDirectory();
+    const cachedJarPath = path.join(wrapperCacheDirectory, WRAPPER_REMOTE_JAR_FILE);
 
     if (fs.existsSync(cachedJarPath) && computeFileSha256(cachedJarPath) === manifest.jarSha256) {
         options.onProgress?.({
@@ -55,9 +56,9 @@ export async function resolveProductionJarPath(
     }
 
     logger.info(`Downloading wrapper jar from '${manifest.jarUrl}'.`);
-    fs.mkdirSync(WRAPPER_JAR_PRODUCTION_FOLDER, { recursive: true });
+    fs.mkdirSync(wrapperCacheDirectory, { recursive: true });
 
-    const tempJarPath = path.join(WRAPPER_JAR_PRODUCTION_FOLDER, WRAPPER_REMOTE_JAR_TEMP_FILE);
+    const tempJarPath = path.join(wrapperCacheDirectory, WRAPPER_REMOTE_JAR_TEMP_FILE);
     const progressReporter = options.onProgress ?? createTerminalProgressReporter();
 
     try {
