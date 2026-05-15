@@ -7,7 +7,7 @@
         "changeset": "changeset",
         "release:status": "changeset status --verbose",
         "release:version": "changeset version",
-        "release:publish": "node scripts/release/publish.mts",
+        "release:publish": "node scripts/release/publish-prod.mts",
         "release:publish-dev": "node scripts/release/publish-dev.mts",
         "build:core": "run-p build:wrapper build:server",
         "build:core:prod": "run-p build:wrapper:prod build:server:prod",
