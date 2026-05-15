@@ -3,7 +3,8 @@
     "version": "2.0.0",
     "private": false,
     "repository": {
-        "url": "https://github.com/CaiJimmy/jsoniq-lsp"
+        "url": "https://github.com/RumbleDB/jsoniq-lsp",
+        "directory": "packages/language-server"
     },
     "files": [
         "dist",
