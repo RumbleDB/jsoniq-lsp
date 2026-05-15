@@ -23,6 +23,7 @@ function findPackageRoot(): string {
 export const PACKAGE_ROOT = findPackageRoot();
 
 export const LANGUAGE_SERVER_PACKAGE_DIR = `${PACKAGE_ROOT}/packages/language-server`;
+export const WRAPPER_PACKAGE_DIR = `${PACKAGE_ROOT}/packages/rumble-lsp-wrapper`;
 export const VSCODE_EXTENSION_PACKAGE_DIR = `${PACKAGE_ROOT}/packages/vscode-extension`;
 export const RELEASE_OUTPUT_DIR = `${PACKAGE_ROOT}/.release-assets`;
 

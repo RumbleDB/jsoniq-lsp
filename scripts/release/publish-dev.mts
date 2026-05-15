@@ -6,9 +6,11 @@ import {
 import {
     LANGUAGE_SERVER_PACKAGE_DIR,
     output,
+    prepareOutputDir,
     readPackage,
     run,
     VSCODE_EXTENSION_PACKAGE_DIR,
+    WRAPPER_PACKAGE_DIR,
 } from "./shared.mts";
 import {
     cleanVsCodeExtensionInstall,
@@ -16,6 +18,7 @@ import {
     packVsCodeExtension,
     setVsCodeExtensionLanguageServerDependency,
 } from "./vscode-extension.mts";
+import { attachWrapperArtifacts, buildWrapperProductionArtifacts } from "./wrapper.mts";
 
 function shortSha(): string {
     let sha = process.env.GITHUB_SHA;
@@ -31,14 +34,19 @@ function humanDate(): string {
 }
 
 async function main(): Promise<void> {
+    prepareOutputDir();
+
     const buildId = shortSha();
     const tag = `snapshot/${buildId}`;
     const release = await ensureRelease(tag, `Snapshot ${humanDate()} ${buildId}`, {
         prerelease: true,
     });
 
+    const wrapperPackage = readPackage(WRAPPER_PACKAGE_DIR);
+    buildWrapperProductionArtifacts();
+    const wrapperManifest = await attachWrapperArtifacts(wrapperPackage, release);
     buildLanguageServerProductionArtifacts();
-    const languageServerPackagePath = await attachLanguageServerArtifacts(release, tag);
+    const languageServerPackagePath = await attachLanguageServerArtifacts(release, wrapperManifest);
 
     const extensionPackage = readPackage(VSCODE_EXTENSION_PACKAGE_DIR);
     const languageServerPackage = readPackage(LANGUAGE_SERVER_PACKAGE_DIR);

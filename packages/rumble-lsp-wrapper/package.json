@@ -1,0 +1,14 @@
+{
+    "name": "rumble-lsp-wrapper",
+    "version": "0.1.0",
+    "private": true,
+    "repository": {
+        "url": "https://github.com/RumbleDB/jsoniq-lsp",
+        "directory": "packages/rumble-lsp-wrapper"
+    },
+    "scripts": {
+        "build": "node ./scripts/build.mjs",
+        "build:prod": "node ./scripts/build.mjs --prod",
+        "clean": "mvn -f pom.xml -q clean"
+    }
+}

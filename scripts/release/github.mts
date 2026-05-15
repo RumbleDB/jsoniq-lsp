@@ -98,3 +98,20 @@ export async function uploadReleaseAsset(release: Release, file: string): Promis
 
     return response.data;
 }
+
+export async function downloadReleaseAssetText(asset: ReleaseAsset): Promise<string> {
+    const response = await fetch(asset.url, {
+        headers: {
+            authorization: `Bearer ${githubToken}`,
+            accept: "application/octet-stream",
+        },
+    });
+
+    if (!response.ok) {
+        throw new Error(
+            `Failed to download release asset '${asset.name}': HTTP ${response.status} ${response.statusText}`,
+        );
+    }
+
+    return await response.text();
+}
