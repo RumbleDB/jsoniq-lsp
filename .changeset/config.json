@@ -3,7 +3,8 @@
     "changelog": [
         "@changesets/changelog-github",
         {
-            "repo": "RumbleDB/jsoniq-lsp"
+            "repo": "RumbleDB/jsoniq-lsp",
+            "disableThanks": true
         }
     ],
     "commit": false,
