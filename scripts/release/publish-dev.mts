@@ -26,17 +26,23 @@ function shortSha(): string {
     return sha.slice(0, 7);
 }
 
+function humanDate(): string {
+    return new Date().toISOString().slice(0, 10);
+}
+
 async function main(): Promise<void> {
     const buildId = shortSha();
-    const tag = `dev/${buildId}`;
-    const release = await ensureRelease(tag, `Dev Build ${buildId}`, { prerelease: true });
+    const tag = `snapshot/${buildId}`;
+    const release = await ensureRelease(tag, `Snapshot ${humanDate()} ${buildId}`, {
+        prerelease: true,
+    });
 
     buildLanguageServerProductionArtifacts();
     const languageServerPackagePath = await attachLanguageServerArtifacts(release, tag);
 
     const extensionPackage = readPackage(VSCODE_EXTENSION_PACKAGE_DIR);
     const languageServerPackage = readPackage(LANGUAGE_SERVER_PACKAGE_DIR);
-    const extensionVersion = `${extensionPackage.version}-dev.git-${buildId}`;
+    const extensionVersion = `${extensionPackage.version}-snapshot.git-${buildId}`;
     const languageServerFileSpec = `file:${languageServerPackagePath}`;
 
     cleanVsCodeExtensionInstall();
