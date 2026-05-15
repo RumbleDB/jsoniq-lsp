@@ -14,11 +14,20 @@ let client: LanguageClient | undefined;
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
     const serverModule = require.resolve("jsoniq-language-server/bundled");
+    const globalStoragePath = context.globalStorageUri.fsPath;
+
+    await vscode.workspace.fs.createDirectory(context.globalStorageUri);
 
     const serverOptions: ServerOptions = {
         run: {
             module: serverModule,
             transport: TransportKind.stdio,
+            options: {
+                env: {
+                    ...process.env,
+                    JSONIQ_LSP_CACHE_DIR: globalStoragePath,
+                },
+            },
         },
         debug: {
             module: serverModule,
@@ -28,6 +37,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
                 env: {
                     ...process.env,
                     JSONIQ_LSP_DEBUG: "1",
+                    JSONIQ_LSP_CACHE_DIR: globalStoragePath,
                 },
             },
         },
