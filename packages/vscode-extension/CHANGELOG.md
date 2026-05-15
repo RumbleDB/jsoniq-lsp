@@ -1,5 +1,11 @@
 # jsoniq-vscode
 
+## 1.0.3
+
+### Patch Changes
+
+- [`1736f9d`](https://github.com/RumbleDB/jsoniq-lsp/commit/1736f9d7fb44da1356c3020e4f86d3738aad2873) - upgrade engines.vscode to 1.120.0 to align with @types/vscode
+
 ## 1.0.2
 
 ### Patch Changes
