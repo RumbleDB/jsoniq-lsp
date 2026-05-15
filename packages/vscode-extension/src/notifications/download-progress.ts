@@ -1,7 +1,7 @@
 import {
     DownloadProgress,
     WRAPPER_DOWNLOAD_PROGRESS_NOTIFICATION,
-} from "@jimmycai/jsoniq-language-server/notifications";
+} from "jsoniq-language-server/notifications";
 import * as vscode from "vscode";
 import type { LanguageClient } from "vscode-languageclient/node.js";
 

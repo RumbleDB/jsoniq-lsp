@@ -7,6 +7,6 @@
 !language-configuration.json
 !syntaxes/**
 !README.md
-!node_modules/@jimmycai/jsoniq-language-server
-!node_modules/@jimmycai/jsoniq-language-server/**
+!node_modules/jsoniq-language-server
+!node_modules/jsoniq-language-server/**
 !assets/**

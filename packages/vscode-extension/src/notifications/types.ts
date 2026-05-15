@@ -3,4 +3,4 @@ export {
     type DownloadProgress,
     MEMORY_USAGE_NOTIFICATION,
     type MemoryUsage,
-} from "@jimmycai/jsoniq-language-server/notifications";
+} from "jsoniq-language-server/notifications";

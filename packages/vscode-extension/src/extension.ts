@@ -13,7 +13,7 @@ import { initializeCustomNotifications } from "./notifications/index.js";
 let client: LanguageClient | undefined;
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
-    const serverModule = require.resolve("@jimmycai/jsoniq-language-server/bundled");
+    const serverModule = require.resolve("jsoniq-language-server/bundled");
 
     const serverOptions: ServerOptions = {
         run: {
