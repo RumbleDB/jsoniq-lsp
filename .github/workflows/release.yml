@@ -17,6 +17,7 @@ permissions:
 jobs:
     release:
         runs-on: ubuntu-latest
+        environment: release
 
         steps:
             - name: Check out repository
@@ -55,3 +56,4 @@ jobs:
                   commit: "[ci] release"
               env:
                   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+                  VSCE_PAT: ${{ secrets.VSCE_PAT }}

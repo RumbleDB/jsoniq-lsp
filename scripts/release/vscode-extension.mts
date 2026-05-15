@@ -9,6 +9,16 @@ import {
     type PackageJson,
 } from "./shared.mts";
 
+function vsceArgs(command: "package" | "publish"): string[] {
+    return [
+        "dlx",
+        "--allow-build=@vscode/vsce-sign",
+        "--allow-build=keytar",
+        "@vscode/vsce",
+        command,
+    ];
+}
+
 export function cleanVsCodeExtensionInstall(): void {
     /// vsce does not support pnpm's node_modules layout, so package from a clean npm install.
     run("rm", [
@@ -31,14 +41,7 @@ export function installAndBuildVsCodeExtension(): void {
 }
 
 export function packVsCodeExtension(preRelease: boolean): string {
-    const args = [
-        "dlx",
-        "--allow-build=@vscode/vsce-sign",
-        "--allow-build=keytar",
-        "@vscode/vsce",
-        "package",
-        "--skip-license",
-    ];
+    const args = [...vsceArgs("package"), "--skip-license"];
 
     if (preRelease) {
         args.push("--pre-release");
@@ -47,6 +50,17 @@ export function packVsCodeExtension(preRelease: boolean): string {
     run("pnpm", args, { cwd: VSCODE_EXTENSION_PACKAGE_DIR });
 
     return findOneFile(VSCODE_EXTENSION_PACKAGE_DIR, ".vsix");
+}
+
+function publishVsCodeExtensionToMarketplace(vsixPath: string): void {
+    if (process.env.VSCE_PAT === undefined || process.env.VSCE_PAT.length === 0) {
+        throw new Error("VSCE_PAT is required to publish the VS Code extension.");
+    }
+
+    run("pnpm", [...vsceArgs("publish"), "--packagePath", vsixPath], {
+        cwd: VSCODE_EXTENSION_PACKAGE_DIR,
+        env: process.env,
+    });
 }
 
 export async function publishVsCodeExtension(
@@ -71,4 +85,5 @@ export async function publishVsCodeExtension(
     });
 
     await uploadReleaseAsset(release, vsixPath);
+    publishVsCodeExtensionToMarketplace(vsixPath);
 }
