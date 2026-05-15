@@ -49,7 +49,7 @@ export async function getRelease(tag: string): Promise<Release | null> {
 export async function ensureRelease(
     tag: string,
     name: string,
-    options: { prerelease?: boolean } = {},
+    options: { body?: string; prerelease?: boolean } = {},
 ): Promise<Release> {
     const existingRelease = await getRelease(tag);
 
@@ -62,7 +62,8 @@ export async function ensureRelease(
         repo,
         tag_name: tag,
         name,
-        generate_release_notes: true,
+        body: options.body,
+        generate_release_notes: options.body === undefined,
         prerelease: options.prerelease ?? false,
     });
 

@@ -8,6 +8,7 @@ import {
     LANGUAGE_SERVER_PACKAGE_DIR,
     PACKAGE_ROOT,
     RELEASE_OUTPUT_DIR,
+    readChangelogEntry,
     run,
     type PackageJson,
 } from "./shared.mts";
@@ -66,7 +67,9 @@ export async function publishLanguageServer(languageServerPackage: PackageJson):
     buildLanguageServerProductionArtifacts();
 
     const tag = releaseTag(languageServerPackage);
-    const release = await ensureRelease(tag, tag);
+    const release = await ensureRelease(tag, tag, {
+        body: readChangelogEntry(LANGUAGE_SERVER_PACKAGE_DIR, languageServerPackage.version),
+    });
     const packagePath = await attachLanguageServerArtifacts(release, tag);
 
     run("pnpm", ["publish", "--access", "public", "--no-git-checks"], {

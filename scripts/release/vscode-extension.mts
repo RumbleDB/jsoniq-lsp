@@ -2,6 +2,7 @@ import { ensureRelease, releaseTag, uploadReleaseAsset } from "./github.mts";
 import {
     findOneFile,
     LANGUAGE_SERVER_PACKAGE_DIR,
+    readChangelogEntry,
     readPackage,
     run,
     VSCODE_EXTENSION_PACKAGE_DIR,
@@ -65,7 +66,9 @@ export async function publishVsCodeExtension(
     const vsixPath = packVsCodeExtension(false);
 
     const tag = releaseTag(extensionPackage);
-    const release = await ensureRelease(tag, tag);
+    const release = await ensureRelease(tag, tag, {
+        body: readChangelogEntry(VSCODE_EXTENSION_PACKAGE_DIR, extensionPackage.version),
+    });
 
     await uploadReleaseAsset(release, vsixPath);
 }
