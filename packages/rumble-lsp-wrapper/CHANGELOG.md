@@ -1,5 +1,11 @@
 # rumble-lsp-wrapper
 
+## 0.1.2
+
+### Patch Changes
+
+- [`d9d30f3`](https://github.com/RumbleDB/jsoniq-lsp/commit/d9d30f31f82165439b45d54636be48ae807cb0c2) - fix the commit hash of RumbleDB in `fetch-rumble.sh` script to make build reproducible
+
 ## 0.1.1
 
 ### Patch Changes
