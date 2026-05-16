@@ -1,5 +1,11 @@
 # rumble-lsp-wrapper
 
+## 0.1.3
+
+### Patch Changes
+
+- [#8](https://github.com/RumbleDB/jsoniq-lsp/pull/8) [`a7d9025`](https://github.com/RumbleDB/jsoniq-lsp/commit/a7d90253d751166e0a1639cfd634e19ac4628591) - rename package from `org.jsoniq.lsp.rumble` to `org.jsoniq.lsp.wrapper`
+
 ## 0.1.2
 
 ### Patch Changes
