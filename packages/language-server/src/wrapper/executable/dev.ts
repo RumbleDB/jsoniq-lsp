@@ -8,7 +8,7 @@ import { findPackageRoot } from "./utils.js";
 const PACKAGE_ROOT = findPackageRoot();
 const WRAPPER_DEVELOPMENT_FOLDER = path.join(PACKAGE_ROOT, "../rumble-lsp-wrapper");
 const WRAPPER_JAR_DEVELOPMENT_FOLDER = path.join(WRAPPER_DEVELOPMENT_FOLDER, "target");
-const RUMBLE_JAR_DEVELOPMENT_FOLDER = path.join(WRAPPER_DEVELOPMENT_FOLDER, "rumble", "target");
+const RUMBLE_JAR_DEVELOPMENT_FOLDER = path.join(WRAPPER_DEVELOPMENT_FOLDER, "rumbledb", "target");
 
 const WRAPPER_RUNTIME_CLASSPATH_FILE = "runtime-classpath.txt";
 const WRAPPER_MAIN_CLASS = "org.jsoniq.lsp.wrapper.Main";
