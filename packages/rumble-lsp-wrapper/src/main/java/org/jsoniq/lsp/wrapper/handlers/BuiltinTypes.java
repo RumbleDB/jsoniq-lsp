@@ -1,10 +1,10 @@
-package org.jsoniq.lsp.rumble.handlers;
+package org.jsoniq.lsp.wrapper.handlers;
 
 import java.lang.reflect.Field;
 import java.util.List;
 
-import org.jsoniq.lsp.rumble.messages.Request;
-import org.jsoniq.lsp.rumble.messages.ResponseBody;
+import org.jsoniq.lsp.wrapper.messages.Request;
+import org.jsoniq.lsp.wrapper.messages.ResponseBody;
 import org.rumbledb.types.BuiltinTypesCatalogue;
 import org.rumbledb.types.ItemType;
 

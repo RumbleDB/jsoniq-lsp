@@ -1,7 +1,7 @@
-package org.jsoniq.lsp.rumble.handlers;
+package org.jsoniq.lsp.wrapper.handlers;
 
-import org.jsoniq.lsp.rumble.messages.Request;
-import org.jsoniq.lsp.rumble.messages.ResponseBody;
+import org.jsoniq.lsp.wrapper.messages.Request;
+import org.jsoniq.lsp.wrapper.messages.ResponseBody;
 import org.rumbledb.context.BuiltinFunction;
 import org.rumbledb.context.BuiltinFunctionCatalogue;
 import org.rumbledb.context.FunctionIdentifier;

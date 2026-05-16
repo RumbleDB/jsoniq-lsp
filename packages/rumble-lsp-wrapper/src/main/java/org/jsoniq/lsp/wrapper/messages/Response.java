@@ -1,6 +1,6 @@
-package org.jsoniq.lsp.rumble.messages;
+package org.jsoniq.lsp.wrapper.messages;
 
-import org.jsoniq.lsp.rumble.Error;
+import org.jsoniq.lsp.wrapper.Error;
 
 public record Response(
         long id,

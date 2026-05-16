@@ -1,4 +1,4 @@
 target/
-rumble/
-rumble
+./rumbledb/
+rumbledb
 generated-resources/

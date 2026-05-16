@@ -76,7 +76,7 @@
                 <configuration>
                     <archive>
                         <manifest>
-                            <mainClass>org.jsoniq.lsp.rumble.Main</mainClass>
+                            <mainClass>org.jsoniq.lsp.wrapper.Main</mainClass>
                         </manifest>
                     </archive>
                 </configuration>
