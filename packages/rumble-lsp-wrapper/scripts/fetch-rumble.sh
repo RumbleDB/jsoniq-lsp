@@ -4,7 +4,7 @@ set -eu
 SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 WRAPPER_DIR=$(CDPATH= cd -- "$SCRIPT_DIR/.." && pwd)
 
-RUMBLE_DIR="$WRAPPER_DIR/rumble"
+RUMBLE_DIR="$WRAPPER_DIR/rumbledb"
 
 WRAPPER_TARGET_DIR="$WRAPPER_DIR/target"
 WRAPPER_GENERATED_RESOURCES_DIR="$WRAPPER_DIR/generated-resources"
