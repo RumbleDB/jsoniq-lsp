@@ -37,7 +37,7 @@ export function registerWrapperDownloadProgressNotification(
         void vscode.window.withProgress(
             {
                 location: vscode.ProgressLocation.Notification,
-                title: "Downloading JSONiq wrapper",
+                title: "Downloading RumbleDB wrapper",
                 cancellable: false,
             },
             async (progress) => {
