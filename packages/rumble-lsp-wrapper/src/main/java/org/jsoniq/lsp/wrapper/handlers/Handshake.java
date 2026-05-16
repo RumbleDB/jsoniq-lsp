@@ -1,11 +1,11 @@
-package org.jsoniq.lsp.rumble.handlers;
-
-import org.jsoniq.lsp.rumble.messages.Request;
-import org.jsoniq.lsp.rumble.messages.ResponseBody;
+package org.jsoniq.lsp.wrapper.handlers;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Properties;
+
+import org.jsoniq.lsp.wrapper.messages.Request;
+import org.jsoniq.lsp.wrapper.messages.ResponseBody;
 
 public class Handshake implements RequestHandler {
     private static final String BUILD_METADATA_RESOURCE = "rumble-build.properties";

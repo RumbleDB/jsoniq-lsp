@@ -1,4 +1,4 @@
-package org.jsoniq.lsp.rumble;
+package org.jsoniq.lsp.wrapper;
 
 import org.rumbledb.exceptions.ExceptionMetadata;
 

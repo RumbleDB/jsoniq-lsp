@@ -1,4 +1,4 @@
-package org.jsoniq.lsp.rumble;
+package org.jsoniq.lsp.wrapper;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -9,14 +9,14 @@ import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import java.util.Objects;
 
-import org.jsoniq.lsp.rumble.handlers.BuiltinFunctions;
-import org.jsoniq.lsp.rumble.handlers.BuiltinTypes;
-import org.jsoniq.lsp.rumble.handlers.Handshake;
-import org.jsoniq.lsp.rumble.handlers.RequestHandler;
-import org.jsoniq.lsp.rumble.handlers.TypeInferencer;
-import org.jsoniq.lsp.rumble.messages.Request;
-import org.jsoniq.lsp.rumble.messages.Response;
-import org.jsoniq.lsp.rumble.messages.ResponseBody;
+import org.jsoniq.lsp.wrapper.handlers.BuiltinFunctions;
+import org.jsoniq.lsp.wrapper.handlers.BuiltinTypes;
+import org.jsoniq.lsp.wrapper.handlers.Handshake;
+import org.jsoniq.lsp.wrapper.handlers.RequestHandler;
+import org.jsoniq.lsp.wrapper.handlers.TypeInferencer;
+import org.jsoniq.lsp.wrapper.messages.Request;
+import org.jsoniq.lsp.wrapper.messages.Response;
+import org.jsoniq.lsp.wrapper.messages.ResponseBody;
 import org.rumbledb.exceptions.RumbleException;
 
 public class Main {

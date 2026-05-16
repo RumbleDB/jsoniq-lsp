@@ -1,7 +1,5 @@
-package org.jsoniq.lsp.rumble;
+package org.jsoniq.lsp.wrapper;
 
-import org.jsoniq.lsp.rumble.handlers.TypeInferencer;
-import org.jsoniq.lsp.rumble.handlers.TypeInferencer.VariableKind;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -9,6 +7,9 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import org.jsoniq.lsp.wrapper.handlers.TypeInferencer;
+import org.jsoniq.lsp.wrapper.handlers.TypeInferencer.VariableKind;
 
 class TypeInferencerTest {
     private final TypeInferencer inferencer = new TypeInferencer();

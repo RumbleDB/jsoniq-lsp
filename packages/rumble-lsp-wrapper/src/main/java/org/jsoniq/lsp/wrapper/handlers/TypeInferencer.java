@@ -1,8 +1,8 @@
-package org.jsoniq.lsp.rumble.handlers;
+package org.jsoniq.lsp.wrapper.handlers;
 
-import org.jsoniq.lsp.rumble.messages.ResponseBody;
-import org.jsoniq.lsp.rumble.Position;
-import org.jsoniq.lsp.rumble.messages.Request;
+import org.jsoniq.lsp.wrapper.Position;
+import org.jsoniq.lsp.wrapper.messages.Request;
+import org.jsoniq.lsp.wrapper.messages.ResponseBody;
 import org.rumbledb.compiler.VisitorHelpers;
 import org.rumbledb.config.RumbleRuntimeConfiguration;
 import org.rumbledb.context.Name;
