@@ -3,6 +3,8 @@ import {
     SemanticTokensBuilder,
     type SemanticTokens,
     SemanticTokensLegend,
+    SemanticTokenTypes,
+    SemanticTokenModifiers,
 } from "vscode-languageserver";
 import { Range } from "vscode-languageserver";
 import { TextDocument } from "vscode-languageserver-textdocument";
@@ -11,30 +13,37 @@ import type { DefinitionKind } from "./analysis/model.js";
 import { getAnalysis } from "./analysis/service.js";
 
 export const legend: SemanticTokensLegend = {
-    tokenTypes: ["function", "parameter", "variable"],
-    tokenModifiers: ["user", "builtin"],
+    tokenTypes: ["function", "parameter", "variable", "namespace", "type"],
+    tokenModifiers: ["definition", "defaultLibrary"],
 };
-
-const USER_MODIFIER_MASK = 1 << 0;
-const defaultLibraryModifierMask = 1 << 1;
 
 export async function collectSemanticDiagnostics(document: TextDocument): Promise<Diagnostic[]> {
     const analysis = await getAnalysis(document);
     return analysis.diagnostics;
 }
 
+function getTokenTypeIndex(tokenType: SemanticTokenTypes): number {
+    const index = legend.tokenTypes.indexOf(tokenType);
+    return index >= 0 ? index : 0;
+}
+
+function getTokenModifierMask(tokenModifier: SemanticTokenModifiers): number {
+    const index = legend.tokenModifiers.indexOf(tokenModifier);
+    return index >= 0 ? 1 << index : 0;
+}
+
 function addSemanticToken(
     builder: SemanticTokensBuilder,
     selectionRange: Range,
-    tokenType: number,
-    tokenModifiers: number,
+    tokenType: SemanticTokenTypes,
+    tokenModifiers: SemanticTokenModifiers,
 ): void {
     builder.push(
         selectionRange.start.line,
         selectionRange.start.character,
         selectionRange.end.character - selectionRange.start.character,
-        tokenType,
-        tokenModifiers,
+        getTokenTypeIndex(tokenType),
+        getTokenModifierMask(tokenModifiers),
     );
 }
 
@@ -54,18 +63,21 @@ export async function collectSemanticTokens(document: TextDocument): Promise<Sem
         addSemanticToken(builder, reference.range, tokenType, tokenModifiers);
     }
 
-    return builder.build();
+    const result = await builder.build();
+    return result;
 }
 
-function getTokenTypeForDefinition(kind: DefinitionKind): number {
+function getTokenTypeForDefinition(kind: DefinitionKind): SemanticTokenTypes {
     switch (kind) {
         case "builtin-function":
         case "function":
-            return 0;
+            return SemanticTokenTypes.function;
         case "parameter":
-            return 1;
+            return SemanticTokenTypes.parameter;
         case "namespace":
+            return SemanticTokenTypes.namespace;
         case "type":
+            return SemanticTokenTypes.type;
         case "declare-variable":
         case "let":
         case "for":
@@ -73,15 +85,15 @@ function getTokenTypeForDefinition(kind: DefinitionKind): number {
         case "group-by":
         case "count":
         case "catch-variable":
-            return 2;
+            return SemanticTokenTypes.variable;
     }
 }
 
-function getTokenModifierForDefinition(kind: DefinitionKind): number {
+function getTokenModifierForDefinition(kind: DefinitionKind): SemanticTokenModifiers {
     switch (kind) {
         case "builtin-function":
-            return defaultLibraryModifierMask;
+            return SemanticTokenModifiers.defaultLibrary;
         default:
-            return USER_MODIFIER_MASK;
+            return SemanticTokenModifiers.definition;
     }
 }
