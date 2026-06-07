@@ -14,11 +14,11 @@ import {
     isSourceVariableDefinition,
     type BaseDefinition,
 } from "./analysis/model.js";
+import { resolvedQNameToString } from "./analysis/names.js";
 import { getVisibleDeclarationsAtPosition } from "./analysis/queries.js";
 import { getBuiltinFunctionDocumentation } from "./function-catalog/index.js";
 import { getW3Catalog } from "./function-catalog/loader.js";
 import { collectCompletionIntent } from "./parser/index.js";
-import { qnameToString } from "./parser/types/name.js";
 import { getDocumentText } from "./parser/utils.js";
 import { getBuiltinFunctions } from "./wrapper/builtin-functions.js";
 
@@ -93,7 +93,7 @@ export async function findCompletions(
 function toCompletionItem(declaration: BaseDefinition): CompletionItem {
     const name = definitionNameToString(declaration);
     if (isSourceFunctionDefinition(declaration)) {
-        const label = qnameToString(declaration.name.qname);
+        const label = resolvedQNameToString(declaration.name.qname);
         const signature = `${label}(${declaration.parameters
             .map((parameter) => definitionNameToString(parameter))
             .join(", ")})`;
@@ -127,10 +127,12 @@ async function getBuiltinFunctionCompletionItems(): Promise<CompletionItem[]> {
 
     for (const definition of (await getBuiltinFunctions()).all) {
         const { qname, arity } = definition.name;
-        const functionName = qnameToString(qname);
+        const functionName = resolvedQNameToString(qname);
         const catalogKey = `${qname.prefix || "fn"}:${qname.localName}`;
         const overloadCount = catalog[catalogKey]?.signatures.length;
-        const parameterTypes = definition.signature.parameterTypes.join(", ");
+        const parameterTypes = definition.signature.parameterTypes
+            .map((parameter) => parameter.type)
+            .join(", ");
         const signature = `${functionName}(${parameterTypes}) as ${definition.signature.returnType}`;
         const item: CompletionItem = {
             label: functionName,
