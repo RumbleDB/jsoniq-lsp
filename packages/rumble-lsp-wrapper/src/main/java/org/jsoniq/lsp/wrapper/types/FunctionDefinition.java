@@ -5,7 +5,6 @@ import java.util.List;
 import org.rumbledb.context.BuiltinFunction;
 import org.rumbledb.context.FunctionIdentifier;
 import org.rumbledb.types.FunctionSignature;
-import org.rumbledb.types.SequenceType;
 
 public record FunctionDefinition(
         Name name,
@@ -25,6 +24,7 @@ public record FunctionDefinition(
     public record Parameter(
             Name name,
             SequenceType type) {
+        
     }
 
     public record Signature(
@@ -37,15 +37,17 @@ public record FunctionDefinition(
                     .stream()
                     .map(type -> new Parameter(
                             null,   /// Builtin functions don't have parameter names saved
-                            type))
+                            new SequenceType(type)))
                     .toList();
 
-            SequenceType returnType = signature.getReturnType();
+            SequenceType returnType = new SequenceType(signature.getReturnType());
 
             return new Signature(
                     parameterTypes,
                     returnType);
         }
+
+
     }
 
     public static FunctionDefinition fromBuiltinFunction(BuiltinFunction function) {

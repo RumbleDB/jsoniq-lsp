@@ -5,6 +5,7 @@ import org.jsoniq.lsp.wrapper.messages.Request;
 import org.jsoniq.lsp.wrapper.messages.ResponseBody;
 import org.jsoniq.lsp.wrapper.types.FunctionDefinition;
 import org.jsoniq.lsp.wrapper.types.ResolvedQName;
+import org.jsoniq.lsp.wrapper.types.SequenceType;
 import org.rumbledb.compiler.VisitorHelpers;
 import org.rumbledb.config.RumbleRuntimeConfiguration;
 import org.rumbledb.context.Name;
@@ -22,7 +23,6 @@ import org.rumbledb.expressions.module.FunctionDeclaration;
 import org.rumbledb.expressions.module.MainModule;
 import org.rumbledb.expressions.module.VariableDeclaration;
 import org.rumbledb.expressions.primary.InlineFunctionExpression;
-import org.rumbledb.types.SequenceType;
 
 import com.fasterxml.jackson.annotation.JsonValue;
 
@@ -234,10 +234,10 @@ public final class TypeInferencer implements RequestHandler {
                         new FunctionDefinition.Name(
                                 ResolvedQName.fromName(paramName),
                                 null),
-                        functionExpression.getParams().get(paramName)))
+                        new SequenceType(functionExpression.getParams().get(paramName))))
                 .toList();
 
-        SequenceType returnType = functionExpression.getReturnType();
+        SequenceType returnType = new SequenceType(functionExpression.getReturnType());
 
         FunctionDefinition function = new FunctionDefinition(
                 FunctionDefinition.Name.create(functionDeclaration.getFunctionIdentifier()),
@@ -340,7 +340,7 @@ public final class TypeInferencer implements RequestHandler {
             return;
         }
 
-        SequenceType variableType = variableDeclaration.getSequenceType();
+        SequenceType variableType = new SequenceType(variableDeclaration.getSequenceType());
         Position position = Position.fromExceptionMetadata(metadata);
         types.add(new VariableType(
                 VariableKind.Declare,
@@ -369,7 +369,7 @@ public final class TypeInferencer implements RequestHandler {
         }
 
         try {
-            SequenceType variableType = context.getVariableSequenceType(variableName);
+            SequenceType variableType = new SequenceType(context.getVariableSequenceType(variableName));
             ExceptionMetadata metadata = context.getVariableMetadata(variableName);
             Position position = Position.fromExceptionMetadata(metadata);
             types.add(new VariableType(
