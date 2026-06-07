@@ -350,7 +350,7 @@ async function main() {
     await fs.mkdir(assetsDir, { recursive: true });
 
     console.log(`Writing output to ${OUTPUT_FILE_PATH}...`);
-    await fs.writeFile(OUTPUT_FILE_PATH, JSON.stringify(catalog, null, 2), "utf-8");
+    await fs.writeFile(OUTPUT_FILE_PATH, JSON.stringify(catalog, null, 4), "utf-8");
     console.log(
         `Successfully generated function catalog with ${Object.keys(catalog).length} entries!`,
     );
