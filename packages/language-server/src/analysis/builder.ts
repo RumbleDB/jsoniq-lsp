@@ -18,6 +18,7 @@ import { BuiltinFunctions } from "server/wrapper/builtin-functions.js";
 import { DiagnosticSeverity, Position, Range } from "vscode-languageserver";
 import { TextDocument } from "vscode-languageserver-textdocument";
 
+import { defaultNamespaces } from "./default-namespaces.js";
 import {
     createFunctionDefinition,
     createNamespaceDefinition,
@@ -76,7 +77,19 @@ class AnalysisBuilder {
         private readonly document: TextDocument,
         private readonly builtinFunctions: BuiltinFunctions,
     ) {
-        const namespaces = new Map<string, SourceNamespaceDefinition>();
+        const namespaces = new Map<string, SourceNamespaceDefinition>(
+            defaultNamespaces.entries().map((ns) => {
+                const definition = createNamespaceDefinition(
+                    document,
+                    ns[0],
+                    ns[1],
+                    Range.create(Position.create(0, 0), Position.create(0, 0)),
+                    Range.create(Position.create(0, 0), Position.create(0, 0)),
+                );
+                return [ns[0], definition] as const;
+            }),
+        );
+
         this.analysis = {
             moduleScope: Scope.module(document, namespaces),
             namespaces,
