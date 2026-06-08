@@ -63,6 +63,8 @@ public class Main {
             }
             System.exit(0);
         } catch (Throwable throwable) {
+            throwable.printStackTrace(System.err);
+            System.err.flush();
             System.exit(1);
         }
     }
@@ -89,6 +91,8 @@ public class Main {
             return new Response(requestId, requestType, emptyResponse,
                     Error.fromRumbleException(exception));
         } catch (Throwable throwable) {
+            throwable.printStackTrace(System.err);
+            System.err.flush();
             String errorMessage = Objects.toString(throwable.getMessage(), throwable.getClass().getName());
             RequestHandler handler = DAEMON_HANDLERS.get(requestType);
             ResponseBody emptyResponse = handler == null ? null : handler.createEmptyResponse();

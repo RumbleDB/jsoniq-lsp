@@ -1,18 +1,17 @@
+import {
+    ARRAY_NAMESPACE,
+    FN_NAMESPACE,
+    JN_NAMESPACE,
+    MAP_NAMESPACE,
+    MATH_NAMESPACE,
+} from "server/analysis/default-namespaces.js";
 import type { BaseDefinition } from "server/analysis/model.js";
-import type { FunctionName } from "server/parser/types/name.js";
 import { createLogger } from "server/utils/logger.js";
 
+import { expandedQNameToString, type ResolvedFunctionName } from "../analysis/names.js";
 import { getWrapperClient } from "./client.js";
 import type { WrapperDaemonResponse } from "./protocol.js";
-
-export interface WrapperBuiltinFunctionSignature {
-    parameterTypes: string[];
-    returnType: string;
-}
-
-export interface BuiltInFunctionListResponseBody {
-    builtinFunctions: Record<string, WrapperBuiltinFunctionSignature>;
-}
+import { type BuiltinFunctionsResponseBody, type WrapperFunctionSignature } from "./types.js";
 
 export const REQUEST_TYPE_BUILTIN_FUNCTIONS = "builtinFunctions" as const;
 
@@ -22,23 +21,34 @@ export interface BuiltinFunctionsRequestPayload {
 
 export type BuiltinFunctionListResponse = WrapperDaemonResponse<
     typeof REQUEST_TYPE_BUILTIN_FUNCTIONS,
-    BuiltInFunctionListResponseBody
+    BuiltinFunctionsResponseBody
 >;
 
 export interface BuiltinFunctionDefinition extends BaseDefinition<"builtin-function"> {
-    name: FunctionName;
+    name: ResolvedFunctionName;
     kind: "builtin-function";
-    signature: WrapperBuiltinFunctionSignature;
+    signature: WrapperFunctionSignature;
     isBuiltin: true;
 }
 
-const DEFAULT_FUNCTION_PREFIXES = ["fn", "jn", "math", "map", "array"] as const;
+const BUILTIN_FUNCTION_NAMESPACES = [
+    FN_NAMESPACE,
+    JN_NAMESPACE,
+    MATH_NAMESPACE,
+    MAP_NAMESPACE,
+    ARRAY_NAMESPACE,
+] as const;
+
 const BUILTIN_FUNCTIONS_REQUEST: BuiltinFunctionsRequestPayload = {
     requestType: REQUEST_TYPE_BUILTIN_FUNCTIONS,
 };
 
 let builtinDefinitionsPromise: Promise<Map<string, BuiltinFunctionDefinition>> | null = null;
 const logger = createLogger("wrapper:builtin-functions");
+
+function getBuiltinFunctionKey(name: ResolvedFunctionName): string {
+    return `${expandedQNameToString(name.qname)}#${name.arity ?? "?"}`;
+}
 
 async function getBuiltinFunctionMap(): Promise<Map<string, BuiltinFunctionDefinition>> {
     if (builtinDefinitionsPromise !== null) {
@@ -58,11 +68,12 @@ async function getBuiltinFunctionMap(): Promise<Map<string, BuiltinFunctionDefin
         const builtinDefinitionsByName = new Map<string, BuiltinFunctionDefinition>();
 
         if (response !== undefined) {
-            for (const [name, signature] of Object.entries(response.body.builtinFunctions)) {
-                builtinDefinitionsByName.set(name, {
-                    name: parseBuiltinFunctionName(name),
+            for (const builtinFunction of response.body.builtinFunctions) {
+                const name = builtinFunction.name;
+                builtinDefinitionsByName.set(getBuiltinFunctionKey(name), {
+                    name,
                     kind: "builtin-function",
-                    signature,
+                    signature: builtinFunction.signature,
                     references: [],
                     isBuiltin: true,
                 });
@@ -77,26 +88,27 @@ async function getBuiltinFunctionMap(): Promise<Map<string, BuiltinFunctionDefin
 
 function findBuiltinFunctionDefinition(
     map: Map<string, BuiltinFunctionDefinition>,
-    nameWithArity: string,
+    name: ResolvedFunctionName,
 ): BuiltinFunctionDefinition | undefined {
-    const direct = map.get(nameWithArity);
+    const direct = map.get(getBuiltinFunctionKey(name));
     if (direct !== undefined) {
         return direct;
     }
 
-    const hashIndex = nameWithArity.lastIndexOf("#");
-    if (hashIndex === -1) {
+    if (name.qname.namespaceUri !== undefined || name.qname.prefix !== undefined) {
         return undefined;
     }
 
-    const name = nameWithArity.slice(0, hashIndex);
-    const arity = nameWithArity.slice(hashIndex + 1);
-    if (name.includes(":")) {
-        return undefined;
-    }
-
-    for (const prefix of DEFAULT_FUNCTION_PREFIXES) {
-        const candidate = map.get(`${prefix}:${name}#${arity}`);
+    for (const namespaceUri of BUILTIN_FUNCTION_NAMESPACES) {
+        const candidate = map.get(
+            getBuiltinFunctionKey({
+                ...name,
+                qname: {
+                    localName: name.qname.localName,
+                    namespaceUri,
+                },
+            }),
+        );
         if (candidate !== undefined) {
             return candidate;
         }
@@ -107,32 +119,13 @@ function findBuiltinFunctionDefinition(
 
 export type BuiltinFunctions = {
     all: BuiltinFunctionDefinition[];
-    find: (nameWithArity: string) => BuiltinFunctionDefinition | undefined;
+    find: (name: ResolvedFunctionName) => BuiltinFunctionDefinition | undefined;
 };
 
 export async function getBuiltinFunctions(): Promise<BuiltinFunctions> {
     const map = await getBuiltinFunctionMap();
     return {
         all: [...map.values()],
-        find: (nameWithArity: string) => findBuiltinFunctionDefinition(map, nameWithArity),
-    };
-}
-
-function parseBuiltinFunctionName(nameWithArity: string): FunctionName {
-    const hashIndex = nameWithArity.lastIndexOf("#");
-    const name = hashIndex === -1 ? nameWithArity : nameWithArity.slice(0, hashIndex);
-    const arity =
-        hashIndex === -1 ? undefined : Number.parseInt(nameWithArity.slice(hashIndex + 1), 10);
-    const colonIndex = name.indexOf(":");
-
-    return {
-        qname:
-            colonIndex === -1
-                ? { localName: name }
-                : {
-                      prefix: name.slice(0, colonIndex),
-                      localName: name.slice(colonIndex + 1),
-                  },
-        ...(arity === undefined || Number.isNaN(arity) ? {} : { arity }),
+        find: (name: ResolvedFunctionName) => findBuiltinFunctionDefinition(map, name),
     };
 }

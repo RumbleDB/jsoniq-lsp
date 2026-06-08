@@ -1,6 +1,7 @@
 import { buildAnalysis } from "server/analysis/builder.js";
 import { isSourceDefinition } from "server/analysis/model.js";
 import { findSymbolAtPosition, getVisibleDeclarationsAtPosition } from "server/analysis/queries.js";
+import { getAnalysis } from "server/analysis/service.js";
 import { describe, expect, it } from "vitest";
 
 import { testDocument } from "./test-utils.js";
@@ -20,7 +21,7 @@ describe("JSONiq variable scope analysis", () => {
         const analysis = await buildAnalysis(document);
         const declarationNames = analysis.definitions.map((declaration) => declaration.name);
 
-        expect(declarationNames).toEqual([
+        expect(declarationNames).toMatchObject([
             {
                 arity: 2,
                 qname: {
@@ -188,6 +189,7 @@ describe("JSONiq variable scope analysis", () => {
                 qname: {
                     prefix: "other",
                     localName: "add",
+                    namespaceUri: "http://example.com/other",
                 },
             },
             declaration: {
@@ -197,6 +199,7 @@ describe("JSONiq variable scope analysis", () => {
                     qname: {
                         prefix: "other",
                         localName: "add",
+                        namespaceUri: "http://example.com/other",
                     },
                 },
             },
@@ -227,6 +230,7 @@ describe("JSONiq variable scope analysis", () => {
                 qname: {
                     prefix: "b",
                     localName: "add",
+                    namespaceUri: "http://example.com/shared",
                 },
             },
             declaration: {
@@ -236,6 +240,35 @@ describe("JSONiq variable scope analysis", () => {
                     qname: {
                         prefix: "a",
                         localName: "add",
+                        namespaceUri: "http://example.com/shared",
+                    },
+                },
+            },
+        });
+    });
+
+    it("resolves unprefixed builtin functions through the fn namespace", async () => {
+        const document = testDocument("scope-unprefixed-builtin", ['substring("hello", 1, 2)']);
+
+        const analysis = await getAnalysis(document);
+        const functionReference = analysis.references.find(
+            (reference) => reference.kind === "function",
+        );
+
+        expect(functionReference).toMatchObject({
+            name: {
+                arity: 3,
+                qname: {
+                    localName: "substring",
+                },
+            },
+            declaration: {
+                kind: "builtin-function",
+                name: {
+                    arity: 3,
+                    qname: {
+                        localName: "substring",
+                        namespaceUri: "http://www.w3.org/2005/xpath-functions",
                     },
                 },
             },
@@ -299,13 +332,37 @@ describe("JSONiq variable scope analysis", () => {
 
         expect(variableReferences).toEqual([
             {
-                name: { qname: { prefix: "other", localName: "value" } },
-                resolvedTo: { qname: { prefix: "other", localName: "value" } },
+                name: {
+                    qname: {
+                        prefix: "other",
+                        localName: "value",
+                        namespaceUri: "http://example.com/other",
+                    },
+                },
+                resolvedTo: {
+                    qname: {
+                        prefix: "other",
+                        localName: "value",
+                        namespaceUri: "http://example.com/other",
+                    },
+                },
                 resolvedKind: "declare-variable",
             },
             {
-                name: { qname: { prefix: "local", localName: "value" } },
-                resolvedTo: { qname: { prefix: "local", localName: "value" } },
+                name: {
+                    qname: {
+                        prefix: "local",
+                        localName: "value",
+                        namespaceUri: "http://example.com/local",
+                    },
+                },
+                resolvedTo: {
+                    qname: {
+                        prefix: "local",
+                        localName: "value",
+                        namespaceUri: "http://example.com/local",
+                    },
+                },
                 resolvedKind: "declare-variable",
             },
         ]);
@@ -331,8 +388,20 @@ describe("JSONiq variable scope analysis", () => {
                 })),
         ).toEqual([
             {
-                name: { qname: { prefix: "b", localName: "value" } },
-                resolvedTo: { qname: { prefix: "a", localName: "value" } },
+                name: {
+                    qname: {
+                        prefix: "b",
+                        localName: "value",
+                        namespaceUri: "http://example.com/shared",
+                    },
+                },
+                resolvedTo: {
+                    qname: {
+                        prefix: "a",
+                        localName: "value",
+                        namespaceUri: "http://example.com/shared",
+                    },
+                },
                 resolvedKind: "declare-variable",
             },
         ]);
@@ -350,7 +419,7 @@ describe("JSONiq variable scope analysis", () => {
             analysis.definitions
                 .filter((definition) => definition.kind === "catch-variable")
                 .map((definition) => definition.name),
-        ).toEqual([
+        ).toMatchObject([
             { qname: { prefix: "err", localName: "code" } },
             { qname: { prefix: "err", localName: "description" } },
             { qname: { prefix: "err", localName: "value" } },
@@ -368,7 +437,7 @@ describe("JSONiq variable scope analysis", () => {
                     resolvedTo: reference.declaration.name,
                     resolvedKind: reference.declaration.kind,
                 })),
-        ).toEqual([
+        ).toMatchObject([
             {
                 name: { qname: { prefix: "err", localName: "code" } },
                 resolvedTo: { qname: { prefix: "err", localName: "code" } },

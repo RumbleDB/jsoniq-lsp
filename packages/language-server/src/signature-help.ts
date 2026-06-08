@@ -1,7 +1,7 @@
+import { resolvedQNameToString } from "server/analysis/names.js";
 import type { FunctionEntry } from "server/function-catalog/types.js";
 import { parseDocument } from "server/parser/index.js";
 import type { ArgumentAstNode, AstNode, FunctionCallAstNode } from "server/parser/types/ast.js";
-import { qnameToString } from "server/parser/types/name.js";
 import { getDocumentText } from "server/parser/utils.js";
 import {
     MarkupKind,
@@ -258,7 +258,7 @@ function resolveSourceSignatures(
     return {
         signatures: [
             createSignatureInformation(
-                qnameToString(functionDeclaration.name.qname),
+                resolvedQNameToString(functionDeclaration.name.qname),
                 functionDeclaration.parameters.map((parameter) => ({
                     label: definitionNameToString(parameter),
                 })),
