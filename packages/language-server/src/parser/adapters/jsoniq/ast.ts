@@ -42,6 +42,7 @@ import {
     VarRefContext,
     ArgumentContext,
     type ModuleAndThisIsItContext,
+    ArgumentListContext,
 } from "./grammar/jsoniqParser.js";
 import { jsoniqVisitor } from "./grammar/jsoniqVisitor.js";
 import { parseFunctionName, parseQname, parseVarName } from "./name.js";
@@ -293,6 +294,10 @@ class JsoniqAstBuilder extends jsoniqVisitor<AstVisitResult> {
             kind: "argument",
             range: rangeFromNode(node, this.document),
             children: this.visitChildrenAsNodes(node),
+            index:
+                node.parent instanceof ArgumentListContext
+                    ? node.parent.argument().indexOf(node)
+                    : -1,
         } satisfies ArgumentAstNode,
     ];
 

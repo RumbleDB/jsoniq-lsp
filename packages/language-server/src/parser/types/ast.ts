@@ -134,7 +134,9 @@ export interface UnknownAstNode extends AstNodeBase<"unknown"> {
     readonly reason: "unsupported-grammar" | "incomplete";
 }
 
-export interface ArgumentAstNode extends AstNodeBase<"argument"> {}
+export interface ArgumentAstNode extends AstNodeBase<"argument"> {
+    readonly index: number;
+}
 
 export type AstNode =
     | ModuleAstNode
