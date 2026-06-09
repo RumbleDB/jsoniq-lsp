@@ -53,3 +53,9 @@ export function rangeContainsPosition(range: Range, position: Position): boolean
         comparePositions(range.start, position) <= 0 && comparePositions(position, range.end) <= 0
     );
 }
+
+export function rangesIntersect(left: Range, right: Range): boolean {
+    return !(
+        comparePositions(left.end, right.start) < 0 || comparePositions(right.end, left.start) < 0
+    );
+}

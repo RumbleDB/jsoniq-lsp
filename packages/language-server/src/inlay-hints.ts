@@ -11,6 +11,7 @@ import {
     getFunctionCallArgumentNodes,
     getFunctionCatalogEntry,
 } from "./utils/function-calls.js";
+import { rangesIntersect } from "./utils/range.js";
 
 export async function collectInlayHints(
     document: TextDocument,
@@ -18,38 +19,29 @@ export async function collectInlayHints(
 ): Promise<InlayHint[]> {
     const parsed = parseDocument(document);
     const analysis = await getAnalysis(document);
-    const hints: InlayHint[] = [];
-
-    collectFunctionCallInlayHints(parsed.ast, range, analysis, hints);
-
-    return hints;
+    return collectFunctionCallInlayHints(parsed.ast, range, analysis);
 }
 
 function collectFunctionCallInlayHints(
     node: AstNode,
     range: Range,
     analysis: JsoniqAnalysis,
-    hints: InlayHint[],
-): void {
-    if (node.kind === "function-call" && rangesIntersect(node.range, range)) {
-        hints.push(...createFunctionCallHints(node, analysis));
-    }
-
-    for (const child of node.children) {
-        if (rangesIntersect(child.range, range)) {
-            collectFunctionCallInlayHints(child, range, analysis, hints);
-        }
-    }
-}
-
-function createFunctionCallHints(call: FunctionCallAstNode, analysis: JsoniqAnalysis): InlayHint[] {
-    const parameterNames = getParameterNames(call, analysis);
-    if (parameterNames.length === 0) {
+): InlayHint[] {
+    if (!rangesIntersect(node.range, range)) {
         return [];
     }
 
+    return [
+        ...(node.kind === "function-call" ? createFunctionCallHints(node, analysis) : []),
+        ...node.children.flatMap((child) => collectFunctionCallInlayHints(child, range, analysis)),
+    ];
+}
+
+function createFunctionCallHints(call: FunctionCallAstNode, analysis: JsoniqAnalysis): InlayHint[] {
     return getFunctionCallArgumentNodes(call)
-        .map((argument, index) => createParameterHint(argument, parameterNames[index]))
+        .map((argument) =>
+            createParameterHint(argument, getParameterName(call, argument, analysis)),
+        )
         .filter((hint): hint is InlayHint => hint !== null);
 }
 
@@ -69,20 +61,28 @@ function createParameterHint(
     };
 }
 
-function getParameterNames(call: FunctionCallAstNode, analysis: JsoniqAnalysis): string[] {
+function getParameterName(
+    call: FunctionCallAstNode,
+    argument: ArgumentAstNode,
+    analysis: JsoniqAnalysis,
+): string | undefined {
     const sourceDefinition = findResolvedSourceFunction(call, analysis);
     if (sourceDefinition) {
-        return sourceDefinition.parameters.map((parameter) => `$${parameter.name.qname.localName}`);
+        const parameter = sourceDefinition.parameters[argument.index];
+        return parameter === undefined ? undefined : `$${parameter.name.qname.localName}`;
     }
 
-    return getBuiltinParameterNames(call);
+    return getBuiltinParameterName(call, argument.index);
 }
 
-function getBuiltinParameterNames(call: FunctionCallAstNode): string[] {
+function getBuiltinParameterName(
+    call: FunctionCallAstNode,
+    argumentIndex: number,
+): string | undefined {
     const catalogEntry = getFunctionCatalogEntry(call);
 
     if (!catalogEntry || catalogEntry.signatures.length === 0) {
-        return [];
+        return undefined;
     }
 
     const signature =
@@ -93,13 +93,6 @@ function getBuiltinParameterNames(call: FunctionCallAstNode): string[] {
             )
         ]!;
 
-    return signature.params.map((parameter) => `$${parameter.name}`);
-}
-
-function rangesIntersect(left: Range, right: Range): boolean {
-    return !(isBefore(left.end, right.start) || isBefore(right.end, left.start));
-}
-
-function isBefore(left: Range["start"], right: Range["start"]): boolean {
-    return left.line < right.line || (left.line === right.line && left.character < right.character);
+    const parameter = signature.params[argumentIndex];
+    return parameter === undefined ? undefined : `$${parameter.name}`;
 }
