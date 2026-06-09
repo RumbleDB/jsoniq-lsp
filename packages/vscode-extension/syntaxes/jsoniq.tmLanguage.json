@@ -16,6 +16,9 @@
             "include": "#declarations"
         },
         {
+            "include": "#function-calls"
+        },
+        {
             "include": "#variables"
         },
         {
@@ -121,6 +124,19 @@
                         },
                         "3": {
                             "name": "entity.name.namespace.jsoniq"
+                        }
+                    }
+                }
+            ]
+        },
+        "function-calls": {
+            "patterns": [
+                {
+                    "name": "meta.function-call.jsoniq",
+                    "match": "\\b((?:[A-Za-z_][A-Za-z0-9._-]*:)?[A-Za-z_][A-Za-z0-9._-]*)(?=\\s*\\()",
+                    "captures": {
+                        "1": {
+                            "name": "entity.name.function.jsoniq"
                         }
                     }
                 }
