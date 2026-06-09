@@ -1,5 +1,7 @@
+import { AstNode } from "server/parser/types/ast.js";
 import { upperBound } from "server/utils/binary-search.js";
 import { comparePositions } from "server/utils/position.js";
+import { rangeContainsPosition } from "server/utils/range.js";
 import type { Position } from "vscode-languageserver";
 import { TextDocument } from "vscode-languageserver-textdocument";
 
@@ -32,4 +34,33 @@ export function findSymbolAtPosition(
     }
 
     return undefined;
+}
+
+export function findNodeThatContainsPosition(
+    analysis: JsoniqAnalysis,
+    position: Position,
+): AstNode | undefined {
+    return findNodesThatContainPosition(analysis, position).at(-1);
+}
+
+export function findNodesThatContainPosition(
+    analysis: JsoniqAnalysis,
+    position: Position,
+): AstNode[] {
+    return findContainingNodePath(analysis.ast, position) ?? [];
+}
+
+function findContainingNodePath(node: AstNode, position: Position): AstNode[] | undefined {
+    if (!rangeContainsPosition(node.range, position)) {
+        return undefined;
+    }
+
+    for (const child of node.children) {
+        const match = findContainingNodePath(child, position);
+        if (match !== undefined) {
+            return [node, ...match];
+        }
+    }
+
+    return [node];
 }
