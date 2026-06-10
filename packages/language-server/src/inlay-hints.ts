@@ -3,7 +3,6 @@ import { TextDocument } from "vscode-languageserver-textdocument";
 
 import type { ArgumentNode, AstNode, FunctionCallNode } from "./analysis/ast.js";
 import { getAnalysis } from "./analysis/service.js";
-import { type JsoniqAnalysis } from "./analysis/types.js";
 import {
     chooseBestSignatureIndex,
     findResolvedSourceFunction,
@@ -17,29 +16,23 @@ export async function collectInlayHints(
     range: Range,
 ): Promise<InlayHint[]> {
     const analysis = await getAnalysis(document);
-    return collectFunctionCallInlayHints(analysis.ast, range, analysis);
+    return collectFunctionCallInlayHints(analysis.ast, range);
 }
 
-function collectFunctionCallInlayHints(
-    node: AstNode,
-    range: Range,
-    analysis: JsoniqAnalysis,
-): InlayHint[] {
+function collectFunctionCallInlayHints(node: AstNode, range: Range): InlayHint[] {
     if (!rangesIntersect(node.range, range)) {
         return [];
     }
 
     return [
-        ...(node.kind === "function-call" ? createFunctionCallHints(node, analysis) : []),
-        ...node.children.flatMap((child) => collectFunctionCallInlayHints(child, range, analysis)),
+        ...(node.kind === "function-call" ? createFunctionCallHints(node) : []),
+        ...node.children.flatMap((child) => collectFunctionCallInlayHints(child, range)),
     ];
 }
 
-function createFunctionCallHints(call: FunctionCallNode, analysis: JsoniqAnalysis): InlayHint[] {
+function createFunctionCallHints(call: FunctionCallNode): InlayHint[] {
     return getFunctionCallArgumentNodes(call)
-        .map((argument) =>
-            createParameterHint(argument, getParameterName(call, argument, analysis)),
-        )
+        .map((argument) => createParameterHint(argument, getParameterName(call, argument)))
         .filter((hint): hint is InlayHint => hint !== null);
 }
 

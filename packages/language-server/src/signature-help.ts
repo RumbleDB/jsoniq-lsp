@@ -148,10 +148,9 @@ function resolveSourceSignatures(
 function resolveSignatures(
     call: FunctionCallNode,
     activeParameter: number,
-    analysis: Awaited<ReturnType<typeof getAnalysis>>,
 ): { signatures: SignatureInformation[]; activeSignature: number } {
     const functionName = getFunctionCallName(call);
-    const resolvedDeclaration = findResolvedFunctionDeclaration(call, analysis);
+    const resolvedDeclaration = findResolvedFunctionDeclaration(call);
 
     return (
         resolveBuiltinSignatures(functionName, activeParameter) ??
@@ -175,11 +174,7 @@ export async function findSignatureHelp(
 
     const { call: activeCall, argument } = activeArgument;
     const activeParameter = argument.index;
-    const { signatures, activeSignature } = resolveSignatures(
-        activeCall,
-        activeParameter,
-        analysis,
-    );
+    const { signatures, activeSignature } = resolveSignatures(activeCall, activeParameter);
 
     return {
         signatures,
