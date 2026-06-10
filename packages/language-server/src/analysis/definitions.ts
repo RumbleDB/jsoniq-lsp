@@ -117,15 +117,18 @@ export function isSourceFunctionDefinition(
     return isSourceDefinition(declaration) && declaration.kind === "function";
 }
 
-export function definitionNameToString(definition: BaseDefinition): string {
+export function definitionNameToString(
+    definition: BaseDefinition,
+    expanded: boolean = false,
+): string {
     switch (definition.kind) {
         case "namespace":
             return definition.name.prefix;
         case "function":
         case "builtin-function":
-            return functionNameToString(definition.name);
+            return functionNameToString(definition.name, expanded);
         case "type":
-            return QNameToString(definition.name);
+            return QNameToString(definition.name, expanded);
         case "parameter":
         case "declare-variable":
         case "let":
@@ -134,7 +137,7 @@ export function definitionNameToString(definition: BaseDefinition): string {
         case "group-by":
         case "count":
         case "catch-variable":
-            return `$${QNameToString(definition.name)}`;
+            return `$${QNameToString(definition.name, expanded)}`;
         default:
             throw definition satisfies never;
     }

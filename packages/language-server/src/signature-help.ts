@@ -134,7 +134,7 @@ function resolveSourceSignatures(
     return {
         signatures: [
             createSignatureInformation(
-                QNameToString(functionDeclaration.name.qname),
+                QNameToString(functionDeclaration.name.qname, false),
                 functionDeclaration.parameters.map((parameter) => ({
                     label: definitionNameToString(parameter),
                 })),

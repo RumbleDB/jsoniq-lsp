@@ -44,7 +44,7 @@ export class DocumentSymbolsBuilder extends AstVisitor<void> {
 
     protected override visitContextItemDeclaration(node: ContextItemDeclarationAstNode): void {
         this.addSymbol(
-            `$${QNameToString(node.name)}`,
+            `$${QNameToString(node.name, false)}`,
             SymbolKind.Variable,
             node.range,
             node.selectionRange,
@@ -54,7 +54,7 @@ export class DocumentSymbolsBuilder extends AstVisitor<void> {
 
     protected override visitTypeDeclaration(node: TypeDeclarationAstNode): void {
         this.addSymbol(
-            QNameToString(node.name.qname),
+            QNameToString(node.name.qname, false),
             SymbolKind.Struct,
             node.range,
             node.selectionRange,
@@ -63,7 +63,7 @@ export class DocumentSymbolsBuilder extends AstVisitor<void> {
 
     protected override visitFunctionDeclaration(node: FunctionDeclarationAstNode): void {
         this.addSymbol(
-            QNameToString(node.name.qname),
+            QNameToString(node.name.qname, false),
             SymbolKind.Function,
             node.range,
             node.nameRange,
@@ -71,7 +71,7 @@ export class DocumentSymbolsBuilder extends AstVisitor<void> {
         );
         for (const parameter of node.parameters) {
             this.addSymbol(
-                `$${QNameToString(parameter.name)}`,
+                `$${QNameToString(parameter.name, false)}`,
                 SymbolKind.Variable,
                 parameter.range,
                 parameter.selectionRange,
@@ -82,7 +82,7 @@ export class DocumentSymbolsBuilder extends AstVisitor<void> {
 
     protected override visitVariableDeclaration(node: VariableDeclarationAstNode): void {
         this.addSymbol(
-            `$${QNameToString(node.binding.name)}`,
+            `$${QNameToString(node.binding.name, false)}`,
             SymbolKind.Variable,
             node.binding.range,
             node.binding.selectionRange,
@@ -101,7 +101,7 @@ export class DocumentSymbolsBuilder extends AstVisitor<void> {
 
     protected override visitCountClause(node: CountClauseAstNode): void {
         this.addSymbol(
-            `$${QNameToString(node.binding.name)}`,
+            `$${QNameToString(node.binding.name, false)}`,
             SymbolKind.Variable,
             node.binding.range,
             node.binding.selectionRange,
@@ -112,7 +112,7 @@ export class DocumentSymbolsBuilder extends AstVisitor<void> {
     protected override visitForBinding(node: ForBindingAstNode): void {
         for (const binding of node.bindings) {
             this.addSymbol(
-                `$${QNameToString(binding.name)}`,
+                `$${QNameToString(binding.name, false)}`,
                 SymbolKind.Variable,
                 binding.range,
                 binding.selectionRange,
@@ -123,7 +123,7 @@ export class DocumentSymbolsBuilder extends AstVisitor<void> {
 
     private visitVariableBinding(node: LetBindingAstNode | GroupByBindingAstNode): void {
         this.addSymbol(
-            `$${QNameToString(node.binding.name)}`,
+            `$${QNameToString(node.binding.name, false)}`,
             SymbolKind.Variable,
             node.binding.range,
             node.binding.selectionRange,

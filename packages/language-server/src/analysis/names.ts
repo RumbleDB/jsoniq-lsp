@@ -30,10 +30,10 @@ export type ReferenceNameByKind = {
     variable: QName;
 };
 
-export function QNameToString(qname: QName, expanded: boolean = false): string {
+export function QNameToString(qname: QName, expanded: boolean): string {
     if (expanded) {
         return qname.namespaceUri === undefined
-            ? QNameToString(qname)
+            ? QNameToString(qname, false)
             : `Q{${qname.namespaceUri}}${qname.localName}`;
     }
     return qname.prefix === undefined ? qname.localName : `${qname.prefix}:${qname.localName}`;
@@ -43,14 +43,14 @@ export function sameQName(left: QName, right: QName): boolean {
     return left.namespaceUri === right.namespaceUri && left.localName === right.localName;
 }
 
-export function functionNameToString(name: FunctionName, expanded: boolean = false): string {
+export function functionNameToString(name: FunctionName, expanded: boolean): string {
     return `${QNameToString(name.qname, expanded)}#${name.arity ?? "?"}`;
 }
 
 export function referenceNameToString<K extends keyof ReferenceNameByKind>(
     name: ReferenceNameByKind[K],
     kind: K,
-    expanded: boolean = false,
+    expanded: boolean,
 ): string {
     switch (kind) {
         case "function":

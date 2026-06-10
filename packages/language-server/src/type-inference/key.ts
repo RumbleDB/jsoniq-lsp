@@ -29,7 +29,7 @@ export function buildInferenceKeyForParameter(
         "parameter",
         position,
         functionNameToString(functionName, true),
-        QNameToString(parameterName),
+        QNameToString(parameterName, true),
     );
 }
 
@@ -38,7 +38,7 @@ export function buildInferenceKeyForVariable(
     position: { line: number; character: number },
     name: QName,
 ): InferenceKey {
-    return buildInferenceKey(kind, position, QNameToString(name));
+    return buildInferenceKey(kind, position, QNameToString(name, true));
 }
 
 export function buildInferenceKeyForDefinition(definition: SourceDefinition): InferenceKey {

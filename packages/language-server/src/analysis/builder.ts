@@ -415,7 +415,7 @@ class AnalysisBuilder extends AstVisitor<AstNode[]> {
         name: ReferenceNameByKind[K],
         range: Range,
     ): ReferenceNode<K> {
-        const lookupName = referenceNameToString(name, kind);
+        const lookupName = referenceNameToString(name, kind, true);
         const declaration = this.resolve(kind, name);
         const resolvedReference =
             declaration === undefined

@@ -66,7 +66,7 @@ async function getBuiltinFunctionMap(): Promise<Map<string, BuiltinFunctionDefin
         if (response !== undefined) {
             for (const builtinFunction of response.body.builtinFunctions) {
                 const name = builtinFunction.name;
-                builtinDefinitionsByName.set(functionNameToString(name), {
+                builtinDefinitionsByName.set(functionNameToString(name, true), {
                     name,
                     kind: "builtin-function",
                     signature: builtinFunction.signature,
@@ -86,7 +86,7 @@ function findBuiltinFunctionDefinition(
     map: Map<string, BuiltinFunctionDefinition>,
     name: FunctionName,
 ): BuiltinFunctionDefinition | undefined {
-    const direct = map.get(functionNameToString(name));
+    const direct = map.get(functionNameToString(name, true));
     if (direct !== undefined) {
         return direct;
     }
@@ -97,13 +97,16 @@ function findBuiltinFunctionDefinition(
 
     for (const namespaceUri of BUILTIN_FUNCTION_NAMESPACES) {
         const candidate = map.get(
-            functionNameToString({
-                ...name,
-                qname: {
-                    localName: name.qname.localName,
-                    namespaceUri,
+            functionNameToString(
+                {
+                    ...name,
+                    qname: {
+                        localName: name.qname.localName,
+                        namespaceUri,
+                    },
                 },
-            }),
+                true,
+            ),
         );
         if (candidate !== undefined) {
             return candidate;

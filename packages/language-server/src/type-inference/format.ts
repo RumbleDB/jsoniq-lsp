@@ -7,7 +7,7 @@ export function formatInferredType(type: InferredType): string {
             const name =
                 parameter.name === null
                     ? `$arg${index + 1}`
-                    : `$${QNameToString(parameter.name.qname)}`;
+                    : `$${QNameToString(parameter.name.qname, false)}`;
             return `${name}: ${parameter.type}`;
         });
         return `(${parameterTypes.join(", ")}) => ${type.function.signature.returnType}`;

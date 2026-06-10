@@ -13,7 +13,7 @@ import { QNameToString } from "../analysis/names.js";
 import { findNodesThatContainPosition } from "../analysis/queries.js";
 
 export function getFunctionCallName(call: FunctionCallNode): string {
-    return QNameToString(call.name.qname);
+    return QNameToString(call.name.qname, false);
 }
 
 export function getFunctionCallArgumentNodes(call: FunctionCallNode): ArgumentNode[] {
