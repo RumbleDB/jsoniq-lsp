@@ -6,14 +6,14 @@ import {
 } from "vscode-languageserver";
 import { TextDocument } from "vscode-languageserver-textdocument";
 
+import { findSymbolAtPosition } from "./analysis/queries.js";
+import { getAnalysis } from "./analysis/service.js";
 import {
     definitionNameToString,
     type JsoniqAnalysis,
     type SourceDefinition,
     isSourceDefinition,
-} from "./analysis/model.js";
-import { findSymbolAtPosition } from "./analysis/queries.js";
-import { getAnalysis } from "./analysis/service.js";
+} from "./analysis/types.js";
 
 interface RenameTarget {
     declaration: SourceDefinition;

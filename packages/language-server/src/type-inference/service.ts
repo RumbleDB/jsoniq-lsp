@@ -3,7 +3,7 @@ import {
     type SourceFunctionDefinition,
     type SourceParameterDefinition,
     type SourceVariableDefinition,
-} from "server/analysis/model.js";
+} from "server/analysis/types.js";
 import { toResolvedQName } from "server/wrapper/names.js";
 import { getTypeInference } from "server/wrapper/type-inference.js";
 import {

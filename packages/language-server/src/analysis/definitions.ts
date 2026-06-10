@@ -1,6 +1,7 @@
 import type { Range } from "vscode-languageserver";
 import { TextDocument } from "vscode-languageserver-textdocument";
 
+import type { ResolvedFunctionName, ResolvedQName, ResolvedVarName } from "./names.js";
 import type {
     DeclarationKind,
     SourceDefinition,
@@ -9,8 +10,7 @@ import type {
     SourceParameterDefinition,
     SourceVariableDefinition,
     VariableKind,
-} from "./model.js";
-import type { ResolvedFunctionName, ResolvedQName, ResolvedVarName } from "./names.js";
+} from "./types.js";
 
 interface DefinitionBaseInput {
     range: Range;

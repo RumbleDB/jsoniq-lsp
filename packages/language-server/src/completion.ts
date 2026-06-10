@@ -7,15 +7,15 @@ import {
 } from "vscode-languageserver";
 import { TextDocument } from "vscode-languageserver-textdocument";
 
+import { resolvedQNameToString } from "./analysis/names.js";
+import { getVisibleDeclarationsAtPosition } from "./analysis/queries.js";
 import {
     definitionNameToString,
     isSourceFunctionDefinition,
     isSourceParameterDefinition,
     isSourceVariableDefinition,
     type BaseDefinition,
-} from "./analysis/model.js";
-import { resolvedQNameToString } from "./analysis/names.js";
-import { getVisibleDeclarationsAtPosition } from "./analysis/queries.js";
+} from "./analysis/types.js";
 import { getBuiltinFunctionDocumentation } from "./function-catalog/index.js";
 import { getW3Catalog } from "./function-catalog/loader.js";
 import { collectCompletionIntent } from "./parser/index.js";

@@ -1,9 +1,9 @@
-import { SourceDefinition } from "server/analysis/model.js";
 import {
     expandedQNameToString,
     type ResolvedFunctionName,
     type ResolvedVarName,
 } from "server/analysis/names.js";
+import { SourceDefinition } from "server/analysis/types.js";
 
 const INFERENCE_KEY_SEPARATOR = "\u001F";
 

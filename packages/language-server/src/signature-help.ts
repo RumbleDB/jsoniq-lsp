@@ -1,6 +1,5 @@
 import { resolvedQNameToString } from "server/analysis/names.js";
 import type { FunctionEntry } from "server/function-catalog/types.js";
-import type { FunctionCallAstNode } from "server/parser/types/ast.js";
 import {
     MarkupKind,
     type ParameterInformation,
@@ -10,8 +9,9 @@ import {
 } from "vscode-languageserver";
 import { TextDocument } from "vscode-languageserver-textdocument";
 
-import { definitionNameToString, isSourceFunctionDefinition } from "./analysis/model.js";
+import type { FunctionCallNode } from "./analysis/ast.js";
 import { getAnalysis } from "./analysis/service.js";
+import { definitionNameToString, isSourceFunctionDefinition } from "./analysis/types.js";
 import {
     chooseBestSignatureIndex,
     findCurrentArgument,
@@ -146,7 +146,7 @@ function resolveSourceSignatures(
 }
 
 function resolveSignatures(
-    call: FunctionCallAstNode,
+    call: FunctionCallNode,
     activeParameter: number,
     analysis: Awaited<ReturnType<typeof getAnalysis>>,
 ): { signatures: SignatureInformation[]; activeSignature: number } {

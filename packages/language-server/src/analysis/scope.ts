@@ -3,16 +3,16 @@ import { getDocumentText } from "server/parser/utils.js";
 import { TextDocument } from "vscode-languageserver-textdocument";
 
 import {
-    type BaseDefinition,
-    type SourceDefinition,
-    type SourceNamespaceDefinition,
-} from "./model.js";
-import {
     expandedQNameToString,
     type ResolvedFunctionName,
     type ResolvedReferenceNameByKind,
     type ResolvedVarName,
 } from "./names.js";
+import {
+    type BaseDefinition,
+    type SourceDefinition,
+    type SourceNamespaceDefinition,
+} from "./types.js";
 
 export class Scope {
     private readonly definitionByName = new Map<string, SourceDefinition[]>();

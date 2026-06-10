@@ -1,6 +1,8 @@
 import { parseDocument } from "server/parser/index.js";
 import type {
+    ArgumentAstNode,
     AstBinding,
+    AstNode as ParserAstNode,
     AstParameter,
     CatchClauseAstNode,
     ContextItemDeclarationAstNode,
@@ -16,6 +18,7 @@ import type {
     NamedFunctionReferenceAstNode,
     ReferenceAstNode,
     TypeDeclarationAstNode,
+    UnknownAstNode,
     VariableDeclarationAstNode,
     VariableReferenceAstNode,
 } from "server/parser/types/ast.js";
@@ -27,11 +30,11 @@ import {
     type LexicalVarName,
 } from "server/parser/types/name.js";
 import { AstVisitor } from "server/parser/types/visitor.js";
-import { comparePositions } from "server/utils/position.js";
 import { BuiltinFunctions } from "server/wrapper/builtin-functions.js";
 import { DiagnosticSeverity, Position, Range } from "vscode-languageserver";
 import { TextDocument } from "vscode-languageserver-textdocument";
 
+import type { ArgumentNode, AstNode, FunctionCallNode, ReferenceNode } from "./ast.js";
 import { defaultNamespaces } from "./default-namespaces.js";
 import {
     createFunctionDefinition,
@@ -40,6 +43,14 @@ import {
     createTypeDefinition,
     createVariableDefinition,
 } from "./definitions.js";
+import {
+    resolvedReferenceNameToString,
+    type ResolvedFunctionName,
+    type ResolvedQName,
+    type ResolvedReferenceNameByKind,
+    type ResolvedVarName,
+} from "./names.js";
+import { Scope } from "./scope.js";
 import {
     type AnyReference,
     type Definition,
@@ -50,15 +61,7 @@ import {
     type SourceNamespaceDefinition,
     type VariableKind,
     isSourceDefinition,
-} from "./model.js";
-import {
-    resolvedReferenceNameToString,
-    type ResolvedFunctionName,
-    type ResolvedQName,
-    type ResolvedReferenceNameByKind,
-    type ResolvedVarName,
-} from "./names.js";
-import { Scope } from "./scope.js";
+} from "./types.js";
 
 type LexicalReference<
     K extends keyof LexicalReferenceNameByKind = keyof LexicalReferenceNameByKind,
@@ -91,12 +94,16 @@ class AnalysisBuilder extends AstVisitor {
 
     private readonly builtinFunctions: BuiltinFunctions;
 
+    private readonly parserAst: ParserAstNode;
+
+    private currentNodeRef: AstNode | undefined;
+
     public constructor(document: TextDocument, builtinFunctions: BuiltinFunctions) {
         super();
         this.document = document;
         this.builtinFunctions = builtinFunctions;
 
-        const ast = parseDocument(document).ast;
+        this.parserAst = parseDocument(document).ast;
         const namespaces = new Map<string, SourceNamespaceDefinition>(
             defaultNamespaces.entries().map((ns) => {
                 const definition = createNamespaceDefinition(
@@ -109,37 +116,29 @@ class AnalysisBuilder extends AstVisitor {
                 return [ns[0], definition] as const;
             }),
         );
+        const moduleScope = Scope.module(document, namespaces);
 
         this.analysis = {
-            ast,
-            moduleScope: Scope.module(document, namespaces),
+            ast: {
+                kind: "module",
+                range: this.parserAst.range,
+                children: [],
+                scope: moduleScope,
+            },
             namespaces,
-            definitions: [],
-            references: [],
             diagnostics: [],
-            symbolIndex: [],
         };
 
-        this.currentScope = this.analysis.moduleScope;
+        this.currentScope = moduleScope;
     }
 
     public build(): JsoniqAnalysis {
-        this.visit(this.analysis.ast);
-
-        this.analysis.symbolIndex.sort((left, right) => {
-            const startComparison = comparePositions(left.range.start, right.range.start);
-            if (startComparison !== 0) {
-                return startComparison;
-            }
-
-            return comparePositions(left.range.end, right.range.end);
-        });
-
-        this.analysis.definitions.sort((left, right) =>
-            comparePositions(left.range.start, right.range.start),
-        );
-
+        this.visit(this.parserAst);
         return this.analysis;
+    }
+
+    protected override visitModule(node: ParserAstNode): void {
+        this.withNode(this.analysis.ast, () => this.visitChildren(node));
     }
 
     protected override visitNamespaceDeclaration(node: NamespaceDeclarationAstNode): void {
@@ -150,31 +149,31 @@ class AnalysisBuilder extends AstVisitor {
             node.range,
             node.selectionRange,
         );
-        this.recordDefinition(definition);
-        this.analysis.namespaces.set(definition.name.prefix, definition);
+        this.withNode(this.appendDeclaration(definition), () => {
+            this.declareDefinition(definition);
+            this.analysis.namespaces.set(definition.name.prefix, definition);
+        });
     }
 
     protected override visitContextItemDeclaration(node: ContextItemDeclarationAstNode): void {
-        this.recordDefinition(
-            createVariableDefinition(
-                this.document,
-                "declare-variable",
-                this.normalizeVarName(node.name, node.selectionRange),
-                node.range,
-                node.selectionRange,
-            ),
+        const definition = createVariableDefinition(
+            this.document,
+            "declare-variable",
+            this.normalizeVarName(node.name, node.selectionRange),
+            node.range,
+            node.selectionRange,
         );
+        this.withNode(this.appendDeclaration(definition), () => this.declareDefinition(definition));
     }
 
     protected override visitTypeDeclaration(node: TypeDeclarationAstNode): void {
-        this.recordDefinition(
-            createTypeDefinition(
-                this.document,
-                { qname: this.normalizeQName(node.name.qname, node.selectionRange) },
-                node.range,
-                node.selectionRange,
-            ),
+        const definition = createTypeDefinition(
+            this.document,
+            { qname: this.normalizeQName(node.name.qname, node.selectionRange) },
+            node.range,
+            node.selectionRange,
         );
+        this.withNode(this.appendDeclaration(definition), () => this.declareDefinition(definition));
     }
 
     protected override visitFunctionDeclaration(node: FunctionDeclarationAstNode): void {
@@ -184,15 +183,17 @@ class AnalysisBuilder extends AstVisitor {
             node.range,
             node.nameRange,
         );
-        this.recordDefinition(definition);
-        this.pushScope(node.range.start, node.range.end);
-        this.registerFunctionParameters(definition, node.parameters);
-        this.visitChildren(node);
-        this.popScope();
+        this.withNode(this.appendDeclaration(definition), () => {
+            this.declareDefinition(definition);
+            this.enterScope(node.range, () => {
+                this.registerFunctionParameters(definition, node.parameters);
+                this.visitChildren(node);
+            });
+        });
     }
 
     protected override visitVariableDeclaration(node: VariableDeclarationAstNode): void {
-        const variableDefinition = createVariableDefinition(
+        const definition = createVariableDefinition(
             this.document,
             "declare-variable",
             this.normalizeVarName(node.binding.name, node.binding.selectionRange),
@@ -202,53 +203,55 @@ class AnalysisBuilder extends AstVisitor {
                 ? this.document.offsetAt(node.range.end)
                 : AnalysisBuilder.NEVER_VISIBLE_OFFSET,
         );
-        this.visitChildren(node);
-        this.recordDefinition(variableDefinition);
+        this.withNode(this.appendDeclaration(definition), () => {
+            this.visitChildren(node);
+            this.declareDefinition(definition);
+        });
     }
 
     protected override visitLetBinding(node: LetBindingAstNode): void {
-        this.visitChildren(node);
-        this.recordDefinition(this.variableDefinition("let", node.binding));
+        this.visitBindingDeclaration("let", node.binding, () => this.visitChildren(node));
     }
 
     protected override visitGroupByBinding(node: GroupByBindingAstNode): void {
-        this.visitChildren(node);
-        this.recordDefinition(this.variableDefinition("group-by", node.binding));
+        this.visitBindingDeclaration("group-by", node.binding, () => this.visitChildren(node));
     }
 
     protected override visitCountClause(node: CountClauseAstNode): void {
-        this.visitChildren(node);
-        this.recordDefinition(this.variableDefinition("count", node.binding));
+        this.visitBindingDeclaration("count", node.binding, () => this.visitChildren(node));
     }
 
     protected override visitForBinding(node: ForBindingAstNode): void {
         this.visitChildren(node);
         for (const binding of node.bindings) {
-            this.recordDefinition(this.variableDefinition(binding.bindingKind, binding));
+            const definition = this.variableDefinition(binding.bindingKind, binding);
+            this.withNode(this.appendDeclaration(definition), () =>
+                this.declareDefinition(definition),
+            );
         }
     }
 
     protected override visitFlowrExpression(node: FlowrExpressionAstNode): void {
-        this.visitScopedChildren(node);
+        this.enterScope(node.range, () => this.visitChildren(node));
     }
 
     protected override visitCatchClause(node: CatchClauseAstNode): void {
-        this.pushScope(node.range.start, node.range.end);
-        for (const name of CATCH_VARIABLES) {
-            this.recordDefinition(
-                createVariableDefinition(
+        this.enterScope(node.range, () => {
+            for (const name of CATCH_VARIABLES) {
+                const definition = createVariableDefinition(
                     this.document,
                     "catch-variable",
                     this.normalizeVarName(name, node.range),
                     node.range,
                     node.range,
-                    /// Catch variables are visible inmediate after the catch clause starts
                     this.document.offsetAt(node.range.start),
-                ),
-            );
-        }
-        this.visitChildren(node);
-        this.popScope();
+                );
+                this.withNode(this.appendDeclaration(definition), () =>
+                    this.declareDefinition(definition),
+                );
+            }
+            this.visitChildren(node);
+        });
     }
 
     protected override visitVariableReference(node: VariableReferenceAstNode): void {
@@ -268,21 +271,11 @@ class AnalysisBuilder extends AstVisitor {
     }
 
     protected override visitFunctionCall(node: FunctionCallAstNode): void {
-        this.recordReference({
-            kind: "function",
-            name: node.name,
-            range: node.nameRange,
-        });
-        this.visitChildren(node);
+        this.visitCallableReference(node);
     }
 
     protected override visitNamedFunctionReference(node: NamedFunctionReferenceAstNode): void {
-        this.recordReference({
-            kind: "function",
-            name: node.name,
-            range: node.nameRange,
-        });
-        this.visitChildren(node);
+        this.visitCallableReference(node);
     }
 
     protected override visitReference(node: ReferenceAstNode): void {
@@ -293,34 +286,114 @@ class AnalysisBuilder extends AstVisitor {
         });
     }
 
-    private visitScopedChildren(node: FlowrExpressionAstNode) {
-        this.pushScope(node.range.start, node.range.end);
-        this.visitChildren(node);
-        this.popScope();
-    }
-
-    private pushScope(start: Position, end: Position): void {
-        this.currentScope = this.currentScope.enter(
-            this.document.offsetAt(start),
-            this.document.offsetAt(end),
-        );
-    }
-
-    private popScope(): void {
-        const parent = this.currentScope.parent;
-        if (parent === undefined) {
-            throw new Error("Cannot exit the module scope.");
-        }
-        this.currentScope = parent;
-    }
-
-    private recordDefinition(definition: SourceDefinition): void {
-        this.analysis.definitions.push(definition);
-        this.analysis.symbolIndex.push({
-            range: definition.selectionRange,
-            declaration: definition,
-            reference: undefined,
+    protected override visitArgument(node: ArgumentAstNode): void {
+        const parent = this.currentNode();
+        const argument = this.appendNode<ArgumentNode>({
+            kind: "argument",
+            range: node.range,
+            children: [],
+            index: node.index,
         });
+
+        if (parent.kind === "function-call") {
+            parent.arguments.push(argument);
+        }
+
+        this.withNode(argument, () => this.visitChildren(node));
+    }
+
+    protected override visitUnknown(node: UnknownAstNode): void {
+        const semanticNode = this.appendNode({
+            kind: "unknown",
+            range: node.range,
+            children: [],
+        });
+        this.withNode(semanticNode, () => this.visitChildren(node));
+    }
+
+    private visitBindingDeclaration(
+        kind: VariableKind,
+        binding: AstBinding,
+        visitValue: () => void,
+    ): void {
+        const definition = this.variableDefinition(kind, binding);
+        this.withNode(this.appendDeclaration(definition), () => {
+            visitValue();
+            this.declareDefinition(definition);
+        });
+    }
+
+    private visitCallableReference(
+        node: FunctionCallAstNode | NamedFunctionReferenceAstNode,
+    ): void {
+        const name = this.normalizeFunctionName(node.name, node.nameRange);
+        const callNode = this.appendNode<FunctionCallNode>({
+            kind: "function-call",
+            range: node.range,
+            children: [],
+            name,
+            nameRange: node.nameRange,
+            arguments: [],
+        });
+
+        this.withNode(callNode, () => {
+            callNode.reference = this.recordNormalizedReference("function", name, node.nameRange);
+            this.visitChildren(node);
+        });
+    }
+
+    private appendDeclaration(declaration: SourceDefinition): AstNode {
+        return this.appendNode({
+            kind: "declaration",
+            range: declaration.range,
+            children: [],
+            declaration,
+        });
+    }
+
+    private appendNode<T extends AstNode>(node: T): T {
+        const parent = this.currentNode();
+        node.parent = parent;
+        parent.children.push(node);
+        return node;
+    }
+
+    private withNode(node: AstNode, callback: () => void): void {
+        const previousNode = this.currentNodeOrUndefined();
+        this.currentNodeRef = node;
+        try {
+            callback();
+        } finally {
+            this.currentNodeRef = previousNode;
+        }
+    }
+
+    private currentNode(): AstNode {
+        const node = this.currentNodeOrUndefined();
+        if (node === undefined) {
+            throw new Error("Expected current analysis AST node.");
+        }
+        return node;
+    }
+
+    private currentNodeOrUndefined(): AstNode | undefined {
+        return this.currentNodeRef;
+    }
+
+    private enterScope(range: Range, callback: () => void): void {
+        const previousScope = this.currentScope;
+        this.currentScope = this.currentScope.enter(
+            this.document.offsetAt(range.start),
+            this.document.offsetAt(range.end),
+        );
+        try {
+            callback();
+        } finally {
+            this.currentScope = previousScope;
+        }
+    }
+
+    private declareDefinition(definition: SourceDefinition): void {
         this.currentScope.declare(definition);
     }
 
@@ -338,39 +411,54 @@ class AnalysisBuilder extends AstVisitor {
         return this.currentScope.resolve(kind, name);
     }
 
-    private recordReference(reference: LexicalReference) {
+    private recordReference(reference: LexicalReference): ReferenceNode {
         const name =
             reference.kind === "function"
-                ? this.normalizeFunctionName(reference.name, reference.range)
-                : this.normalizeVarName(reference.name, reference.range);
-        const lookupName = resolvedReferenceNameToString(name, reference.kind);
-        const declaration = this.resolve(reference.kind, name);
+                ? this.normalizeFunctionName(reference.name as LexicalFunctionName, reference.range)
+                : this.normalizeVarName(reference.name as LexicalVarName, reference.range);
+        return this.recordNormalizedReference(
+            reference.kind,
+            name as ResolvedReferenceNameByKind[typeof reference.kind],
+            reference.range,
+        );
+    }
+
+    private recordNormalizedReference<K extends keyof ResolvedReferenceNameByKind>(
+        kind: K,
+        name: ResolvedReferenceNameByKind[K],
+        range: Range,
+    ): ReferenceNode<K> {
+        const lookupName = resolvedReferenceNameToString(name, kind);
+        const declaration = this.resolve(kind, name);
+        const resolvedReference =
+            declaration === undefined
+                ? undefined
+                : ({
+                      kind,
+                      name,
+                      range,
+                      declaration,
+                  } as unknown as ResolvedReference<K>);
+
         if (declaration === undefined) {
             this.analysis.diagnostics.push({
                 severity: DiagnosticSeverity.Error,
-                message: `Reference to undefined variable '${lookupName}'`,
-                range: reference.range,
-                code: "unresolved-variable",
+                message: `Reference to undefined ${kind} '${lookupName}'`,
+                range,
+                code: `unresolved-${kind}`,
             });
-            return;
-        }
-
-        const resolvedReference = {
-            ...reference,
-            name,
-            declaration,
-        } satisfies ResolvedReference;
-
-        this.analysis.references.push(resolvedReference);
-        this.analysis.symbolIndex.push({
-            range: resolvedReference.range,
-            declaration,
-            reference: resolvedReference,
-        });
-
-        if (isSourceDefinition(declaration)) {
+        } else if (isSourceDefinition(declaration) && resolvedReference !== undefined) {
             declaration.references.push(resolvedReference);
         }
+
+        return this.appendNode<ReferenceNode<K>>({
+            kind: "reference",
+            range,
+            children: [],
+            referenceKind: kind,
+            name,
+            resolution: resolvedReference,
+        });
     }
 
     private registerFunctionParameters(
@@ -385,8 +473,10 @@ class AnalysisBuilder extends AstVisitor {
                 parameter.selectionRange,
                 definition,
             );
-            this.recordDefinition(parameterDefinition);
-            definition.parameters.push(parameterDefinition);
+            this.withNode(this.appendDeclaration(parameterDefinition), () => {
+                this.declareDefinition(parameterDefinition);
+                definition.parameters.push(parameterDefinition);
+            });
         }
     }
 

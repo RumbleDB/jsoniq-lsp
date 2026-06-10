@@ -1,8 +1,8 @@
-import type { JsoniqAst } from "server/parser/types/ast.js";
-import { Prefix } from "server/parser/types/name.js";
+import type { Prefix } from "server/parser/types/name.js";
 import type { BuiltinFunctionDefinition } from "server/wrapper/builtin-functions.js";
 import type { Diagnostic, Range } from "vscode-languageserver";
 
+import type { JsoniqAst } from "./ast.js";
 import {
     type ResolvedDeclarationNameByKind,
     type ResolvedFunctionName,
@@ -11,7 +11,6 @@ import {
     resolvedQNameToString,
     resolvedVarNameToString,
 } from "./names.js";
-import type { Scope } from "./scope.js";
 
 export type VariableKind =
     | "declare-variable"
@@ -101,32 +100,10 @@ export type ResolvedReference<
     K extends keyof ResolvedReferenceNameByKind = keyof ResolvedReferenceNameByKind,
 > = AnyReference<K> & { declaration: Definition };
 
-export interface SymbolIndexEntry {
-    range: Range;
-    declaration: Definition;
-
-    // The reference corresponding to this occurrence, if it is a reference.
-    reference: ResolvedReference | undefined;
-}
-
 export interface JsoniqAnalysis {
     ast: JsoniqAst;
-
-    moduleScope: Scope;
-
-    // Namespace declarations are module-level only and do not participate in lexical scope.
     namespaces: Map<Prefix, SourceNamespaceDefinition>;
-
-    // All declarations, sorted by declaration position.
-    definitions: SourceDefinition[];
-
-    // All resolved references in traversal order.
-    references: ResolvedReference[];
-
     diagnostics: Diagnostic[];
-
-    // Declarations and references, sorted by source position.
-    symbolIndex: SymbolIndexEntry[];
 }
 
 export function isSourceDefinition(

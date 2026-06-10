@@ -5,7 +5,7 @@ import {
     MAP_NAMESPACE,
     MATH_NAMESPACE,
 } from "server/analysis/default-namespaces.js";
-import type { BaseDefinition } from "server/analysis/model.js";
+import type { BaseDefinition } from "server/analysis/types.js";
 import { createLogger } from "server/utils/logger.js";
 
 import { expandedQNameToString, type ResolvedFunctionName } from "../analysis/names.js";
