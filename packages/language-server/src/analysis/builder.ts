@@ -174,7 +174,7 @@ class AnalysisBuilder extends AstVisitor<AstNode[]> {
     protected override visitFunctionDeclaration(node: FunctionDeclarationAstNode): AstNode[] {
         const definition = createFunctionDefinition(
             this.document,
-            this.normalizeFunctionName(node.name, node.nameRange),
+            this.resolveFunctionName(node.name, node.nameRange),
             node.range,
             node.nameRange,
         );
@@ -306,7 +306,7 @@ class AnalysisBuilder extends AstVisitor<AstNode[]> {
     private createFunctionCallNode(
         node: FunctionCallAstNode | NamedFunctionReferenceAstNode,
     ): FunctionCallNode {
-        const name = this.normalizeFunctionName(node.name, node.nameRange);
+        const name = this.resolveFunctionName(node.name, node.nameRange);
         const reference = this.createReference("function", name, node.nameRange);
         const children = [reference, ...this.visitChildrenAsNodes(node)];
         return this.adoptChildren<FunctionCallNode>(
@@ -446,7 +446,7 @@ class AnalysisBuilder extends AstVisitor<AstNode[]> {
         );
     }
 
-    private normalizeFunctionName(name: LexicalFunctionName, range: Range): FunctionName {
+    private resolveFunctionName(name: LexicalFunctionName, range: Range): FunctionName {
         return {
             ...name,
             qname: this.resolveQName(name.qname, range),
