@@ -28,7 +28,7 @@ tokens {EscapeQuot, EscapeApos, DOUBLE_LBRACE, DOUBLE_RBRACE}
     ///
 
     // for counting braces inside string literals
-    private int bracesInside = 0;
+    private bracesInside = 0;
 }
 
 IntegerLiteral: Digits ;
