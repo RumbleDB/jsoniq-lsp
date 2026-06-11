@@ -1,29 +1,10 @@
-import { buildAnalysis } from "server/analysis/builder.js";
 import { findSignatureHelp } from "server/signature-help.js";
-import { findCurrentArgument } from "server/utils/function-calls.js";
 import { describe, expect, it } from "vitest";
 import type { Position } from "vscode-languageserver";
 
 import { positionAt, testDocument } from "./test-utils.js";
 
 describe("JSONiq signature help", () => {
-    describe("findCurrentArgument", () => {
-        it("returns the innermost argument and its index", async () => {
-            const document = testDocument("sig-ast-nodes", ['fn:substring("hello", 1, 2)']);
-            const analysis = await buildAnalysis(document);
-
-            expect(
-                findCurrentArgument(analysis, positionAt(document, '"hello"'))?.argument.index,
-            ).toBe(0);
-            expect(findCurrentArgument(analysis, positionAt(document, "1"))?.argument.index).toBe(
-                1,
-            );
-            expect(findCurrentArgument(analysis, positionAt(document, "2"))?.argument.index).toBe(
-                2,
-            );
-        });
-    });
-
     describe("findSignatureHelp", () => {
         it("returns signature help for W3C builtin functions", async () => {
             const document = testDocument("sig-builtin", ['fn:substring("hello", 1, 2)']);
@@ -49,13 +30,32 @@ describe("JSONiq signature help", () => {
             expect(activeSig?.parameters?.length).toBe(3);
         });
 
-        it("returns null for incomplete calls without an AST function-call node", async () => {
-            const document = testDocument("sig-incomplete", ['fn:substring("hello", ']);
+        it("returns signature help for builtin calls with trailing commas", async () => {
+            const document = testDocument("sig-incomplete", ['fn:substring("hello", )']);
 
             const pos: Position = { line: 0, character: 'fn:substring("hello", '.length };
             const help = await findSignatureHelp(document, pos);
 
-            expect(help).toBeNull();
+            expect(help).not.toBeNull();
+            expect(help?.activeParameter).toBe(1);
+            expect(help?.signatures[help.activeSignature ?? 0]?.label).toContain("fn:substring");
+        });
+
+        it("returns signature help for incomplete source calls with trailing commas", async () => {
+            const document = testDocument("sig-incomplete-source", [
+                "declare function local:f($a as xs:string, $b) {",
+                "  $a",
+                "};",
+                "",
+                "local:f('test', )",
+            ]);
+
+            const pos: Position = { line: 4, character: "local:f('test', ".length };
+            const help = await findSignatureHelp(document, pos);
+
+            expect(help).not.toBeNull();
+            expect(help?.activeParameter).toBe(1);
+            expect(help?.signatures[0]?.label).toBe("local:f($a, $b)");
         });
 
         it("returns signature help for custom/source functions", async () => {
