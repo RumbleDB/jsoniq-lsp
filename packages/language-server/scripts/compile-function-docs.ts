@@ -18,6 +18,98 @@ const OUTPUT_FILE_PATH = path.join(
     "custom-functions.json",
 );
 
+const TEXT_FIELDS = ["rules", "errors", "notes", "examples"] as const;
+type TextFieldName = (typeof TEXT_FIELDS)[number];
+
+function appendText(target: Partial<FunctionEntry>, field: TextFieldName, value: unknown): void {
+    const text = typeof value === "string" ? value.trim() : "";
+    if (!text) {
+        return;
+    }
+
+    target[field] = target[field] ? `${target[field]}\n\n${text}` : text;
+}
+
+function appendProperties(entry: Partial<FunctionEntry>, properties: string[] | undefined): void {
+    if (!properties || properties.length === 0) {
+        return;
+    }
+
+    entry.properties = [...(entry.properties ?? []), ...properties];
+}
+
+function toOptionalString(value: unknown): string | undefined {
+    if (value === undefined || value === null) {
+        return undefined;
+    }
+    return String(value);
+}
+
+function parseProperties(content: string): string[] {
+    return content
+        .split("\n")
+        .map((line) => line.trim())
+        .filter((line) => line.length > 0)
+        .map((line) => line.replace(/^[-*+]\s+/, "").trim())
+        .filter((line) => line.length > 0);
+}
+
+function parseMarkdownSections(content: string, filePath: string): Partial<FunctionEntry> {
+    const entry: Partial<FunctionEntry> = {};
+    const lines = content.split(/\r?\n/);
+    const preamble: string[] = [];
+    let currentSection: string | undefined;
+    let buffer: string[] = [];
+
+    function flushSection() {
+        const body = buffer.join("\n").trim();
+        buffer = [];
+
+        if (!currentSection || !body) {
+            return;
+        }
+
+        if (currentSection === "properties") {
+            appendProperties(entry, parseProperties(body));
+            return;
+        }
+
+        if (TEXT_FIELDS.includes(currentSection as TextFieldName)) {
+            appendText(entry, currentSection as TextFieldName, body);
+            return;
+        }
+
+        console.warn(`Ignoring unknown function doc section "${currentSection}" in ${filePath}.`);
+    }
+
+    for (const line of lines) {
+        const headingMatch = line.match(/^#{2,3}\s+(.+?)\s*$/);
+        if (headingMatch) {
+            flushSection();
+            currentSection = headingMatch[1]?.trim().replace(/:$/, "").toLowerCase();
+            continue;
+        }
+
+        if (currentSection) {
+            buffer.push(line);
+        } else {
+            preamble.push(line);
+        }
+    }
+
+    flushSection();
+
+    const preambleText = preamble.join("\n").trim();
+    if (preambleText.length > 0) {
+        console.warn(
+            `Found unsectioned markdown in ${filePath}; treating it as additional rules content.`,
+        );
+        entry.rules = entry.rules ? `${preambleText}\n\n${entry.rules}` : preambleText;
+    }
+
+    return entry;
+}
+
 function getMarkdownFiles(dir: string): string[] {
     if (!fs.existsSync(dir)) {
         return [];
@@ -62,19 +154,23 @@ function main() {
             const entry: FunctionEntry = {
                 name,
                 prefix,
-                summary: data.summary || "",
-                signatures: data.signatures || [],
+                summary: toOptionalString(data.summary) ?? "",
+                signatures: Array.isArray(data.signatures) ? data.signatures : [],
             };
 
-            const rules = content.trim();
-            if (rules) {
-                entry.rules = rules;
-            }
+            const sections = parseMarkdownSections(content, file);
 
-            if (data.errors) entry.errors = String(data.errors);
-            if (data.notes) entry.notes = String(data.notes);
-            if (data.examples) entry.examples = String(data.examples);
-            if (Array.isArray(data.properties)) entry.properties = data.properties.map(String);
+            appendText(entry, "rules", sections.rules);
+            appendText(entry, "errors", data.errors);
+            appendText(entry, "errors", sections.errors);
+            appendText(entry, "notes", data.notes);
+            appendText(entry, "notes", sections.notes);
+            appendText(entry, "examples", data.examples);
+            appendText(entry, "examples", sections.examples);
+            if (Array.isArray(data.properties)) {
+                entry.properties = data.properties.map(String);
+            }
+            appendProperties(entry, sections.properties);
 
             if (docs[key]) {
                 console.warn("Found duplicated entries: ", key);
@@ -82,9 +178,10 @@ function main() {
                 if (entry.summary && !docs[key].summary) {
                     docs[key].summary = entry.summary;
                 }
-                if (entry.rules) {
-                    docs[key].rules = (docs[key].rules || "") + "\n\n" + entry.rules;
+                for (const field of TEXT_FIELDS) {
+                    appendText(docs[key], field, entry[field]);
                 }
+                appendProperties(docs[key], entry.properties);
             } else {
                 docs[key] = entry;
             }
