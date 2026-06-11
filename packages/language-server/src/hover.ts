@@ -1,4 +1,4 @@
-import { getBuiltinFunctionHover } from "server/function-catalog/index.js";
+import { getBuiltinFunctionDocumentation } from "server/function-doc/index.js";
 import { MarkupKind, type Hover, type Position } from "vscode-languageserver";
 import { TextDocument } from "vscode-languageserver-textdocument";
 
@@ -10,6 +10,7 @@ import {
 } from "./analysis/definitions.js";
 import { findSymbolAtPosition } from "./analysis/queries.js";
 import { getAnalysis } from "./analysis/service.js";
+import { formatFunctionEntry } from "./function-doc/format.js";
 import { formatInferredType } from "./type-inference/format.js";
 import { getTypeInferenceIndex, TypeInferenceIndex } from "./type-inference/service.js";
 
@@ -34,21 +35,27 @@ export async function findHover(document: TextDocument, position: Position): Pro
 }
 
 function createHoverContent(typeInference: TypeInferenceIndex, declaration: Definition): string {
-    if (isSourceDefinition(declaration)) {
-        const name = definitionNameToString(declaration);
-        const declarationLine = declaration.selectionRange.start.line + 1;
-
-        return [
-            "```jsoniq",
-            name,
-            "```",
-            `kind: \`${declaration.kind}\``,
-            `declared at line ${declarationLine}`,
-            `inferred type: \`${formatOptionalInferredType(typeInference, declaration)}\``,
-        ].join("\n");
-    } else {
-        return getBuiltinFunctionHover(declaration);
+    if (declaration.kind === "builtin-function") {
+        const doc = getBuiltinFunctionDocumentation(declaration.name.qname);
+        if (doc) {
+            return formatFunctionEntry(doc, declaration.name.arity);
+        }
     }
+
+    const name = definitionNameToString(declaration);
+
+    return [
+        "```jsoniq",
+        name,
+        "```",
+        `kind: \`${declaration.kind}\``,
+        isSourceDefinition(declaration)
+            ? `defined at: \`${declaration.selectionRange.start.line + 1}:${declaration.selectionRange.start.character}\``
+            : undefined,
+        isSourceDefinition(declaration)
+            ? `inferred type: \`${formatOptionalInferredType(typeInference, declaration)}\``
+            : undefined,
+    ].join("\n");
 }
 
 function formatOptionalInferredType(

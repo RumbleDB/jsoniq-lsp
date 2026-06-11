@@ -3,12 +3,8 @@ import { TextDocument } from "vscode-languageserver-textdocument";
 
 import type { ArgumentNode, AstNode, FunctionCallNode } from "./analysis/ast.js";
 import { getAnalysis } from "./analysis/service.js";
-import {
-    chooseBestSignatureIndex,
-    findResolvedSourceFunction,
-    getFunctionCallArgumentNodes,
-    getFunctionCatalogEntry,
-} from "./utils/function-calls.js";
+import { getBuiltinFunctionDocumentation } from "./function-doc/index.js";
+import { chooseBestSignatureIndex, findResolvedSourceFunction } from "./utils/function-calls.js";
 import { rangesIntersect } from "./utils/range.js";
 
 export async function collectInlayHints(
@@ -31,7 +27,7 @@ function collectFunctionCallInlayHints(node: AstNode, range: Range): InlayHint[]
 }
 
 function createFunctionCallHints(call: FunctionCallNode): InlayHint[] {
-    return getFunctionCallArgumentNodes(call)
+    return call.arguments
         .map((argument) => createParameterHint(argument, getParameterName(call, argument)))
         .filter((hint): hint is InlayHint => hint !== null);
 }
@@ -66,17 +62,17 @@ function getBuiltinParameterName(
     call: FunctionCallNode,
     argumentIndex: number,
 ): string | undefined {
-    const catalogEntry = getFunctionCatalogEntry(call);
+    const docsEntry = getBuiltinFunctionDocumentation(call.name.qname);
 
-    if (!catalogEntry || catalogEntry.signatures.length === 0) {
+    if (!docsEntry || docsEntry.signatures.length === 0) {
         return undefined;
     }
 
     const signature =
-        catalogEntry.signatures[
+        docsEntry.signatures[
             chooseBestSignatureIndex(
-                catalogEntry.signatures.map((candidate) => candidate.params.length),
-                getFunctionCallArgumentNodes(call).length,
+                docsEntry.signatures.map((candidate) => candidate.params.length),
+                call.arguments.length,
             )
         ]!;
 

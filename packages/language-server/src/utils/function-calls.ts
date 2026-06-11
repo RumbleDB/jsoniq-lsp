@@ -4,21 +4,10 @@ import {
     isSourceFunctionDefinition,
     SourceFunctionDefinition,
 } from "server/analysis/definitions.js";
-import { getW3Catalog } from "server/function-catalog/loader.js";
-import type { FunctionEntry } from "server/function-catalog/types.js";
 import type { Position } from "vscode-languageserver";
 
 import type { ArgumentNode, FunctionCallNode } from "../analysis/ast.js";
-import { QNameToString } from "../analysis/names.js";
 import { findNodesThatContainPosition } from "../analysis/queries.js";
-
-export function getFunctionCallName(call: FunctionCallNode): string {
-    return QNameToString(call.name.qname, false);
-}
-
-export function getFunctionCallArgumentNodes(call: FunctionCallNode): ArgumentNode[] {
-    return call.arguments;
-}
 
 export function chooseBestSignatureIndex(
     parameterCounts: number[],
@@ -56,17 +45,6 @@ export function findResolvedSourceFunction(
 ): SourceFunctionDefinition | undefined {
     const definition = findResolvedFunctionDeclaration(call);
     return isSourceFunctionDefinition(definition) ? definition : undefined;
-}
-
-export function getFunctionCatalogEntry(call: FunctionCallNode): FunctionEntry | undefined {
-    return getCatalogEntryByFunctionName(getFunctionCallName(call));
-}
-
-export function getCatalogEntryByFunctionName(functionName: string): FunctionEntry | undefined {
-    const [prefix = "fn", localName = functionName] = functionName.includes(":")
-        ? functionName.split(":", 2)
-        : [undefined, functionName];
-    return getW3Catalog()[`${prefix}:${localName}`];
 }
 
 export function findCurrentArgument(

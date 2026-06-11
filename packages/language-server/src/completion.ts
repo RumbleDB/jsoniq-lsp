@@ -7,6 +7,7 @@ import {
 } from "vscode-languageserver";
 import { TextDocument } from "vscode-languageserver-textdocument";
 
+import { defaultNamespaces } from "./analysis/default-namespaces.js";
 import {
     BaseDefinition,
     definitionNameToString,
@@ -16,8 +17,9 @@ import {
 } from "./analysis/definitions.js";
 import { QNameToString } from "./analysis/names.js";
 import { getVisibleDeclarationsAtPosition } from "./analysis/queries.js";
-import { getBuiltinFunctionDocumentation } from "./function-catalog/index.js";
-import { getW3Catalog } from "./function-catalog/loader.js";
+import { formatFunctionEntry } from "./function-doc/format.js";
+import { getBuiltinFunctionDocumentation } from "./function-doc/index.js";
+import { getFunctionDocs } from "./function-doc/loader.js";
 import { collectCompletionIntent } from "./parser/index.js";
 import { getDocumentText } from "./parser/utils.js";
 import { getBuiltinFunctions } from "./wrapper/builtin-functions.js";
@@ -123,13 +125,20 @@ function toCompletionItem(declaration: BaseDefinition): CompletionItem {
 
 async function getBuiltinFunctionCompletionItems(): Promise<CompletionItem[]> {
     const itemsByName = new Map<string, CompletionItem>();
-    const catalog = getW3Catalog();
+    const docs = getFunctionDocs();
 
     for (const definition of (await getBuiltinFunctions()).all) {
         const { qname, arity } = definition.name;
         const functionName = QNameToString(qname, false);
-        const catalogKey = `${qname.prefix || "fn"}:${qname.localName}`;
-        const overloadCount = catalog[catalogKey]?.signatures.length;
+        const ns = qname.namespaceUri ?? defaultNamespaces.get(qname.prefix || "fn");
+        const docsKey = QNameToString(
+            {
+                localName: qname.localName,
+                ...(ns === undefined ? {} : { namespaceUri: ns }),
+            },
+            true,
+        );
+        const overloadCount = docs[docsKey]?.signatures.length;
         const parameterTypes = definition.signature.parameterTypes
             .map((parameter) => parameter.type)
             .join(", ");
@@ -145,9 +154,12 @@ async function getBuiltinFunctionCompletionItems(): Promise<CompletionItem[]> {
                       : `${signature} / ${arity}`,
             documentation: {
                 kind: MarkupKind.Markdown,
-                value: getBuiltinFunctionDocumentation(definition, {
-                    preferMatchingArity: false,
-                }),
+                value: getBuiltinFunctionDocumentation(definition.name.qname)
+                    ? formatFunctionEntry(
+                          getBuiltinFunctionDocumentation(definition.name.qname)!,
+                          arity,
+                      )
+                    : "No documentation available.",
             },
         };
 
