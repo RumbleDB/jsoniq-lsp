@@ -8,7 +8,7 @@ import {
 } from "vscode-languageserver";
 import { TextDocument } from "vscode-languageserver-textdocument";
 
-import type { FunctionCallNode } from "./analysis/ast.js";
+import type { ArgumentNode, AstNode, FunctionCallNode } from "./analysis/ast.js";
 import {
     definitionNameToString,
     isSourceFunctionDefinition,
@@ -134,6 +134,18 @@ function resolveSignatures(
     };
 }
 
+function getActiveParameter(call: FunctionCallNode, containingNodes: AstNode[]): number {
+    const activeArgumentNode = containingNodes.findLast(
+        (node): node is ArgumentNode => node.kind == "argument",
+    );
+    if (activeArgumentNode !== undefined) {
+        return Math.max(0, call.arguments.indexOf(activeArgumentNode));
+    }
+
+    const trailingArgument = call.arguments.at(-1);
+    return trailingArgument?.children.length === 0 ? Math.max(0, call.arguments.length - 1) : 0;
+}
+
 export async function findSignatureHelp(
     document: TextDocument,
     position: Position,
@@ -146,11 +158,7 @@ export async function findSignatureHelp(
         return null;
     }
 
-    const activeArgumentNode = containingNodes.findLast((node) => node.kind == "argument");
-    const activeParameter =
-        activeArgumentNode === undefined
-            ? 0
-            : Math.max(0, activeCall.arguments.indexOf(activeArgumentNode));
+    const activeParameter = getActiveParameter(activeCall, containingNodes);
 
     const { signatures, activeSignature } = resolveSignatures(activeCall, activeParameter);
 
