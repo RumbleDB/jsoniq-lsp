@@ -1,6 +1,6 @@
 import { CodeCompletionCore } from "antlr4-c3";
 import { Token } from "antlr4ng";
-import type { CompletionIntent, ParserKeywordCompletion } from "server/parser/types/completion.js";
+import type { CompletionIntent, KeywordCompletion } from "server/parser/types/completion.js";
 import { findCaretToken } from "server/parser/utils.js";
 import { createLogger } from "server/utils/logger.js";
 
@@ -98,7 +98,7 @@ function getCompletionCandidates(parser: XQueryParser, caretTokenIndex: number) 
     return core.collectCandidates(caretTokenIndex);
 }
 
-function keywordCompletions(candidates: XQueryCompletionCandidates): ParserKeywordCompletion[] {
+function keywordCompletions(candidates: XQueryCompletionCandidates): KeywordCompletion[] {
     if (!candidates.tokenContext.allowKeywords) {
         return [];
     }
