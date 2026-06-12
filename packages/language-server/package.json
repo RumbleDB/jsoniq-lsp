@@ -23,7 +23,7 @@
         "generate:w3-docs": "node scripts/parse-w3-function-docs.ts",
         "compile:function-docs": "node scripts/compile-function-docs.ts",
         "compile:builtin-functions": "tsx scripts/compile-builtin-functions.ts",
-        "missing-function-docs": "pnpm run build && node ./dist/function-doc/list-missing-function-docs.mjs",
+        "missing-function-docs": "tsx scripts/list-missing-function-docs.ts",
         "typecheck": "tsc --noEmit -p tsconfig.json",
         "build:assets": "pnpm run compile:function-docs && pnpm run compile:builtin-functions",
         "build": "pnpm run build:assets && pnpm run typecheck && tsdown",
