@@ -9,7 +9,7 @@ import { BaseDefinition } from "server/analysis/definitions.js";
 import { functionNameToString, type FunctionName } from "server/analysis/names.js";
 
 import { type WrapperFunctionSignature } from "../wrapper/types.js";
-import { BuiltinFunctionRaw, loadJsonAsset } from "./loader.js";
+import { loadJsonAsset } from "./loader.js";
 
 export interface BuiltinFunctionDefinition extends BaseDefinition<"builtin-function"> {
     name: FunctionName;
@@ -61,7 +61,13 @@ function findBuiltinFunctionDefinition(
 }
 
 const map = new Map<string, BuiltinFunctionDefinition>();
-const catalog = loadJsonAsset<BuiltinFunctionRaw[]>("builtin-functions.json") || [];
+const catalog =
+    loadJsonAsset<
+        Array<{
+            name: FunctionName;
+            signature: WrapperFunctionSignature;
+        }>
+    >("builtin-functions.json") || [];
 
 for (const func of catalog) {
     const name = func.name;

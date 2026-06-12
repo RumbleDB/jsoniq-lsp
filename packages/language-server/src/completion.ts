@@ -19,9 +19,12 @@ import {
 import { QNameToString } from "./analysis/names.js";
 import { getVisibleDeclarationsAtPosition } from "./analysis/queries.js";
 import { BuiltinFunctionDefinition, builtinFunctions } from "./assets/builtin-functions.js";
-import { formatFunctionEntry } from "./function-doc/format.js";
-import { getBuiltinFunctionDocumentation, type Signature } from "./function-doc/index.js";
-import { getFunctionDocs } from "./function-doc/loader.js";
+import {
+    docs,
+    formatFunctionDocEntry,
+    getBuiltinFunctionDocumentation,
+    Signature,
+} from "./assets/function-docs.js";
 import { collectCompletionIntent } from "./parser/index.js";
 import { getDocumentText } from "./parser/utils.js";
 
@@ -130,7 +133,6 @@ function toCompletionItem(declaration: BaseDefinition): CompletionItem {
 
 async function getBuiltinFunctionCompletionItems(): Promise<CompletionItem[]> {
     const itemsByName = new Map<string, { item: CompletionItem; parameterCount: number }>();
-    const docs = getFunctionDocs();
 
     for (const definition of builtinFunctions.all) {
         const { qname, arity } = definition.name;
@@ -164,7 +166,7 @@ async function getBuiltinFunctionCompletionItems(): Promise<CompletionItem[]> {
             documentation: {
                 kind: MarkupKind.Markdown,
                 value: getBuiltinFunctionDocumentation(definition.name.qname)
-                    ? formatFunctionEntry(
+                    ? formatFunctionDocEntry(
                           getBuiltinFunctionDocumentation(definition.name.qname)!,
                           arity,
                       )
