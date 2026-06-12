@@ -6,7 +6,7 @@ import {
     TextDocuments,
     type InitializeParams,
     type InitializeResult,
-} from "vscode-languageserver/node.js";
+} from "vscode-languageserver/node";
 
 import { findCompletions } from "./completion.js";
 import { findDefinitionLocation } from "./definitions.js";

@@ -4,7 +4,7 @@ import {
     type LanguageClientOptions,
     type ServerOptions,
     TransportKind,
-} from "vscode-languageclient/node.js";
+} from "vscode-languageclient/node";
 
 import { JSONIQ_LANGUAGE_ID } from "./const.js";
 import { JUPYTER_NOTEBOOK_SELECTOR } from "./notebook/index.js";

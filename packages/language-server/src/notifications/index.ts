@@ -1,6 +1,6 @@
 import { setWrapperResolutionOptions } from "server/wrapper/client.js";
 import { DownloadProgress } from "server/wrapper/executable/download.js";
-import { Connection } from "vscode-languageserver/node.js";
+import { Connection } from "vscode-languageserver/node";
 
 import { setMemoryUsageNotification } from "./memory-usage.js";
 import {

@@ -1,5 +1,5 @@
 import type * as vscode from "vscode";
-import type { LanguageClient } from "vscode-languageclient/node.js";
+import type { LanguageClient } from "vscode-languageclient/node";
 
 import { registerWrapperDownloadProgressNotification } from "./download-progress.js";
 import { registerWrapperMemoryUsageNotification } from "./memory-usage.js";
