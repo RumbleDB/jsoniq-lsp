@@ -35,7 +35,6 @@ function loadFunctionDocs(): void {
 
                 const namespace = defaultNamespaces.get(prefix!);
                 if (!namespace) {
-                    console.warn(`Unknown namespace for key: ${originalKey}`);
                     continue;
                 }
                 const key = QNameToString({ localName: localName!, namespaceUri: namespace }, true);
