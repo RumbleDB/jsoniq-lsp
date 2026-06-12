@@ -1,6 +1,22 @@
-import { Token } from "antlr4ng";
+import { CommonTokenStream, Token } from "antlr4ng";
 import { lowerBound } from "server/utils/binary-search.js";
 import { TextDocument } from "vscode-languageserver-textdocument";
+
+export function nextDefaultToken(
+    tokenStream: CommonTokenStream,
+): (token: Token | null | undefined) => Token | null {
+    return (token) => {
+        if (token === null || token === undefined || token.tokenIndex < 0) {
+            return null;
+        }
+
+        const nextTokenIndex = tokenStream.nextTokenOnChannel(
+            token.tokenIndex + 1,
+            Token.DEFAULT_CHANNEL,
+        );
+        return nextTokenIndex < 0 ? null : tokenStream.get(nextTokenIndex);
+    };
+}
 
 export function findCaretToken(
     tokens: Token[],

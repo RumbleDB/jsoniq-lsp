@@ -6,7 +6,7 @@ import {
     NamedFunctionRefContext,
     QnameContext,
     VarRefContext,
-} from "./grammar/JsoniqParser.js";
+} from "./grammar/XQueryParser.js";
 
 export function parseQname(qnameNode: QnameContext): LexicalQName {
     return parseQNameText(qnameNode.getText());

@@ -1,12 +1,7 @@
+import { LanguageKeywordCompletion } from "server/parser/types/completion.js";
+
 import { JsoniqLexer } from "./grammar/JsoniqLexer.js";
 import { JsoniqParser } from "./grammar/JsoniqParser.js";
-
-export interface KeywordCompletion {
-    tokenType: number;
-    label: string;
-    insertText?: string;
-    prologOnly?: boolean;
-}
 
 export const IGNORED_COMPLETION_TOKENS = new Set([
     JsoniqLexer.QUESTION,
@@ -39,7 +34,7 @@ export const PREFERRED_COMPLETION_RULES = new Set([
     JsoniqParser.RULE_functionCall,
 ]);
 
-export const KEYWORD_COMPLETIONS: KeywordCompletion[] = [
+export const KEYWORD_COMPLETIONS: LanguageKeywordCompletion[] = [
     ...[
         JsoniqLexer.KW_COPY,
         JsoniqLexer.KW_DELETE,
@@ -55,25 +50,25 @@ export const KEYWORD_COMPLETIONS: KeywordCompletion[] = [
         JsoniqLexer.KW_TYPESWITCH,
         JsoniqLexer.KW_TRUE,
         JsoniqLexer.KW_FALSE,
-    ].map((tokenType) => keyword(tokenType)),
-    keyword(JsoniqLexer.KW_APPEND),
-    keyword(JsoniqLexer.KW_CREATE),
-    keyword(JsoniqLexer.KW_ORDERED),
-    keyword(JsoniqLexer.KW_RENAME),
-    keyword(JsoniqLexer.KW_REPLACE),
-    keyword(JsoniqLexer.KW_TRUNCATE),
-    keyword(JsoniqLexer.KW_UNORDERED),
-    keyword(JsoniqLexer.KW_NULL, "null"),
+    ].map((tokenType) => createLanguageKeyword(tokenType)),
+    createLanguageKeyword(JsoniqLexer.KW_APPEND),
+    createLanguageKeyword(JsoniqLexer.KW_CREATE),
+    createLanguageKeyword(JsoniqLexer.KW_ORDERED),
+    createLanguageKeyword(JsoniqLexer.KW_RENAME),
+    createLanguageKeyword(JsoniqLexer.KW_REPLACE),
+    createLanguageKeyword(JsoniqLexer.KW_TRUNCATE),
+    createLanguageKeyword(JsoniqLexer.KW_UNORDERED),
+    createLanguageKeyword(JsoniqLexer.KW_NULL, "null"),
     prologKeyword(JsoniqLexer.KW_DECLARE, "declare function", "declare function "),
     prologKeyword(JsoniqLexer.KW_DECLARE, "declare variable", "declare variable "),
     prologKeyword(JsoniqLexer.KW_IMPORT),
     prologKeyword(JsoniqLexer.KW_JSONIQ, "jsoniq version"),
     prologKeyword(JsoniqLexer.KW_MODULE),
-    keyword(JsoniqLexer.KW_BREAK, "break loop"),
-    keyword(JsoniqLexer.KW_CONTINUE, "continue"),
-    keyword(JsoniqLexer.KW_EXIT, "exit returning"),
-    keyword(JsoniqLexer.KW_VARIABLE),
-    keyword(JsoniqLexer.KW_WHILE),
+    createLanguageKeyword(JsoniqLexer.KW_BREAK, "break loop"),
+    createLanguageKeyword(JsoniqLexer.KW_CONTINUE, "continue"),
+    createLanguageKeyword(JsoniqLexer.KW_EXIT, "exit returning"),
+    createLanguageKeyword(JsoniqLexer.KW_VARIABLE),
+    createLanguageKeyword(JsoniqLexer.KW_WHILE),
     ...[
         JsoniqLexer.KW_ALLOWING,
         JsoniqLexer.KW_AS,
@@ -89,16 +84,16 @@ export const KEYWORD_COMPLETIONS: KeywordCompletion[] = [
         JsoniqLexer.KW_THEN,
         JsoniqLexer.KW_VALIDATE,
         JsoniqLexer.KW_WHERE,
-    ].map((tokenType) => keyword(tokenType)),
-    keyword(JsoniqLexer.KW_GROUP, "group by"),
-    keyword(JsoniqLexer.KW_ORDER, "order by"),
+    ].map((tokenType) => createLanguageKeyword(tokenType)),
+    createLanguageKeyword(JsoniqLexer.KW_GROUP, "group by"),
+    createLanguageKeyword(JsoniqLexer.KW_ORDER, "order by"),
 ];
 
-function keyword(
+function createLanguageKeyword(
     tokenType: number,
     label = tokenLabel(tokenType),
     insertText?: string,
-): KeywordCompletion {
+): LanguageKeywordCompletion {
     return {
         tokenType,
         label,
@@ -110,9 +105,9 @@ function prologKeyword(
     tokenType: number,
     label = tokenLabel(tokenType),
     insertText?: string,
-): KeywordCompletion {
+): LanguageKeywordCompletion {
     return {
-        ...keyword(tokenType, label, insertText),
+        ...createLanguageKeyword(tokenType, label, insertText),
         prologOnly: true,
     };
 }

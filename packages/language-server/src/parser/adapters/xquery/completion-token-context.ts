@@ -1,22 +1,22 @@
 import { Token } from "antlr4ng";
 import { TokenContextAnalyzer } from "server/parser/completion-context.js";
 
-import { JsoniqLexer } from "./grammar/JsoniqLexer.js";
+import { XQueryLexer } from "./grammar/XQueryLexer.js";
 
 const VARIABLE_DECLARATION_STARTERS = new Set([
-    JsoniqLexer.KW_VARIABLE,
-    JsoniqLexer.KW_LET,
-    JsoniqLexer.KW_FOR,
-    JsoniqLexer.KW_EVERY,
-    JsoniqLexer.KW_SOME,
-    JsoniqLexer.KW_COUNT,
+    XQueryLexer.KW_VARIABLE,
+    XQueryLexer.KW_LET,
+    XQueryLexer.KW_FOR,
+    XQueryLexer.KW_EVERY,
+    XQueryLexer.KW_SOME,
+    XQueryLexer.KW_COUNT,
 ]);
 
-export class JsoniqTokenContextAnalyzer extends TokenContextAnalyzer {
+export class XQueryTokenContextAnalyzer extends TokenContextAnalyzer {
     public override isAfterDeclareFunction(): boolean {
         return (
-            this.previous?.type === JsoniqLexer.KW_FUNCTION &&
-            this.beforePreviousIs(JsoniqLexer.KW_DECLARE)
+            this.previous?.type === XQueryLexer.KW_FUNCTION &&
+            this.beforePreviousIs(XQueryLexer.KW_DECLARE)
         );
     }
 
@@ -30,7 +30,7 @@ export class JsoniqTokenContextAnalyzer extends TokenContextAnalyzer {
         }
 
         return (
-            this.previous.type === JsoniqLexer.DOLLAR &&
+            this.previous.type === XQueryLexer.DOLLAR &&
             this.beforePrevious !== undefined &&
             (this.isVariableDeclarationStarter(this.beforePrevious) ||
                 this.isAfterFunctionParameterSeparator())
@@ -42,20 +42,20 @@ export class JsoniqTokenContextAnalyzer extends TokenContextAnalyzer {
             return true;
         }
 
-        return this.braceDepth === 0 && this.previous?.type === JsoniqLexer.SEMICOLON;
+        return this.braceDepth === 0 && this.previous?.type === XQueryLexer.SEMICOLON;
     }
 
     private isAfterFunctionParameterSeparator(): boolean {
         if (
-            this.beforePrevious?.type !== JsoniqLexer.LPAREN &&
-            this.beforePrevious?.type !== JsoniqLexer.COMMA
+            this.beforePrevious?.type !== XQueryLexer.LPAREN &&
+            this.beforePrevious?.type !== XQueryLexer.COMMA
         ) {
             return false;
         }
 
         return (
-            this.lastIndexOf(JsoniqLexer.KW_FUNCTION) >
-            Math.max(this.lastIndexOf(JsoniqLexer.LBRACE), this.lastIndexOf(JsoniqLexer.RPAREN))
+            this.lastIndexOf(XQueryLexer.KW_FUNCTION) >
+            Math.max(this.lastIndexOf(XQueryLexer.LBRACE), this.lastIndexOf(XQueryLexer.RPAREN))
         );
     }
 
@@ -66,9 +66,9 @@ export class JsoniqTokenContextAnalyzer extends TokenContextAnalyzer {
     private get braceDepth(): number {
         let depth = 0;
         for (const token of this.tokensBeforeCursor) {
-            if (token.type === JsoniqLexer.LBRACE) {
+            if (token.type === XQueryLexer.LBRACE) {
                 depth += 1;
-            } else if (token.type === JsoniqLexer.RBRACE) {
+            } else if (token.type === XQueryLexer.RBRACE) {
                 depth = Math.max(depth - 1, 0);
             }
         }
