@@ -11,7 +11,7 @@ import org.rumbledb.config.RumbleRuntimeConfiguration;
 import org.rumbledb.context.Name;
 import org.rumbledb.context.StaticContext;
 import org.rumbledb.exceptions.ExceptionMetadata;
-import org.rumbledb.exceptions.UnexpectedStaticTypeException;
+import org.rumbledb.exceptions.RumbleException;
 import org.rumbledb.expressions.Node;
 import org.rumbledb.expressions.flowr.Clause;
 import org.rumbledb.expressions.flowr.CountClause;
@@ -97,7 +97,7 @@ public final class StaticTypeChecker implements RequestHandler {
 
     public record Result(
             List<StaticTypeEntry> types,
-            List<StaticTypeError> typeErrors) implements ResponseBody {
+            List<StaticTypeError> errors) implements ResponseBody {
     }
 
     public final static Result EMPTY_RESULT = new Result(List.of(), List.of());
@@ -148,7 +148,7 @@ public final class StaticTypeChecker implements RequestHandler {
         /// Parse with strict configuration to collect type errors, if any.
         try {
             parseMainModule(query, documentUri, this.strictConfiguration);
-        } catch (UnexpectedStaticTypeException exception) {
+        } catch (RumbleException exception) {
             typeErrors.add(toTypeError(exception));
         }
 
@@ -166,7 +166,7 @@ public final class StaticTypeChecker implements RequestHandler {
         return VisitorHelpers.parseMainModule(query, documentUri, configuration);
     }
 
-    private static StaticTypeError toTypeError(UnexpectedStaticTypeException exception) {
+    private static StaticTypeError toTypeError(RumbleException exception) {
         ExceptionMetadata metadata = exception.getMetadata() == null
                 ? ExceptionMetadata.EMPTY_METADATA
                 : exception.getMetadata();

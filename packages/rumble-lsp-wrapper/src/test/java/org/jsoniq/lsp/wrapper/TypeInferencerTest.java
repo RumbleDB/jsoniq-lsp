@@ -5,7 +5,6 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.jsoniq.lsp.wrapper.handlers.StaticTypeChecker;
@@ -23,7 +22,7 @@ class TypeInferencerTest {
         StaticTypeChecker.Result result = inferWithoutThrow("");
 
         assertTrue(result.types().isEmpty());
-        assertTrue(result.typeErrors().isEmpty());
+        assertTrue(result.errors().isEmpty());
     }
 
     @Test
@@ -31,7 +30,7 @@ class TypeInferencerTest {
         String query = "let $x := 1 return $x";
 
         StaticTypeChecker.Result result = inferWithoutThrow(query);
-        assertTrue(result.typeErrors().isEmpty());
+        assertTrue(result.errors().isEmpty());
 
         assertTrue(variableTypes(result)
                 .anyMatch(type -> VariableKind.Let.equals(type.variableKind())
@@ -60,7 +59,7 @@ class TypeInferencerTest {
 
         StaticTypeChecker.Result result = inferWithoutThrow(query);
         assertFalse(result.types().isEmpty());
-        assertTrue(result.typeErrors().isEmpty());
+        assertTrue(result.errors().isEmpty());
 
         StaticTypeChecker.FunctionType functionType = functionTypes(result)
                 .filter(type -> "f".equals(type.function().name().qname().localName()))
@@ -74,11 +73,6 @@ class TypeInferencerTest {
     }
 
     @Test
-    void inferInvalidQueryReturnsError() {
-        assertThrows(Throwable.class, () -> this.inferencer.infer("let $x := return"));
-    }
-
-    @Test
     void inferLetShadowingCollectsBothVariableTypes() {
         String query = """
                 let $x := 1
@@ -89,7 +83,7 @@ class TypeInferencerTest {
                 """;
 
         StaticTypeChecker.Result result = inferWithoutThrow(query);
-        assertTrue(result.typeErrors().isEmpty());
+        assertTrue(result.errors().isEmpty());
 
         assertTrue(variableTypes(result).anyMatch(type -> "xs:integer".equals(type.sequenceType())));
         assertTrue(variableTypes(result).anyMatch(type -> "xs:string".equals(type.sequenceType())));
@@ -105,10 +99,10 @@ class TypeInferencerTest {
                 """;
 
         StaticTypeChecker.Result result = inferWithoutThrow(query);
-        assertFalse(result.typeErrors().isEmpty());
+        assertFalse(result.errors().isEmpty());
         assertFalse(result.types().isEmpty());
 
-        StaticTypeChecker.StaticTypeError error = result.typeErrors().get(0);
+        StaticTypeChecker.StaticTypeError error = result.errors().get(0);
         assertEquals("XPTY0004", error.code());
         assertEquals(0, error.position().line());
         assertEquals(0, error.position().character());
@@ -124,9 +118,9 @@ class TypeInferencerTest {
                 """;
 
         StaticTypeChecker.Result result = inferWithoutThrow(query);
-        assertFalse(result.typeErrors().isEmpty());
+        assertFalse(result.errors().isEmpty());
 
-        StaticTypeChecker.StaticTypeError error = result.typeErrors().get(0);
+        StaticTypeChecker.StaticTypeError error = result.errors().get(0);
         assertEquals("XPTY0004", error.code());
         assertTrue(error.message().contains("arities are not allowed for additive expressions"));
         assertEquals(1, error.position().line());

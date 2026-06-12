@@ -9,7 +9,7 @@ export async function collectTypeDiagnostics(document: TextDocument): Promise<Di
 
     const diagnostics: Diagnostic[] = [];
 
-    for (const error of response.body.typeErrors) {
+    for (const error of response.body.errors) {
         diagnostics.push(toDiagnostic(document, error));
     }
 

@@ -17,7 +17,6 @@ import org.jsoniq.lsp.wrapper.handlers.StaticTypeChecker;
 import org.jsoniq.lsp.wrapper.messages.Request;
 import org.jsoniq.lsp.wrapper.messages.Response;
 import org.jsoniq.lsp.wrapper.messages.ResponseBody;
-import org.rumbledb.exceptions.RumbleException;
 
 public class Main {
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
@@ -85,11 +84,6 @@ public class Main {
 
             return new Response(requestId, requestType,
                     handler.handle(new Request(requestId, requestType, request.body(), request.documentUri())), null);
-        } catch (RumbleException exception) {
-            RequestHandler handler = DAEMON_HANDLERS.get(requestType);
-            ResponseBody emptyResponse = handler == null ? null : handler.createEmptyResponse();
-            return new Response(requestId, requestType, emptyResponse,
-                    Error.fromRumbleException(exception));
         } catch (Throwable throwable) {
             throwable.printStackTrace(System.err);
             System.err.flush();
