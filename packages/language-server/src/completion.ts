@@ -18,12 +18,12 @@ import {
 } from "./analysis/definitions.js";
 import { QNameToString } from "./analysis/names.js";
 import { getVisibleDeclarationsAtPosition } from "./analysis/queries.js";
+import { BuiltinFunctionDefinition, builtinFunctions } from "./assets/builtin-functions.js";
 import { formatFunctionEntry } from "./function-doc/format.js";
 import { getBuiltinFunctionDocumentation, type Signature } from "./function-doc/index.js";
 import { getFunctionDocs } from "./function-doc/loader.js";
 import { collectCompletionIntent } from "./parser/index.js";
 import { getDocumentText } from "./parser/utils.js";
-import { getBuiltinFunctions } from "./wrapper/builtin-functions.js";
 
 const VARIABLE_PREFIX_PATTERN = /\$[A-Za-z0-9_.:-]*$/;
 const GENERIC_BUILTIN_PARAMETER_PREFIX = "$arg";
@@ -132,7 +132,7 @@ async function getBuiltinFunctionCompletionItems(): Promise<CompletionItem[]> {
     const itemsByName = new Map<string, { item: CompletionItem; parameterCount: number }>();
     const docs = getFunctionDocs();
 
-    for (const definition of (await getBuiltinFunctions()).all) {
+    for (const definition of builtinFunctions.all) {
         const { qname, arity } = definition.name;
         const functionName = QNameToString(qname, false);
         const ns = qname.namespaceUri ?? defaultNamespaces.get(qname.prefix || "fn");
@@ -205,7 +205,7 @@ function withSortText(items: CompletionItem[]): CompletionItem[] {
 }
 
 function getBuiltinCompletionParameterNames(
-    definition: Awaited<ReturnType<typeof getBuiltinFunctions>>["all"][number],
+    definition: BuiltinFunctionDefinition,
     signatures: Signature[] | undefined,
 ): string[] {
     const preferredSignature = signatures?.reduce((best, current) =>

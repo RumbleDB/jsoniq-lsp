@@ -1,11 +1,9 @@
 import { defaultNamespaces } from "server/analysis/default-namespaces.js";
 import { QNameToString } from "server/analysis/names.js";
-import { getBuiltinFunctions } from "server/wrapper/builtin-functions.js";
+import { BuiltinFunctionDefinition, builtinFunctions } from "server/assets/builtin-functions.js";
 import { getWrapperClient } from "server/wrapper/client.js";
 
 import { getFunctionDocs } from "./loader.js";
-
-type BuiltinFunctionDefinition = Awaited<ReturnType<typeof getBuiltinFunctions>>["all"][number];
 
 const prefixByNamespace = new Map<string, string>([
     ["http://www.w3.org/2005/xpath-functions", "fn"],
@@ -46,7 +44,6 @@ function formatSignature(definition: BuiltinFunctionDefinition): string {
 
 async function main(): Promise<void> {
     const docs = getFunctionDocs();
-    const builtinFunctions = await getBuiltinFunctions();
     const wrapperClient = getWrapperClient();
 
     try {

@@ -12,61 +12,52 @@ export interface BuiltinFunctionRaw {
     signature: WrapperFunctionSignature;
 }
 
-let builtinFunctions: BuiltinFunctionRaw[] | null = null;
 const docs: Record<string, FunctionEntry> = {};
 let docsLoaded = false;
 
-export function loadBuiltinFunctions(): BuiltinFunctionRaw[] {
-    if (builtinFunctions !== null) {
-        return builtinFunctions;
-    }
+export function loadJsonAsset<T>(relativeAssetPath: string): T | null {
     try {
         const assetsPath = getAssetsPath();
-        const filePath = path.join(assetsPath, "builtin-functions.json");
+        const filePath = path.join(assetsPath, relativeAssetPath);
         if (fs.existsSync(filePath)) {
             const content = fs.readFileSync(filePath, "utf-8");
-            builtinFunctions = JSON.parse(content) as BuiltinFunctionRaw[];
-        } else {
-            builtinFunctions = [];
+            return JSON.parse(content) as T;
         }
     } catch (error) {
-        console.error("Failed to load pregenerated builtin functions:", error);
-        builtinFunctions = [];
+        console.error(`Failed to load JSON asset '${relativeAssetPath}':`, error);
     }
-    return builtinFunctions;
+    return null;
+}
+
+function processDocs(fileDocs: Record<string, FunctionEntry>): void {
+    for (const [originalKey, value] of Object.entries(fileDocs)) {
+        const [prefix, localName] = originalKey.split(":");
+        const namespace = defaultNamespaces.get(prefix!);
+        if (!namespace) {
+            continue;
+        }
+        const key = QNameToString({ localName: localName!, namespaceUri: namespace }, true);
+        docs[key] = value;
+    }
 }
 
 export function loadFunctionDocs(): Record<string, FunctionEntry> {
     if (docsLoaded) {
         return docs;
     }
-    try {
-        const assetsPath = getAssetsPath();
-        const docsDir = path.join(assetsPath, "function-doc");
-        const filesToLoad = ["w3-functions.json", "custom-functions.json"];
 
-        for (const fileName of filesToLoad) {
-            const filePath = path.join(docsDir, fileName);
-            if (!fs.existsSync(filePath)) {
-                continue;
-            }
-
-            const content = fs.readFileSync(filePath, "utf-8");
-            const fileDocs = JSON.parse(content) as Record<string, FunctionEntry>;
-
-            for (const [originalKey, value] of Object.entries(fileDocs)) {
-                const [prefix, localName] = originalKey.split(":");
-                const namespace = defaultNamespaces.get(prefix!);
-                if (!namespace) {
-                    continue;
-                }
-                const key = QNameToString({ localName: localName!, namespaceUri: namespace }, true);
-                docs[key] = value;
-            }
-        }
-        docsLoaded = true;
-    } catch (error) {
-        console.error("Failed to load function docs:", error);
+    const w3Docs = loadJsonAsset<Record<string, FunctionEntry>>("function-doc/w3-functions.json");
+    if (w3Docs !== null) {
+        processDocs(w3Docs);
     }
+
+    const customDocs = loadJsonAsset<Record<string, FunctionEntry>>(
+        "function-doc/custom-functions.json",
+    );
+    if (customDocs !== null) {
+        processDocs(customDocs);
+    }
+
+    docsLoaded = true;
     return docs;
 }
