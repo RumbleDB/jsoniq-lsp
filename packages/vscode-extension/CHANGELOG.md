@@ -1,5 +1,22 @@
 # jsoniq-vscode
 
+## 1.3.0
+
+### Minor Changes
+
+- [#20](https://github.com/RumbleDB/jsoniq-lsp/pull/20) [`9fc6c51`](https://github.com/RumbleDB/jsoniq-lsp/commit/9fc6c5190309107af0a76d1557b6dcce0b00f308) - Add XQuery to the VSCode extension language selector. It will be selected statically based on the file extension (see the VSCode extension's `package.json`) and dynamically based on the `ACTIVE_PARSER_NOTIFICATION` sent by the language server. Therefore, it can switch if the string `xquery version` is found in the document.
+
+  Additionally, TextMate syntax has been added to enhance the syntax highlighting experience.
+
+- [`996b40e`](https://github.com/RumbleDB/jsoniq-lsp/commit/996b40e000fe7a2b2fd6acb19e982633c6ed7ab4) - Improve the JSONiq TextMate syntax to align with the latest grammar version.
+
+- [`f218779`](https://github.com/RumbleDB/jsoniq-lsp/commit/f2187796b2218cc46f8ea6f3546f60357fd5fe7b) - Update the dependencies, including `vscode-languageserver` and `vscode-languageclient`, to version 10 in order to support the language server protocol version [3.18](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.18/specification/) (released in 06/04/2026).
+
+### Patch Changes
+
+- Updated dependencies [[`202158e`](https://github.com/RumbleDB/jsoniq-lsp/commit/202158ea6f44b6c46fb8cd9fb1510e4d17208b2e), [`9fc6c51`](https://github.com/RumbleDB/jsoniq-lsp/commit/9fc6c5190309107af0a76d1557b6dcce0b00f308), [`032ae0a`](https://github.com/RumbleDB/jsoniq-lsp/commit/032ae0a109001e0c051f08fab66d9070f6938f63), [`f218779`](https://github.com/RumbleDB/jsoniq-lsp/commit/f2187796b2218cc46f8ea6f3546f60357fd5fe7b)]:
+  - jsoniq-language-server@2.4.0
+
 ## 1.2.0
 
 ### Minor Changes

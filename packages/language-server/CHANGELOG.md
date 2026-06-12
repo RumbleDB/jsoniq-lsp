@@ -1,5 +1,27 @@
 # jsoniq-language-server
 
+## 2.4.0
+
+### Minor Changes
+
+- [#20](https://github.com/RumbleDB/jsoniq-lsp/pull/20) [`9fc6c51`](https://github.com/RumbleDB/jsoniq-lsp/commit/9fc6c5190309107af0a76d1557b6dcce0b00f308) - Add XQuery to the VSCode extension language selector. It will be selected statically based on the file extension (see the VSCode extension's `package.json`) and dynamically based on the `ACTIVE_PARSER_NOTIFICATION` sent by the language server. Therefore, it can switch if the string `xquery version` is found in the document.
+
+  Additionally, TextMate syntax has been added to enhance the syntax highlighting experience.
+
+- [#18](https://github.com/RumbleDB/jsoniq-lsp/pull/18) [`032ae0a`](https://github.com/RumbleDB/jsoniq-lsp/commit/032ae0a109001e0c051f08fab66d9070f6938f63) - Add XQuery grammar support to the language server. The parser will activate if any of the following conditions are met (see `parser/xquery/index.ts`).
+
+  1. The language ID is `xquery`.
+  2. The document includes the string `xquery version`.
+  3. The file extension is `.xq`, `.xqy`, or `.xquery`.
+
+- [`f218779`](https://github.com/RumbleDB/jsoniq-lsp/commit/f2187796b2218cc46f8ea6f3546f60357fd5fe7b) - Update the dependencies, including `vscode-languageserver` and `vscode-languageclient`, to version 10 in order to support the language server protocol version [3.18](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.18/specification/) (released in 06/04/2026).
+
+### Patch Changes
+
+- [`202158e`](https://github.com/RumbleDB/jsoniq-lsp/commit/202158ea6f44b6c46fb8cd9fb1510e4d17208b2e) - Add a `.npmignore` file to the `assets/function-doc` folder to ensure that the `custom-functions.json` file is uploaded to the npm registry.
+
+  By default, because it's part of `.gitignore`, it is not uploaded.
+
 ## 2.3.0
 
 ### Minor Changes
