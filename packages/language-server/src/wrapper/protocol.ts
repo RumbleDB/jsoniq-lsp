@@ -9,7 +9,7 @@ import type {
     HandshakeResponseBody,
     REQUEST_TYPE_HANDSHAKE,
 } from "./handshake.js";
-import type { StaticTypeCheckRequest, REQUEST_TYPE_STATIC_TYPECHECK } from "./type-inference.js";
+import type { StaticTypeCheckRequest, REQUEST_TYPE_STATIC_TYPECHECK } from "./type-check.js";
 import type { BuiltinFunctionsResponseBody, TypeInferenceResult } from "./types.js";
 
 export type WrapperRequestPayloadByType = {
