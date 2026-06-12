@@ -8,19 +8,19 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import org.jsoniq.lsp.wrapper.handlers.TypeInferencer;
-import org.jsoniq.lsp.wrapper.handlers.TypeInferencer.VariableKind;
+import org.jsoniq.lsp.wrapper.handlers.StaticTypeChecker;
+import org.jsoniq.lsp.wrapper.handlers.StaticTypeChecker.VariableKind;
 
 class TypeInferencerTest {
-    private final TypeInferencer inferencer = new TypeInferencer();
+    private final StaticTypeChecker inferencer = new StaticTypeChecker();
 
-    private TypeInferencer.Result inferWithoutThrow(String query) {
+    private StaticTypeChecker.Result inferWithoutThrow(String query) {
         return assertDoesNotThrow(() -> this.inferencer.infer(query));
     }
 
     @Test
     void inferEmptyQueryReturnsNoErrorAndNoTypes() {
-        TypeInferencer.Result result = inferWithoutThrow("");
+        StaticTypeChecker.Result result = inferWithoutThrow("");
 
         assertTrue(result.types().isEmpty());
         assertTrue(result.typeErrors().isEmpty());
@@ -30,7 +30,7 @@ class TypeInferencerTest {
     void inferSimpleLetCollectsVariableType() {
         String query = "let $x := 1 return $x";
 
-        TypeInferencer.Result result = inferWithoutThrow(query);
+        StaticTypeChecker.Result result = inferWithoutThrow(query);
         assertTrue(result.typeErrors().isEmpty());
 
         assertTrue(variableTypes(result)
@@ -46,7 +46,7 @@ class TypeInferencerTest {
                 $a
                 """;
 
-        TypeInferencer.Result result = inferWithoutThrow(query);
+        StaticTypeChecker.Result result = inferWithoutThrow(query);
 
         assertTrue(variableTypes(result)
                 .anyMatch(type -> VariableKind.Declare.equals(type.variableKind())
@@ -58,11 +58,11 @@ class TypeInferencerTest {
     void inferFunctionDeclarationCollectsFunctionTypeAndParameters() {
         String query = "declare function local:f($a as integer, $b) { $a + 1 };";
 
-        TypeInferencer.Result result = inferWithoutThrow(query);
+        StaticTypeChecker.Result result = inferWithoutThrow(query);
         assertFalse(result.types().isEmpty());
         assertTrue(result.typeErrors().isEmpty());
 
-        TypeInferencer.FunctionType functionType = functionTypes(result)
+        StaticTypeChecker.FunctionType functionType = functionTypes(result)
                 .filter(type -> "f".equals(type.function().name().qname().localName()))
                 .findFirst()
                 .orElseThrow();
@@ -88,7 +88,7 @@ class TypeInferencerTest {
                 )
                 """;
 
-        TypeInferencer.Result result = inferWithoutThrow(query);
+        StaticTypeChecker.Result result = inferWithoutThrow(query);
         assertTrue(result.typeErrors().isEmpty());
 
         assertTrue(variableTypes(result).anyMatch(type -> "xs:integer".equals(type.sequenceType())));
@@ -104,11 +104,11 @@ class TypeInferencerTest {
                 local:f()
                 """;
 
-        TypeInferencer.Result result = inferWithoutThrow(query);
+        StaticTypeChecker.Result result = inferWithoutThrow(query);
         assertFalse(result.typeErrors().isEmpty());
         assertFalse(result.types().isEmpty());
 
-        TypeInferencer.TypeError error = result.typeErrors().get(0);
+        StaticTypeChecker.StaticTypeError error = result.typeErrors().get(0);
         assertEquals("XPTY0004", error.code());
         assertEquals(0, error.position().line());
         assertEquals(0, error.position().character());
@@ -123,28 +123,30 @@ class TypeInferencerTest {
                 local:f((1, 2), 3)
                 """;
 
-        TypeInferencer.Result result = inferWithoutThrow(query);
+        StaticTypeChecker.Result result = inferWithoutThrow(query);
         assertFalse(result.typeErrors().isEmpty());
 
-        TypeInferencer.TypeError error = result.typeErrors().get(0);
+        StaticTypeChecker.StaticTypeError error = result.typeErrors().get(0);
         assertEquals("XPTY0004", error.code());
         assertTrue(error.message().contains("arities are not allowed for additive expressions"));
         assertEquals(1, error.position().line());
         assertEquals(4, error.position().character());
     }
 
-    private static java.util.stream.Stream<TypeInferencer.VariableType> variableTypes(TypeInferencer.Result result) {
+    private static java.util.stream.Stream<StaticTypeChecker.VariableType> variableTypes(
+            StaticTypeChecker.Result result) {
         return result.types()
                 .stream()
-                .filter(TypeInferencer.VariableType.class::isInstance)
-                .map(TypeInferencer.VariableType.class::cast);
+                .filter(StaticTypeChecker.VariableType.class::isInstance)
+                .map(StaticTypeChecker.VariableType.class::cast);
     }
 
-    private static java.util.stream.Stream<TypeInferencer.FunctionType> functionTypes(TypeInferencer.Result result) {
+    private static java.util.stream.Stream<StaticTypeChecker.FunctionType> functionTypes(
+            StaticTypeChecker.Result result) {
         return result.types()
                 .stream()
-                .filter(TypeInferencer.FunctionType.class::isInstance)
-                .map(TypeInferencer.FunctionType.class::cast);
+                .filter(StaticTypeChecker.FunctionType.class::isInstance)
+                .map(StaticTypeChecker.FunctionType.class::cast);
     }
 
 }

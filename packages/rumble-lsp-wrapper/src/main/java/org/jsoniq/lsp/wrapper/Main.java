@@ -13,7 +13,7 @@ import org.jsoniq.lsp.wrapper.handlers.BuiltinFunctions;
 import org.jsoniq.lsp.wrapper.handlers.BuiltinTypes;
 import org.jsoniq.lsp.wrapper.handlers.Handshake;
 import org.jsoniq.lsp.wrapper.handlers.RequestHandler;
-import org.jsoniq.lsp.wrapper.handlers.TypeInferencer;
+import org.jsoniq.lsp.wrapper.handlers.StaticTypeChecker;
 import org.jsoniq.lsp.wrapper.messages.Request;
 import org.jsoniq.lsp.wrapper.messages.Response;
 import org.jsoniq.lsp.wrapper.messages.ResponseBody;
@@ -21,7 +21,7 @@ import org.rumbledb.exceptions.RumbleException;
 
 public class Main {
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
-    private static final TypeInferencer INFERENCER = new TypeInferencer();
+    private static final StaticTypeChecker INFERENCER = new StaticTypeChecker();
     private static final BuiltinFunctions BUILTIN_FUNCTIONS = new BuiltinFunctions();
     private static final BuiltinTypes BUILTIN_TYPES = new BuiltinTypes();
     private static final Handshake HANDSHAKE = new Handshake();
